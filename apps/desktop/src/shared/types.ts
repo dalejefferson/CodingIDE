@@ -53,3 +53,47 @@ export interface SetProjectThemeRequest {
   id: string
   theme: ThemeId | null
 }
+
+// ── Terminal ─────────────────────────────────────────────────
+
+export interface TerminalCreateRequest {
+  projectId: string
+  terminalId: string
+  cwd: string
+  cols?: number
+  rows?: number
+}
+
+export interface TerminalWriteRequest {
+  terminalId: string
+  data: string
+}
+
+export interface TerminalResizeRequest {
+  terminalId: string
+  cols: number
+  rows: number
+}
+
+export interface TerminalKillRequest {
+  terminalId: string
+}
+
+export interface TerminalLayoutRequest {
+  projectId: string
+}
+
+export interface TerminalSetLayoutRequest {
+  projectId: string
+  layout: unknown
+}
+
+// ── Git ─────────────────────────────────────────────────────
+
+export interface GitBranchRequest {
+  cwd: string
+}
+
+export interface GitBranchResponse {
+  branch: string | null
+}

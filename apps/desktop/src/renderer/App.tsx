@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import EmptyState from './components/EmptyState'
-import Composer from './components/Composer'
 import ProjectWorkspace from './components/ProjectWorkspace'
 import { SettingsPage } from './components/SettingsPage'
 import { useTheme } from './hooks/useTheme'
@@ -148,7 +147,6 @@ export function App() {
       <div className="main-pane">
         <Toolbar projectName={activeProject?.name ?? null} onOpenFolder={handleOpenFolder} />
         <div className="main-content">{mainContent}</div>
-        <Composer />
       </div>
     </div>
   )

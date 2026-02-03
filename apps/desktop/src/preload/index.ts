@@ -1,6 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, ALLOWED_CHANNELS } from '../shared/ipcContracts'
-import type { Project, AddProjectRequest, ThemeId, SetProjectThemeRequest } from '../shared/types'
+import type {
+  Project,
+  AddProjectRequest,
+  GitBranchRequest,
+  GitBranchResponse,
+  ThemeId,
+  SetProjectThemeRequest,
+  TerminalCreateRequest,
+  TerminalWriteRequest,
+  TerminalResizeRequest,
+} from '../shared/types'
+import type { LayoutNode } from '../shared/terminalLayout'
 
 /**
  * Typed preload API — the only surface exposed to the renderer.
@@ -29,6 +40,21 @@ export interface ElectronAPI {
     getGlobal: () => Promise<ThemeId>
     setGlobal: (theme: ThemeId) => Promise<void>
     setProjectTheme: (request: SetProjectThemeRequest) => Promise<void>
+  }
+  terminal: {
+    create: (request: TerminalCreateRequest) => Promise<void>
+    write: (request: TerminalWriteRequest) => Promise<void>
+    resize: (request: TerminalResizeRequest) => Promise<void>
+    kill: (terminalId: string) => Promise<void>
+    killAll: (projectId: string) => Promise<void>
+    getBuffer: (terminalId: string) => Promise<string>
+    getLayout: (projectId: string) => Promise<LayoutNode | null>
+    setLayout: (projectId: string, layout: LayoutNode) => Promise<void>
+    onData: (callback: (terminalId: string, data: string) => void) => () => void
+    onExit: (callback: (terminalId: string, exitCode: number) => void) => () => void
+  }
+  git: {
+    getBranch: (request: GitBranchRequest) => Promise<GitBranchResponse>
   }
 }
 
@@ -61,6 +87,50 @@ const electronAPI: ElectronAPI = {
       safeInvoke(IPC_CHANNELS.SET_GLOBAL_THEME, theme) as Promise<void>,
     setProjectTheme: (request: SetProjectThemeRequest) =>
       safeInvoke(IPC_CHANNELS.SET_PROJECT_THEME, request) as Promise<void>,
+  },
+  terminal: {
+    create: (request: TerminalCreateRequest) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_CREATE, request) as Promise<void>,
+    write: (request: TerminalWriteRequest) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_WRITE, request) as Promise<void>,
+    resize: (request: TerminalResizeRequest) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_RESIZE, request) as Promise<void>,
+    kill: (terminalId: string) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_KILL, { terminalId }) as Promise<void>,
+    killAll: (projectId: string) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_KILL_ALL, projectId) as Promise<void>,
+    getBuffer: (terminalId: string) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_GET_BUFFER, { terminalId }) as Promise<string>,
+    getLayout: (projectId: string) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_GET_LAYOUT, { projectId }) as Promise<LayoutNode | null>,
+    setLayout: (projectId: string, layout: LayoutNode) =>
+      safeInvoke(IPC_CHANNELS.TERMINAL_SET_LAYOUT, { projectId, layout }) as Promise<void>,
+    onData: (callback: (terminalId: string, data: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, terminalId: string, data: string) => {
+        callback(terminalId, data)
+      }
+      ipcRenderer.on('terminal:data', listener)
+      return () => {
+        ipcRenderer.removeListener('terminal:data', listener)
+      }
+    },
+    onExit: (callback: (terminalId: string, exitCode: number) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        terminalId: string,
+        exitCode: number,
+      ) => {
+        callback(terminalId, exitCode)
+      }
+      ipcRenderer.on('terminal:exit', listener)
+      return () => {
+        ipcRenderer.removeListener('terminal:exit', listener)
+      }
+    },
+  },
+  git: {
+    getBranch: (request: GitBranchRequest) =>
+      safeInvoke(IPC_CHANNELS.GIT_BRANCH, request) as Promise<GitBranchResponse>,
   },
 }
 

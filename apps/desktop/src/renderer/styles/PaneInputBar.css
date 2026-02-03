@@ -1,0 +1,114 @@
+/* ── PaneInputBar ─────────────────────────────────────────────── */
+
+.pane-input-bar {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--space-sm);
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border-primary);
+  flex-shrink: 0;
+  gap: var(--space-sm);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+/* ── Mode Toggle ──────────────────────────────────────────────── */
+
+.pane-input-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.pane-input-mode-btn {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.pane-input-mode-btn:hover {
+  color: var(--color-text-secondary);
+}
+
+.pane-input-mode-btn--active {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ── Input Field ──────────────────────────────────────────────── */
+
+.pane-input-field {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 4px 0;
+}
+
+.pane-input-field::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+/* ── Tool Buttons ─────────────────────────────────────────────── */
+
+.pane-input-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.pane-input-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.pane-input-tool-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+/* ── Model Picker ─────────────────────────────────────────────── */
+
+.pane-input-model-picker {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.pane-input-model-picker:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}

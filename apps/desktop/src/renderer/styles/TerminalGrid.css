@@ -1,0 +1,84 @@
+/* ── Terminal Grid ─────────────────────────────────────────────── */
+
+.terminal-grid {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Split Container ──────────────────────────────────────────── */
+
+.terminal-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.terminal-split-child {
+  display: flex;
+  flex-shrink: 1;
+  flex-grow: 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Divider ──────────────────────────────────────────────────── */
+
+.terminal-split-divider {
+  flex-shrink: 0;
+}
+
+.terminal-split--horizontal > .terminal-split-divider {
+  width: 0;
+}
+
+.terminal-split--vertical > .terminal-split-divider {
+  height: 0;
+}
+
+/* ── Terminal Pane (3-zone: header / xterm / input bar) ───────── */
+
+.terminal-pane {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+  border: none;
+  border-radius: 0;
+  transition: border-color var(--transition-fast);
+  overflow: hidden;
+}
+
+.terminal-pane--active {
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+/* ── xterm container (middle zone) ────────────────────────────── */
+
+.terminal-pane-xterm {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-xs);
+  overflow: hidden;
+}
+
+/* Ensure xterm.js fills the xterm container */
+.terminal-pane-xterm .xterm {
+  height: 100%;
+}
+
+.terminal-pane-xterm .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.terminal-pane-xterm .xterm-screen {
+  height: 100%;
+}

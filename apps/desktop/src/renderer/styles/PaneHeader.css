@@ -1,0 +1,50 @@
+/* ── PaneHeader ───────────────────────────────────────────────── */
+
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 var(--space-sm);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+  flex-shrink: 0;
+  gap: var(--space-sm);
+  user-select: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.pane-header-cwd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  flex: 1;
+}
+
+.pane-header-icon {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.pane-header-path {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pane-header-branch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.pane-header-branch-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
