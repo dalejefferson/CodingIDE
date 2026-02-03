@@ -3,6 +3,7 @@ import {
   isVoid,
   isString,
   isNonEmptyString,
+  isAddProjectRequest,
   isAllowedChannel,
   validatePayload,
   IPC_CHANNELS,
@@ -84,6 +85,40 @@ describe('isNonEmptyString', () => {
   })
 })
 
+// ── AddProjectRequest Validator ──────────────────────────────
+
+describe('isAddProjectRequest', () => {
+  it('accepts valid request with path', () => {
+    expect(isAddProjectRequest({ path: '/Users/dev/project' })).toBe(true)
+  })
+
+  it('accepts request with extra fields', () => {
+    expect(isAddProjectRequest({ path: '/tmp/foo', extra: 'ignored' })).toBe(true)
+  })
+
+  it('rejects empty path', () => {
+    expect(isAddProjectRequest({ path: '' })).toBe(false)
+  })
+
+  it('rejects missing path', () => {
+    expect(isAddProjectRequest({})).toBe(false)
+  })
+
+  it('rejects non-string path', () => {
+    expect(isAddProjectRequest({ path: 42 })).toBe(false)
+    expect(isAddProjectRequest({ path: null })).toBe(false)
+    expect(isAddProjectRequest({ path: true })).toBe(false)
+  })
+
+  it('rejects non-objects', () => {
+    expect(isAddProjectRequest(undefined)).toBe(false)
+    expect(isAddProjectRequest(null)).toBe(false)
+    expect(isAddProjectRequest('string')).toBe(false)
+    expect(isAddProjectRequest(42)).toBe(false)
+    expect(isAddProjectRequest([])).toBe(false)
+  })
+})
+
 // ── Channel Allowlist ──────────────────────────────────────────
 
 describe('isAllowedChannel', () => {
@@ -118,8 +153,17 @@ describe('ALLOWED_CHANNELS', () => {
 // ── Payload Validation ─────────────────────────────────────────
 
 describe('validatePayload', () => {
-  it('accepts undefined for all current (void) channels', () => {
-    for (const channel of Object.values(IPC_CHANNELS)) {
+  it('accepts undefined for void channels', () => {
+    const voidChannels = [
+      IPC_CHANNELS.PING,
+      IPC_CHANNELS.GET_APP_VERSION,
+      IPC_CHANNELS.WINDOW_MINIMIZE,
+      IPC_CHANNELS.WINDOW_MAXIMIZE,
+      IPC_CHANNELS.WINDOW_CLOSE,
+      IPC_CHANNELS.OPEN_FOLDER_DIALOG,
+      IPC_CHANNELS.GET_PROJECTS,
+    ] as const
+    for (const channel of voidChannels) {
       expect(validatePayload(channel, undefined)).toBe(true)
     }
   })
@@ -131,6 +175,20 @@ describe('validatePayload', () => {
     expect(validatePayload(IPC_CHANNELS.PING, null)).toBe(false)
     expect(validatePayload(IPC_CHANNELS.WINDOW_CLOSE, 'data')).toBe(false)
     expect(validatePayload(IPC_CHANNELS.GET_APP_VERSION, [])).toBe(false)
+  })
+
+  it('validates ADD_PROJECT payload', () => {
+    expect(validatePayload(IPC_CHANNELS.ADD_PROJECT, { path: '/tmp/project' })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.ADD_PROJECT, { path: '' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.ADD_PROJECT, undefined)).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.ADD_PROJECT, 'string')).toBe(false)
+  })
+
+  it('validates REMOVE_PROJECT payload', () => {
+    expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, 'some-uuid')).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, '')).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, undefined)).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, 42)).toBe(false)
   })
 })
 

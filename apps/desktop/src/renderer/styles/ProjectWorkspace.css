@@ -1,0 +1,60 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  user-select: none;
+}
+
+.workspace-icon {
+  color: var(--color-text-tertiary);
+  margin-bottom: 16px;
+}
+
+.workspace-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.workspace-path {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  color: var(--color-text-tertiary);
+  margin: 0 0 16px;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.workspace-status--idle {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.workspace-status--running {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.workspace-status--done {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.workspace-status--needs_input {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}

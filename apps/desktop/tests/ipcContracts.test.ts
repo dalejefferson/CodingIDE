@@ -14,6 +14,10 @@ describe('IPC Contracts', () => {
     expect(IPC_CHANNELS.WINDOW_MINIMIZE).toBe('ipc:window-minimize')
     expect(IPC_CHANNELS.WINDOW_MAXIMIZE).toBe('ipc:window-maximize')
     expect(IPC_CHANNELS.WINDOW_CLOSE).toBe('ipc:window-close')
+    expect(IPC_CHANNELS.OPEN_FOLDER_DIALOG).toBe('ipc:open-folder-dialog')
+    expect(IPC_CHANNELS.GET_PROJECTS).toBe('ipc:get-projects')
+    expect(IPC_CHANNELS.ADD_PROJECT).toBe('ipc:add-project')
+    expect(IPC_CHANNELS.REMOVE_PROJECT).toBe('ipc:remove-project')
   })
 
   it('has unique channel identifiers', () => {

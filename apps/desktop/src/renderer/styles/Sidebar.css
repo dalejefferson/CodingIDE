@@ -1,0 +1,163 @@
+/* ── Sidebar ─────────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  min-width: 240px;
+  height: 100%;
+  background: var(--color-bg-sidebar);
+  border-right: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+  user-select: none;
+  overflow-y: auto;
+}
+
+/* macOS traffic-light spacer */
+.sidebar-drag-region {
+  height: 28px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+/* ── Action buttons ──────────────────────────────────────────────────────────── */
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: background var(--transition-fast);
+}
+
+.sidebar-action-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+.sidebar-action-btn:active {
+  background: var(--color-bg-active);
+}
+
+.sidebar-action-btn svg {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+/* ── Section label ───────────────────────────────────────────────────────────── */
+
+.sidebar-section-label {
+  padding: 16px 16px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+}
+
+/* ── Thread / project list ───────────────────────────────────────────────────── */
+
+.sidebar-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 16px;
+}
+
+.sidebar-thread-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 400;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.sidebar-thread-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.sidebar-thread-item:active {
+  background: var(--color-bg-active);
+}
+
+.sidebar-thread-item svg {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+/* Active / selected state */
+.sidebar-thread-item--active {
+  background: var(--color-accent-subtle);
+}
+
+.sidebar-thread-item--active:hover {
+  background: var(--color-accent-subtle);
+}
+
+.sidebar-thread-item--active svg {
+  color: var(--color-accent);
+}
+
+/* ── Project name truncation ─────────────────────────────────────────────────── */
+
+.sidebar-project-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Status badge ────────────────────────────────────────────────────────────── */
+
+.sidebar-status {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  line-height: 1.4;
+}
+
+.sidebar-status--idle {
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-tertiary);
+}
+
+.sidebar-status--running {
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.sidebar-status--done {
+  color: var(--color-success);
+  background: var(--color-success-subtle);
+}
+
+.sidebar-status--needs_input {
+  color: var(--color-warning);
+  background: var(--color-warning-subtle);
+}
+
+/* ── Empty hint ──────────────────────────────────────────────────────────────── */
+
+.sidebar-empty-hint {
+  display: block;
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}

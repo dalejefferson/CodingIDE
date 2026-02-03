@@ -1,40 +1,77 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Sidebar } from './components/Sidebar'
+import { Toolbar } from './components/Toolbar'
+import EmptyState from './components/EmptyState'
+import Composer from './components/Composer'
+import ProjectWorkspace from './components/ProjectWorkspace'
+import type { Project } from '@shared/types'
 import './styles/App.css'
 
 export function App() {
-  const [version, setVersion] = useState<string>('...')
-  const [pingResult, setPingResult] = useState<string>('')
+  const [projects, setProjects] = useState<Project[]>([])
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
 
-  useEffect(() => {
-    window.electronAPI.getAppVersion().then(setVersion).catch(console.error)
+  const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const all = await window.electronAPI.projects.getAll()
+      setProjects(all)
+    } catch (err) {
+      console.error('Failed to load projects:', err)
+    }
   }, [])
 
-  const handlePing = async () => {
+  useEffect(() => {
+    loadProjects()
+  }, [loadProjects])
+
+  const handleOpenFolder = useCallback(async () => {
     try {
-      const result = await window.electronAPI.ping()
-      setPingResult(result)
+      const folderPath = await window.electronAPI.projects.openFolderDialog()
+      if (!folderPath) return
+
+      const project = await window.electronAPI.projects.add({ path: folderPath })
+      await loadProjects()
+      setActiveProjectId(project.id)
     } catch (err) {
-      console.error('Ping failed:', err)
-      setPingResult('error')
+      console.error('Failed to open folder:', err)
     }
-  }
+  }, [loadProjects])
+
+  const handleRemoveProject = useCallback(
+    async (id: string) => {
+      try {
+        await window.electronAPI.projects.remove(id)
+        if (activeProjectId === id) setActiveProjectId(null)
+        await loadProjects()
+      } catch (err) {
+        console.error('Failed to remove project:', err)
+      }
+    },
+    [activeProjectId, loadProjects],
+  )
 
   return (
     <div className="app">
-      <header className="titlebar">
-        <h1>CodingIDE</h1>
-        <span className="version">v{version}</span>
-      </header>
-      <main className="main">
-        <div className="card">
-          <h2>Hello from Electron + React</h2>
-          <p>Secure defaults active. Typed IPC ready.</p>
-          <button className="btn" onClick={handlePing}>
-            Ping Main Process
-          </button>
-          {pingResult && <p className="result">Response: {pingResult}</p>}
+      <Sidebar
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={setActiveProjectId}
+        onOpenFolder={handleOpenFolder}
+        onRemoveProject={handleRemoveProject}
+      />
+      <div className="main-pane">
+        <Toolbar projectName={activeProject?.name ?? null} onOpenFolder={handleOpenFolder} />
+        <div className="main-content">
+          {activeProject ? (
+            <ProjectWorkspace project={activeProject} />
+          ) : (
+            <EmptyState onOpenFolder={handleOpenFolder} />
+          )}
         </div>
-      </main>
+        <Composer />
+      </div>
     </div>
   )
 }

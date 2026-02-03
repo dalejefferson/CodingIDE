@@ -19,3 +19,19 @@ export interface LogEntry {
   timestamp: number
   context?: Record<string, unknown>
 }
+
+// ── Project Management ───────────────────────────────────────
+
+export type ProjectStatus = 'idle' | 'running' | 'done' | 'needs_input'
+
+export interface Project {
+  id: string
+  name: string
+  path: string
+  status: ProjectStatus
+  addedAt: number
+}
+
+export interface AddProjectRequest {
+  path: string
+}

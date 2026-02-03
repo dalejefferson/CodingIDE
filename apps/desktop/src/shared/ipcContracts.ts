@@ -12,6 +12,8 @@
  * complex enough to warrant a schema library.
  */
 
+import type { Project, AddProjectRequest } from './types'
+
 // ── Channel Constants ──────────────────────────────────────────
 
 export const IPC_CHANNELS = {
@@ -20,6 +22,10 @@ export const IPC_CHANNELS = {
   WINDOW_MINIMIZE: 'ipc:window-minimize',
   WINDOW_MAXIMIZE: 'ipc:window-maximize',
   WINDOW_CLOSE: 'ipc:window-close',
+  OPEN_FOLDER_DIALOG: 'ipc:open-folder-dialog',
+  GET_PROJECTS: 'ipc:get-projects',
+  ADD_PROJECT: 'ipc:add-project',
+  REMOVE_PROJECT: 'ipc:remove-project',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -50,6 +56,22 @@ export interface IPCContracts {
     request: void
     response: void
   }
+  [IPC_CHANNELS.OPEN_FOLDER_DIALOG]: {
+    request: void
+    response: string | null
+  }
+  [IPC_CHANNELS.GET_PROJECTS]: {
+    request: void
+    response: Project[]
+  }
+  [IPC_CHANNELS.ADD_PROJECT]: {
+    request: AddProjectRequest
+    response: Project
+  }
+  [IPC_CHANNELS.REMOVE_PROJECT]: {
+    request: string
+    response: void
+  }
 }
 
 // ── Runtime Validators ─────────────────────────────────────────
@@ -71,6 +93,13 @@ export function isNonEmptyString(payload: unknown): boolean {
   return typeof payload === 'string' && payload.length > 0
 }
 
+/** Payload must be a valid AddProjectRequest */
+export function isAddProjectRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  return typeof obj['path'] === 'string' && obj['path'].length > 0
+}
+
 /**
  * Validator registry — exactly one validator per channel.
  * Adding a channel without a validator is a compile error.
@@ -81,6 +110,10 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.WINDOW_MINIMIZE]: isVoid,
   [IPC_CHANNELS.WINDOW_MAXIMIZE]: isVoid,
   [IPC_CHANNELS.WINDOW_CLOSE]: isVoid,
+  [IPC_CHANNELS.OPEN_FOLDER_DIALOG]: isVoid,
+  [IPC_CHANNELS.GET_PROJECTS]: isVoid,
+  [IPC_CHANNELS.ADD_PROJECT]: isAddProjectRequest,
+  [IPC_CHANNELS.REMOVE_PROJECT]: isNonEmptyString,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

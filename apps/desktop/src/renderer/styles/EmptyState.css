@@ -1,0 +1,101 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  user-select: none;
+}
+
+/* Hero icon */
+.empty-state__hero-icon {
+  color: var(--color-text-tertiary);
+  margin-bottom: 16px;
+}
+
+/* Headline */
+.empty-state__headline {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+  line-height: var(--line-height-tight);
+}
+
+/* Subtitle */
+.empty-state__subtitle {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.empty-state__project-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.empty-state__project-picker:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.empty-state__chevron {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* Suggestion cards row */
+.empty-state__cards {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+/* Individual card */
+.empty-state__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 160px;
+  padding: 20px 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.empty-state__card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-secondary);
+}
+
+.empty-state__card:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Card icon */
+.empty-state__card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+}
+
+/* Card label */
+.empty-state__card-label {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-tight);
+}

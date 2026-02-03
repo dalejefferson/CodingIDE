@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, ALLOWED_CHANNELS } from '../shared/ipcContracts'
+import type { Project, AddProjectRequest } from '../shared/types'
 
 /**
  * Typed preload API — the only surface exposed to the renderer.
@@ -18,6 +19,12 @@ export interface ElectronAPI {
     maximize: () => Promise<void>
     close: () => Promise<void>
   }
+  projects: {
+    openFolderDialog: () => Promise<string | null>
+    getAll: () => Promise<Project[]>
+    add: (request: AddProjectRequest) => Promise<Project>
+    remove: (id: string) => Promise<void>
+  }
 }
 
 /** Only invoke channels that exist in the allowlist */
@@ -35,6 +42,13 @@ const electronAPI: ElectronAPI = {
     minimize: () => safeInvoke(IPC_CHANNELS.WINDOW_MINIMIZE) as Promise<void>,
     maximize: () => safeInvoke(IPC_CHANNELS.WINDOW_MAXIMIZE) as Promise<void>,
     close: () => safeInvoke(IPC_CHANNELS.WINDOW_CLOSE) as Promise<void>,
+  },
+  projects: {
+    openFolderDialog: () => safeInvoke(IPC_CHANNELS.OPEN_FOLDER_DIALOG) as Promise<string | null>,
+    getAll: () => safeInvoke(IPC_CHANNELS.GET_PROJECTS) as Promise<Project[]>,
+    add: (request: AddProjectRequest) =>
+      safeInvoke(IPC_CHANNELS.ADD_PROJECT, request) as Promise<Project>,
+    remove: (id: string) => safeInvoke(IPC_CHANNELS.REMOVE_PROJECT, id) as Promise<void>,
   },
 }
 
