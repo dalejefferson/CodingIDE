@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, ALLOWED_CHANNELS } from '../shared/ipcContracts'
-import type { Project, AddProjectRequest } from '../shared/types'
+import type { Project, AddProjectRequest, ThemeId, SetProjectThemeRequest } from '../shared/types'
 
 /**
  * Typed preload API — the only surface exposed to the renderer.
@@ -24,6 +24,11 @@ export interface ElectronAPI {
     getAll: () => Promise<Project[]>
     add: (request: AddProjectRequest) => Promise<Project>
     remove: (id: string) => Promise<void>
+  }
+  theme: {
+    getGlobal: () => Promise<ThemeId>
+    setGlobal: (theme: ThemeId) => Promise<void>
+    setProjectTheme: (request: SetProjectThemeRequest) => Promise<void>
   }
 }
 
@@ -49,6 +54,13 @@ const electronAPI: ElectronAPI = {
     add: (request: AddProjectRequest) =>
       safeInvoke(IPC_CHANNELS.ADD_PROJECT, request) as Promise<Project>,
     remove: (id: string) => safeInvoke(IPC_CHANNELS.REMOVE_PROJECT, id) as Promise<void>,
+  },
+  theme: {
+    getGlobal: () => safeInvoke(IPC_CHANNELS.GET_GLOBAL_THEME) as Promise<ThemeId>,
+    setGlobal: (theme: ThemeId) =>
+      safeInvoke(IPC_CHANNELS.SET_GLOBAL_THEME, theme) as Promise<void>,
+    setProjectTheme: (request: SetProjectThemeRequest) =>
+      safeInvoke(IPC_CHANNELS.SET_PROJECT_THEME, request) as Promise<void>,
   },
 }
 

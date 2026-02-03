@@ -1,12 +1,18 @@
 import type { Project } from '@shared/types'
+import type { PaletteId, FontId } from '@shared/themes'
+import { SidebarSettings } from './SidebarSettings'
 import '../styles/Sidebar.css'
 
 interface SidebarProps {
   projects: Project[]
   activeProjectId: string | null
+  palette: PaletteId
+  font: FontId
   onSelectProject: (id: string) => void
   onOpenFolder: () => void
   onRemoveProject: (id: string) => void
+  onSelectPalette: (id: PaletteId) => void
+  onSelectFont: (id: FontId) => void
 }
 
 function FolderIcon() {
@@ -88,9 +94,13 @@ const STATUS_LABELS: Record<Project['status'], string> = {
 export function Sidebar({
   projects,
   activeProjectId,
+  palette,
+  font,
   onSelectProject,
   onOpenFolder,
   onRemoveProject,
+  onSelectPalette,
+  onSelectFont,
 }: SidebarProps) {
   return (
     <aside className="sidebar">
@@ -134,6 +144,13 @@ export function Sidebar({
           </button>
         ))}
       </nav>
+
+      <SidebarSettings
+        palette={palette}
+        font={font}
+        onSelectPalette={onSelectPalette}
+        onSelectFont={onSelectFont}
+      />
     </aside>
   )
 }

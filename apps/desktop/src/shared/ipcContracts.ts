@@ -12,7 +12,8 @@
  * complex enough to warrant a schema library.
  */
 
-import type { Project, AddProjectRequest } from './types'
+import type { Project, AddProjectRequest, ThemeId, SetProjectThemeRequest } from './types'
+import { THEME_IDS } from './types'
 
 // ── Channel Constants ──────────────────────────────────────────
 
@@ -26,6 +27,9 @@ export const IPC_CHANNELS = {
   GET_PROJECTS: 'ipc:get-projects',
   ADD_PROJECT: 'ipc:add-project',
   REMOVE_PROJECT: 'ipc:remove-project',
+  GET_GLOBAL_THEME: 'ipc:get-global-theme',
+  SET_GLOBAL_THEME: 'ipc:set-global-theme',
+  SET_PROJECT_THEME: 'ipc:set-project-theme',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -72,6 +76,18 @@ export interface IPCContracts {
     request: string
     response: void
   }
+  [IPC_CHANNELS.GET_GLOBAL_THEME]: {
+    request: void
+    response: ThemeId
+  }
+  [IPC_CHANNELS.SET_GLOBAL_THEME]: {
+    request: ThemeId
+    response: void
+  }
+  [IPC_CHANNELS.SET_PROJECT_THEME]: {
+    request: SetProjectThemeRequest
+    response: void
+  }
 }
 
 // ── Runtime Validators ─────────────────────────────────────────
@@ -100,6 +116,20 @@ export function isAddProjectRequest(payload: unknown): boolean {
   return typeof obj['path'] === 'string' && obj['path'].length > 0
 }
 
+/** Payload must be a valid ThemeId ('light' | 'dark') */
+export function isThemeId(payload: unknown): boolean {
+  return typeof payload === 'string' && (THEME_IDS as readonly string[]).includes(payload)
+}
+
+/** Payload must be a valid SetProjectThemeRequest */
+export function isSetProjectThemeRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  if (typeof obj['id'] !== 'string' || obj['id'].length === 0) return false
+  // theme can be a valid ThemeId or null (to clear the override)
+  return obj['theme'] === null || isThemeId(obj['theme'])
+}
+
 /**
  * Validator registry — exactly one validator per channel.
  * Adding a channel without a validator is a compile error.
@@ -114,6 +144,9 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.GET_PROJECTS]: isVoid,
   [IPC_CHANNELS.ADD_PROJECT]: isAddProjectRequest,
   [IPC_CHANNELS.REMOVE_PROJECT]: isNonEmptyString,
+  [IPC_CHANNELS.GET_GLOBAL_THEME]: isVoid,
+  [IPC_CHANNELS.SET_GLOBAL_THEME]: isThemeId,
+  [IPC_CHANNELS.SET_PROJECT_THEME]: isSetProjectThemeRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

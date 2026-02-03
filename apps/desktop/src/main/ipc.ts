@@ -3,13 +3,16 @@ import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipcContracts'
 import { IPCRouter } from './ipcRouter'
 import { ProjectStore } from '@services/projectStore'
+import { ThemeStore } from '@services/themeStore'
 
 let router: IPCRouter | null = null
 let projectStore: ProjectStore | null = null
+let themeStore: ThemeStore | null = null
 
 export function setupIPC(): void {
   router = new IPCRouter()
   projectStore = new ProjectStore(join(app.getPath('userData'), 'projects.json'))
+  themeStore = new ThemeStore(join(app.getPath('userData'), 'theme.json'))
 
   router.handle(IPC_CHANNELS.PING, () => 'pong')
 
@@ -58,10 +61,23 @@ export function setupIPC(): void {
   router.handle(IPC_CHANNELS.REMOVE_PROJECT, (_event, payload) => {
     projectStore!.remove(payload)
   })
+
+  router.handle(IPC_CHANNELS.GET_GLOBAL_THEME, () => {
+    return themeStore!.get()
+  })
+
+  router.handle(IPC_CHANNELS.SET_GLOBAL_THEME, (_event, payload) => {
+    themeStore!.set(payload)
+  })
+
+  router.handle(IPC_CHANNELS.SET_PROJECT_THEME, (_event, payload) => {
+    projectStore!.setTheme(payload.id, payload.theme)
+  })
 }
 
 export function disposeIPC(): void {
   router?.dispose()
   router = null
   projectStore = null
+  themeStore = null
 }

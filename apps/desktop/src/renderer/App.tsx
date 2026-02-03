@@ -4,6 +4,7 @@ import { Toolbar } from './components/Toolbar'
 import EmptyState from './components/EmptyState'
 import Composer from './components/Composer'
 import ProjectWorkspace from './components/ProjectWorkspace'
+import { useTheme } from './hooks/useTheme'
 import type { Project } from '@shared/types'
 import './styles/App.css'
 
@@ -12,6 +13,8 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
+
+  const { palette, setPalette, font, setFont, cyclePalette } = useTheme()
 
   const loadProjects = useCallback(async () => {
     try {
@@ -25,6 +28,31 @@ export function App() {
   useEffect(() => {
     loadProjects()
   }, [loadProjects])
+
+  /**
+   * Global keyboard handler.
+   *
+   * T key — cycle through all 9 palettes in order.
+   *
+   * Ignored when the user is typing in an input, textarea, or
+   * contentEditable element to avoid accidental theme changes.
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
+        return
+      }
+
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault()
+        cyclePalette()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cyclePalette])
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -57,9 +85,13 @@ export function App() {
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
+        palette={palette}
+        font={font}
         onSelectProject={setActiveProjectId}
         onOpenFolder={handleOpenFolder}
         onRemoveProject={handleRemoveProject}
+        onSelectPalette={setPalette}
+        onSelectFont={setFont}
       />
       <div className="main-pane">
         <Toolbar projectName={activeProject?.name ?? null} onOpenFolder={handleOpenFolder} />

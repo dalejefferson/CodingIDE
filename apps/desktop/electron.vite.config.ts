@@ -29,9 +29,14 @@ export default defineConfig({
     },
     build: {
       outDir: 'dist-electron/preload',
+      // Electron sandbox preload requires CJS — force .js output
+      lib: {
+        entry: resolve(__dirname, 'src/preload/index.ts'),
+        formats: ['cjs'],
+      },
       rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/preload/index.ts'),
+        output: {
+          entryFileNames: '[name].js',
         },
       },
     },

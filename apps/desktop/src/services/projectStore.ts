@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, renameSync, existsSync } from 'node:fs'
 import { dirname, basename, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { Project, AddProjectRequest } from '@shared/types'
+import type { Project, AddProjectRequest, ThemeId } from '@shared/types'
 
 /**
  * JSON file-based project store.
@@ -91,6 +91,25 @@ export class ProjectStore {
     if (idx === -1) return false
 
     projects.splice(idx, 1)
+    this.persist()
+    return true
+  }
+
+  /**
+   * Set or clear a project's theme override.
+   * Pass `null` to remove the override (fall back to global theme).
+   */
+  setTheme(id: string, theme: ThemeId | null): boolean {
+    const projects = this.load()
+    const project = projects.find((p) => p.id === id)
+    if (!project) return false
+
+    if (theme === null) {
+      delete project.theme
+    } else {
+      project.theme = theme
+    }
+
     this.persist()
     return true
   }

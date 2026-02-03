@@ -4,6 +4,8 @@ import {
   isString,
   isNonEmptyString,
   isAddProjectRequest,
+  isThemeId,
+  isSetProjectThemeRequest,
   isAllowedChannel,
   validatePayload,
   IPC_CHANNELS,
@@ -119,6 +121,61 @@ describe('isAddProjectRequest', () => {
   })
 })
 
+// ── Theme Validators ─────────────────────────────────────────
+
+describe('isThemeId', () => {
+  it('accepts valid theme ids', () => {
+    expect(isThemeId('light')).toBe(true)
+    expect(isThemeId('dark')).toBe(true)
+  })
+
+  it('rejects invalid strings', () => {
+    expect(isThemeId('')).toBe(false)
+    expect(isThemeId('blue')).toBe(false)
+    expect(isThemeId('LIGHT')).toBe(false)
+    expect(isThemeId('Dark')).toBe(false)
+  })
+
+  it('rejects non-strings', () => {
+    expect(isThemeId(undefined)).toBe(false)
+    expect(isThemeId(null)).toBe(false)
+    expect(isThemeId(42)).toBe(false)
+    expect(isThemeId({})).toBe(false)
+    expect(isThemeId(true)).toBe(false)
+  })
+})
+
+describe('isSetProjectThemeRequest', () => {
+  it('accepts valid request with theme', () => {
+    expect(isSetProjectThemeRequest({ id: 'abc-123', theme: 'dark' })).toBe(true)
+    expect(isSetProjectThemeRequest({ id: 'abc-123', theme: 'light' })).toBe(true)
+  })
+
+  it('accepts null theme (clear override)', () => {
+    expect(isSetProjectThemeRequest({ id: 'abc-123', theme: null })).toBe(true)
+  })
+
+  it('rejects empty id', () => {
+    expect(isSetProjectThemeRequest({ id: '', theme: 'dark' })).toBe(false)
+  })
+
+  it('rejects missing id', () => {
+    expect(isSetProjectThemeRequest({ theme: 'dark' })).toBe(false)
+  })
+
+  it('rejects invalid theme string', () => {
+    expect(isSetProjectThemeRequest({ id: 'abc', theme: 'blue' })).toBe(false)
+    expect(isSetProjectThemeRequest({ id: 'abc', theme: '' })).toBe(false)
+  })
+
+  it('rejects non-objects', () => {
+    expect(isSetProjectThemeRequest(undefined)).toBe(false)
+    expect(isSetProjectThemeRequest(null)).toBe(false)
+    expect(isSetProjectThemeRequest('string')).toBe(false)
+    expect(isSetProjectThemeRequest(42)).toBe(false)
+  })
+})
+
 // ── Channel Allowlist ──────────────────────────────────────────
 
 describe('isAllowedChannel', () => {
@@ -162,6 +219,7 @@ describe('validatePayload', () => {
       IPC_CHANNELS.WINDOW_CLOSE,
       IPC_CHANNELS.OPEN_FOLDER_DIALOG,
       IPC_CHANNELS.GET_PROJECTS,
+      IPC_CHANNELS.GET_GLOBAL_THEME,
     ] as const
     for (const channel of voidChannels) {
       expect(validatePayload(channel, undefined)).toBe(true)
@@ -189,6 +247,22 @@ describe('validatePayload', () => {
     expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, '')).toBe(false)
     expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, undefined)).toBe(false)
     expect(validatePayload(IPC_CHANNELS.REMOVE_PROJECT, 42)).toBe(false)
+  })
+
+  it('validates SET_GLOBAL_THEME payload', () => {
+    expect(validatePayload(IPC_CHANNELS.SET_GLOBAL_THEME, 'light')).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_GLOBAL_THEME, 'dark')).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_GLOBAL_THEME, 'blue')).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_GLOBAL_THEME, undefined)).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_GLOBAL_THEME, null)).toBe(false)
+  })
+
+  it('validates SET_PROJECT_THEME payload', () => {
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, { id: 'x', theme: 'dark' })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, { id: 'x', theme: null })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, { id: '', theme: 'dark' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, undefined)).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, 'string')).toBe(false)
   })
 })
 

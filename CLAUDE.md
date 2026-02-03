@@ -88,6 +88,45 @@ npm run typecheck  # tsc --noEmit for main + renderer tsconfigs
 6. Implement the preload method using `safeInvoke()`
 7. Add tests for any non-void validator in `tests/ipcValidation.test.ts`
 
+## Theme System
+
+Two-tier theme with global default + optional per-project override.
+
+| Concept | Details |
+|---------|---------|
+| `ThemeId` | `'light' \| 'dark'` — defined in `shared/types.ts` |
+| Global theme | Persisted in `{userData}/theme.json` via `ThemeStore` |
+| Per-project override | Optional `theme?: ThemeId` on `Project` — persisted in `projects.json` |
+| Effective theme | `project.theme ?? globalTheme` — resolved in `useTheme` hook |
+| CSS mechanism | `.dark` class toggled on `<html>` overrides `:root` custom properties |
+
+### T-key Behavior
+
+- **Project focused with override:** cycles that project's theme (`light → dark → light`)
+- **Otherwise:** cycles the global theme
+- Ignored when focus is in an input/textarea/contentEditable
+
+### Sidebar Theme Badge
+
+Each project row shows a theme badge (☀/🌙):
+- **Dimmed (35% opacity):** project inherits global theme
+- **Full opacity:** project has a per-project override
+
+Hover tooltip explains current theme source and T-key action.
+
+### IPC Channels
+
+- `ipc:get-global-theme` — returns persisted global `ThemeId`
+- `ipc:set-global-theme` — persists a new global `ThemeId`
+- `ipc:set-project-theme` — sets or clears (`null`) a project's theme override
+
+### Key Files
+
+- `src/shared/types.ts` — `ThemeId`, `THEME_IDS`, `SetProjectThemeRequest`
+- `src/services/themeStore.ts` — Global theme persistence (atomic JSON)
+- `src/renderer/hooks/useTheme.ts` — Theme resolution + cycling logic
+- `src/renderer/styles/global.css` — `.dark` class with dark palette
+
 ## Path Aliases
 
 Configured in `tsconfig.json` and `electron.vite.config.ts`:
@@ -106,7 +145,7 @@ Configured in `tsconfig.json` and `electron.vite.config.ts`:
 ## Current Test Coverage
 
 - `tests/ipcContracts.test.ts` — Channel definitions, uniqueness, naming, type compilation, validator/allowlist completeness
-- `tests/ipcValidation.test.ts` — isVoid, isString, isNonEmptyString, isAllowedChannel, validatePayload, registry integrity
+- `tests/ipcValidation.test.ts` — isVoid, isString, isNonEmptyString, isThemeId, isSetProjectThemeRequest, isAllowedChannel, validatePayload, registry integrity
 - `tests/logger.test.ts` — All log levels, context, timestamps, cap, clear, immutable copies
 
 ## Style
