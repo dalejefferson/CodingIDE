@@ -170,14 +170,21 @@ export function Sidebar({
       <nav className="sidebar-thread-list">
         {projects.length === 0 && <span className="sidebar-empty-hint">No projects yet</span>}
         {projects.map((project) => (
-          <button
+          <div
             key={project.id}
             className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}`}
-            type="button"
             onClick={() => onSelectProject(project.id)}
             onContextMenu={(e) => {
               e.preventDefault()
               onRemoveProject(project.id)
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelectProject(project.id)
+              }
             }}
           >
             <FolderIcon />
@@ -185,7 +192,30 @@ export function Sidebar({
             <span className={`sidebar-status sidebar-status--${project.status}`}>
               {STATUS_LABELS[project.status]}
             </span>
-          </button>
+            <button
+              type="button"
+              className="sidebar-delete-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemoveProject(project.id)
+              }}
+              aria-label={`Delete ${project.name}`}
+              title={`Remove ${project.name}`}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 3l6 6M9 3l-6 6" />
+              </svg>
+            </button>
+          </div>
         ))}
       </nav>
 

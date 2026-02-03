@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 import { extractOsc7Cwd } from '@shared/osc7Parser'
 import { PaneHeader } from './PaneHeader'
@@ -22,10 +23,32 @@ interface TerminalPaneProps {
   projectId: string
   cwd: string
   isActive: boolean
+  palette: string
   onFocus: () => void
 }
 
-export function TerminalPane({ terminalId, projectId, cwd, isActive, onFocus }: TerminalPaneProps) {
+/** Read computed CSS custom properties and return an xterm.js-compatible theme object. */
+function getXtermTheme(): Record<string, string> {
+  const style = getComputedStyle(document.documentElement)
+  const get = (prop: string) => style.getPropertyValue(prop).trim()
+  return {
+    background: 'transparent',
+    foreground: get('--color-text-primary'),
+    cursor: get('--color-accent'),
+    cursorAccent: get('--color-bg-primary'),
+    selectionBackground: get('--color-accent-subtle') || 'rgba(255,255,255,0.2)',
+    selectionForeground: get('--color-text-primary'),
+  }
+}
+
+export function TerminalPane({
+  terminalId,
+  projectId,
+  cwd,
+  isActive,
+  palette,
+  onFocus,
+}: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -49,6 +72,12 @@ export function TerminalPane({ terminalId, projectId, cwd, isActive, onFocus }: 
       fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Consolas', monospace",
       cursorBlink: true,
       scrollback: 5000,
+      allowTransparency: true,
+      drawBoldTextInBrightColors: true,
+      fontWeight: '400',
+      fontWeightBold: '600',
+      letterSpacing: 0,
+      lineHeight: 1.2,
       theme: {
         background: 'transparent',
       },
@@ -57,6 +86,19 @@ export function TerminalPane({ terminalId, projectId, cwd, isActive, onFocus }: 
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.open(container)
+    term.options.theme = getXtermTheme()
+
+    // Load WebGL renderer for crisp, GPU-accelerated text
+    try {
+      const webglAddon = new WebglAddon()
+      webglAddon.onContextLoss(() => {
+        webglAddon.dispose()
+      })
+      term.loadAddon(webglAddon)
+    } catch {
+      // WebGL not available — falls back to canvas renderer
+      console.warn('WebGL addon failed to load, using canvas renderer')
+    }
 
     termRef.current = term
     fitRef.current = fitAddon
@@ -137,6 +179,18 @@ export function TerminalPane({ terminalId, projectId, cwd, isActive, onFocus }: 
       fitRef.current = null
     }
   }, [terminalId, projectId, cwd])
+
+  // Update xterm colors when palette changes
+  useEffect(() => {
+    if (!termRef.current) return
+    // Small delay to let CSS variables settle after data-theme change
+    const raf = requestAnimationFrame(() => {
+      if (termRef.current) {
+        termRef.current.options.theme = getXtermTheme()
+      }
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [palette])
 
   // Focus terminal when it becomes active
   useEffect(() => {

@@ -172,6 +172,37 @@
   color: var(--color-accent);
 }
 
+/* ── Delete button (visible on hover) ──────────────────────────────────────── */
+
+.sidebar-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  transition:
+    opacity var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.sidebar-thread-item:hover .sidebar-status {
+  display: none;
+}
+
+.sidebar-thread-item:hover .sidebar-delete-btn {
+  opacity: 1;
+}
+
+.sidebar-delete-btn:hover {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
 /* ── Project name truncation ─────────────────────────────────────────────────── */
 
 .sidebar-project-name {

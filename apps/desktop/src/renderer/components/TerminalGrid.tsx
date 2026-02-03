@@ -25,9 +25,10 @@ import '../styles/TerminalGrid.css'
 interface TerminalGridProps {
   projectId: string
   cwd: string
+  palette: string
 }
 
-export function TerminalGrid({ projectId, cwd }: TerminalGridProps) {
+export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
   const [layout, setLayout] = useState<LayoutNode | null>(null)
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null)
   const layoutRef = useRef<LayoutNode | null>(null)
@@ -186,6 +187,7 @@ export function TerminalGrid({ projectId, cwd }: TerminalGridProps) {
         activeLeafId={activeLeafId}
         projectId={projectId}
         cwd={cwd}
+        palette={palette}
         onFocusLeaf={setActiveLeafId}
       />
     </div>
@@ -197,10 +199,18 @@ interface LayoutRendererProps {
   activeLeafId: string | null
   projectId: string
   cwd: string
+  palette: string
   onFocusLeaf: (id: string) => void
 }
 
-function LayoutRenderer({ node, activeLeafId, projectId, cwd, onFocusLeaf }: LayoutRendererProps) {
+function LayoutRenderer({
+  node,
+  activeLeafId,
+  projectId,
+  cwd,
+  palette,
+  onFocusLeaf,
+}: LayoutRendererProps) {
   if (node.type === 'leaf') {
     return (
       <TerminalPane
@@ -208,6 +218,7 @@ function LayoutRenderer({ node, activeLeafId, projectId, cwd, onFocusLeaf }: Lay
         projectId={projectId}
         cwd={cwd}
         isActive={node.id === activeLeafId}
+        palette={palette}
         onFocus={() => onFocusLeaf(node.id)}
       />
     )
@@ -230,6 +241,7 @@ function LayoutRenderer({ node, activeLeafId, projectId, cwd, onFocusLeaf }: Lay
           activeLeafId={activeLeafId}
           projectId={projectId}
           cwd={cwd}
+          palette={palette}
           onFocusLeaf={onFocusLeaf}
         />
       </div>
@@ -240,6 +252,7 @@ function LayoutRenderer({ node, activeLeafId, projectId, cwd, onFocusLeaf }: Lay
           activeLeafId={activeLeafId}
           projectId={projectId}
           cwd={cwd}
+          palette={palette}
           onFocusLeaf={onFocusLeaf}
         />
       </div>

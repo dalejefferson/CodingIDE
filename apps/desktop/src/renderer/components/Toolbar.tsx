@@ -1,16 +1,40 @@
+import type { Project } from '@shared/types'
+import { ProjectTabs } from './ProjectTabs'
 import '../styles/Toolbar.css'
 
 interface ToolbarProps {
   projectName: string | null
+  projects: Project[]
+  activeProjectId: string | null
+  sidebarCollapsed: boolean
+  onSelectProject: (id: string) => void
+  onRemoveProject: (id: string) => void
   onOpenFolder: () => void
 }
 
-export function Toolbar({ projectName, onOpenFolder }: ToolbarProps) {
+export function Toolbar({
+  projectName,
+  projects,
+  activeProjectId,
+  sidebarCollapsed,
+  onSelectProject,
+  onRemoveProject,
+  onOpenFolder,
+}: ToolbarProps) {
   return (
     <div className="toolbar">
-      {/* Left: breadcrumb / title area */}
+      {/* Left: tabs when collapsed, title when expanded */}
       <div className="toolbar-left">
-        <span className="toolbar-title">{projectName ?? 'CodingIDE'}</span>
+        {sidebarCollapsed && projects.length > 0 ? (
+          <ProjectTabs
+            projects={projects}
+            activeProjectId={activeProjectId}
+            onSelectProject={onSelectProject}
+            onRemoveProject={onRemoveProject}
+          />
+        ) : (
+          <span className="toolbar-title">{projectName ?? 'CodingIDE'}</span>
+        )}
       </div>
 
       {/* Right: action buttons + diff indicator */}

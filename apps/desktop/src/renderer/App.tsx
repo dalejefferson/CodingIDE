@@ -100,7 +100,7 @@ export function App() {
       onSelectFont={setFont}
     />
   ) : activeProject ? (
-    <ProjectWorkspace project={activeProject} />
+    <ProjectWorkspace project={activeProject} palette={palette} />
   ) : (
     <EmptyState onOpenFolder={handleOpenFolder} />
   )
@@ -145,7 +145,18 @@ export function App() {
         </button>
       )}
       <div className="main-pane">
-        <Toolbar projectName={activeProject?.name ?? null} onOpenFolder={handleOpenFolder} />
+        <Toolbar
+          projectName={activeProject?.name ?? null}
+          projects={projects}
+          activeProjectId={activeProjectId}
+          sidebarCollapsed={sidebarCollapsed}
+          onSelectProject={(id) => {
+            setActiveProjectId(id)
+            setSettingsOpen(false)
+          }}
+          onRemoveProject={handleRemoveProject}
+          onOpenFolder={handleOpenFolder}
+        />
         <div className="main-content">{mainContent}</div>
       </div>
     </div>
