@@ -54,6 +54,7 @@ export function ProjectTabs({
           <button
             type="button"
             className="project-tab-close"
+            tabIndex={-1}
             onClick={(e) => {
               e.stopPropagation()
               onRemoveProject(project.id)

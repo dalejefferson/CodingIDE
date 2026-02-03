@@ -27,17 +27,17 @@ interface TerminalPaneProps {
   onFocus: () => void
 }
 
-/** Read computed CSS custom properties and return an xterm.js-compatible theme object. */
+/** Fixed terminal theme: black background, bold white text across all palettes. */
 function getXtermTheme(): Record<string, string> {
   const style = getComputedStyle(document.documentElement)
-  const get = (prop: string) => style.getPropertyValue(prop).trim()
+  const accent = style.getPropertyValue('--color-accent').trim()
   return {
-    background: 'transparent',
-    foreground: get('--color-text-primary'),
-    cursor: get('--color-accent'),
-    cursorAccent: get('--color-bg-primary'),
-    selectionBackground: get('--color-accent-subtle') || 'rgba(255,255,255,0.2)',
-    selectionForeground: get('--color-text-primary'),
+    background: '#000000',
+    foreground: '#ffffff',
+    cursor: accent || '#ff9b51',
+    cursorAccent: '#000000',
+    selectionBackground: 'rgba(255, 255, 255, 0.25)',
+    selectionForeground: '#ffffff',
   }
 }
 
@@ -72,14 +72,15 @@ export function TerminalPane({
       fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Consolas', monospace",
       cursorBlink: true,
       scrollback: 5000,
-      allowTransparency: true,
+      allowTransparency: false,
       drawBoldTextInBrightColors: true,
       fontWeight: '400',
       fontWeightBold: '600',
       letterSpacing: 0,
       lineHeight: 1.2,
       theme: {
-        background: 'transparent',
+        background: '#000000',
+        foreground: '#ffffff',
       },
     })
 

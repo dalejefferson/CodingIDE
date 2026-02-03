@@ -30,7 +30,7 @@ function ChevronLeftIcon() {
   )
 }
 
-function FolderIcon() {
+function FolderIcon({ open }: { open?: boolean }) {
   return (
     <svg
       width="14"
@@ -42,7 +42,14 @@ function FolderIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M1.5 3.5h4l1 -1.5h4.5a1 1 0 0 1 1 1v7a1 1 0 0 1 -1 1h-8.5a1 1 0 0 1 -1 -1v-6.5z" />
+      {open ? (
+        <>
+          <path d="M1.5 3.5h4l1 -1.5h4.5a1 1 0 0 1 1 1v2.5" />
+          <path d="M1.5 5.5l1.5 6h8.5l1.5 -6h-11.5z" />
+        </>
+      ) : (
+        <path d="M1.5 3.5h4l1 -1.5h4.5a1 1 0 0 1 1 1v7a1 1 0 0 1 -1 1h-8.5a1 1 0 0 1 -1 -1v-6.5z" />
+      )}
     </svg>
   )
 }
@@ -187,7 +194,7 @@ export function Sidebar({
               }
             }}
           >
-            <FolderIcon />
+            <FolderIcon open={activeProjectId === project.id} />
             <span className="sidebar-project-name">{project.name}</span>
             <span className={`sidebar-status sidebar-status--${project.status}`}>
               {STATUS_LABELS[project.status]}

@@ -31,14 +31,15 @@
 
 .terminal-split-divider {
   flex-shrink: 0;
+  background: var(--color-border-primary);
 }
 
 .terminal-split--horizontal > .terminal-split-divider {
-  width: 0;
+  width: 4px;
 }
 
 .terminal-split--vertical > .terminal-split-divider {
-  height: 0;
+  height: 4px;
 }
 
 /* ── Terminal Pane (3-zone: header / xterm / input bar) ───────── */
@@ -50,7 +51,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-primary);
+  background: #000000;
   border: none;
   border-radius: 0;
   transition: border-color var(--transition-fast);
@@ -68,7 +69,7 @@
   min-height: 0;
   padding: var(--space-xs);
   overflow: hidden;
-  background: var(--color-bg-primary);
+  background: #000000;
 }
 
 /* Ensure xterm.js fills the xterm container */
