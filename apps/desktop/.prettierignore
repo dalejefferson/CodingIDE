@@ -1,0 +1,5 @@
+dist-electron/
+dist-renderer/
+release/
+node_modules/
+*.html
