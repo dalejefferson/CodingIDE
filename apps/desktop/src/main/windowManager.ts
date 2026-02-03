@@ -1,6 +1,7 @@
 import { BrowserWindow, screen, session, shell } from 'electron'
 import { join } from 'path'
-import { is } from 'electron-vite'
+
+const isDev = process.env.NODE_ENV === 'development'
 
 export function createMainWindow(): BrowserWindow {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
@@ -28,7 +29,7 @@ export function createMainWindow(): BrowserWindow {
   // Block in-page navigation (loadURL/loadFile don't trigger this)
   mainWindow.webContents.on('will-navigate', (event, url) => {
     // Allow Vite HMR full-reloads in dev
-    if (is.dev && url.startsWith(process.env['ELECTRON_RENDERER_URL'] ?? '')) {
+    if (isDev && url.startsWith(process.env['ELECTRON_RENDERER_URL'] ?? '')) {
       return
     }
     event.preventDefault()
@@ -43,7 +44,7 @@ export function createMainWindow(): BrowserWindow {
   })
 
   // Load the renderer
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../../dist-renderer/index.html'))
