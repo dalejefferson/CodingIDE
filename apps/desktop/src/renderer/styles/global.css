@@ -518,7 +518,10 @@ body {
    Button Reset
    -------------------------------------------------------------------------- */
 
-button {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;

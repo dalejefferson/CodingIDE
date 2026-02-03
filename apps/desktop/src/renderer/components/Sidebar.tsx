@@ -1,18 +1,33 @@
 import type { Project } from '@shared/types'
-import type { PaletteId, FontId } from '@shared/themes'
-import { SidebarSettings } from './SidebarSettings'
 import '../styles/Sidebar.css'
 
 interface SidebarProps {
   projects: Project[]
   activeProjectId: string | null
-  palette: PaletteId
-  font: FontId
+  collapsed: boolean
+  settingsOpen: boolean
+  onToggle: () => void
   onSelectProject: (id: string) => void
   onOpenFolder: () => void
   onRemoveProject: (id: string) => void
-  onSelectPalette: (id: PaletteId) => void
-  onSelectFont: (id: FontId) => void
+  onOpenSettings: () => void
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 3L5 8L10 13" />
+    </svg>
+  )
 }
 
 function FolderIcon() {
@@ -84,6 +99,24 @@ function SparkleIcon() {
   )
 }
 
+function GearIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="8" cy="8" r="2" />
+      <path d="M13.5 8a5.5 5.5 0 0 0-.08-.88l1.28-1a.5.5 0 0 0 .12-.64l-1.22-2.12a.5.5 0 0 0-.61-.22l-1.51.61a5.5 5.5 0 0 0-.76-.44L10.4 1.7a.5.5 0 0 0-.5-.42H7.46a.5.5 0 0 0-.5.42l-.23 1.61a5.5 5.5 0 0 0-.76.44l-1.51-.61a.5.5 0 0 0-.61.22L2.63 5.48a.5.5 0 0 0 .12.64l1.28 1A5.5 5.5 0 0 0 4 8a5.5 5.5 0 0 0 .08.88l-1.28 1a.5.5 0 0 0-.12.64l1.22 2.12a.5.5 0 0 0 .61.22l1.51-.61c.23.17.49.32.76.44l.23 1.61a.5.5 0 0 0 .5.42h2.44a.5.5 0 0 0 .5-.42l.23-1.61c.27-.12.53-.27.76-.44l1.51.61a.5.5 0 0 0 .61-.22l1.22-2.12a.5.5 0 0 0-.12-.64l-1.28-1A5.5 5.5 0 0 0 13.5 8z" />
+    </svg>
+  )
+}
+
 const STATUS_LABELS: Record<Project['status'], string> = {
   idle: 'Idle',
   running: 'Running',
@@ -94,17 +127,28 @@ const STATUS_LABELS: Record<Project['status'], string> = {
 export function Sidebar({
   projects,
   activeProjectId,
-  palette,
-  font,
+  collapsed,
+  settingsOpen,
+  onToggle,
   onSelectProject,
   onOpenFolder,
   onRemoveProject,
-  onSelectPalette,
-  onSelectFont,
+  onOpenSettings,
 }: SidebarProps) {
   return (
-    <aside className="sidebar">
-      <div className="sidebar-drag-region" />
+    <aside className="sidebar" aria-label="Sidebar" aria-hidden={collapsed}>
+      <div className="sidebar-drag-region">
+        <button
+          className={`sidebar-toggle${collapsed ? ' sidebar-toggle--collapsed' : ''}`}
+          type="button"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          tabIndex={collapsed ? -1 : 0}
+        >
+          <ChevronLeftIcon />
+        </button>
+      </div>
 
       <div className="sidebar-actions">
         <button className="sidebar-action-btn" type="button" onClick={onOpenFolder}>
@@ -145,12 +189,17 @@ export function Sidebar({
         ))}
       </nav>
 
-      <SidebarSettings
-        palette={palette}
-        font={font}
-        onSelectPalette={onSelectPalette}
-        onSelectFont={onSelectFont}
-      />
+      <div className="sidebar-bottom">
+        <button
+          className={`sidebar-action-btn${settingsOpen ? ' sidebar-action-btn--active' : ''}`}
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="Settings"
+        >
+          <GearIcon />
+          <span>Settings</span>
+        </button>
+      </div>
     </aside>
   )
 }

@@ -5,6 +5,70 @@
   height: 100%;
 }
 
+/* ── Sidebar wrapper (owns the width, clips the sliding sidebar) ─────────── */
+
+.sidebar-wrapper {
+  width: 240px;
+  min-width: 240px;
+  height: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition:
+    width var(--transition-base),
+    min-width var(--transition-base);
+  will-change: width;
+}
+
+.sidebar-wrapper--collapsed {
+  width: 0;
+  min-width: 0;
+}
+
+/* The <aside> inside slides via transform — no layout recalculation */
+.sidebar-wrapper .sidebar {
+  transform: translateX(0);
+  transition: transform var(--transition-base);
+  will-change: transform;
+}
+
+.sidebar-wrapper--collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+/* ── Expand button (visible when sidebar is collapsed) ───────────────────── */
+
+.sidebar-expand-btn {
+  position: absolute;
+  top: 36px;
+  left: 4px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sidebar);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.sidebar-expand-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.sidebar-expand-btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+
+/* ── Main pane ───────────────────────────────────────────────────────────── */
+
 .main-pane {
   display: flex;
   flex-direction: column;

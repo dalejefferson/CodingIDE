@@ -1,0 +1,117 @@
+/* ── Settings Page ────────────────────────────────────────────────────────── */
+
+.settings-page {
+  width: 100%;
+  max-width: 560px;
+  padding: var(--space-xl) var(--space-xxl);
+  align-self: flex-start;
+}
+
+.settings-page-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xl);
+}
+
+/* ── Section ─────────────────────────────────────────────────────────────── */
+
+.settings-section {
+  margin-bottom: var(--space-xxl);
+}
+
+.settings-section-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.settings-section-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-lg);
+}
+
+/* ── Palette grid ────────────────────────────────────────────────────────── */
+
+.settings-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-sm);
+}
+
+.settings-palette-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-border-primary);
+  text-align: left;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.settings-palette-card:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-secondary);
+}
+
+.settings-palette-card--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.settings-palette-card--active:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+/* Swatch dots */
+.settings-palette-card .settings-swatch-row {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.settings-palette-card .settings-swatch-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-primary);
+}
+
+.settings-palette-name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Font selector ───────────────────────────────────────────────────────── */
+
+.settings-font-select {
+  width: 240px;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.settings-font-select:hover {
+  border-color: var(--color-accent);
+}
+
+.settings-font-select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
