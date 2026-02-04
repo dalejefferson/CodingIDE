@@ -54,6 +54,25 @@ export interface SetProjectThemeRequest {
   theme: ThemeId | null
 }
 
+export const PROJECT_STATUSES: readonly ProjectStatus[] = [
+  'idle',
+  'running',
+  'done',
+  'needs_input',
+] as const
+
+/** Request to update a project's status from the main process. */
+export interface SetProjectStatusRequest {
+  id: string
+  status: ProjectStatus
+}
+
+/** Broadcast payload when a project's status changes. */
+export interface ProjectStatusChange {
+  id: string
+  status: ProjectStatus
+}
+
 // ── Terminal ─────────────────────────────────────────────────
 
 export interface TerminalCreateRequest {
@@ -137,6 +156,29 @@ export interface SetPresetsRequest {
 export interface NativeNotifyRequest {
   title: string
   body?: string
+}
+
+// ── Browser / Element Picker ────────────────────────────────
+
+/** Payload produced by the element picker when user clicks an element in the browser pane. */
+export interface ElementPickerPayload {
+  /** CSS selector that uniquely targets the element */
+  selector: string
+  /** Trimmed innerText (max 200 chars) */
+  innerText: string
+  /** HTML tag name (lowercase) */
+  tag: string
+  /** Element id attribute, or null */
+  id: string | null
+  /** List of CSS class names */
+  classes: string[]
+  /** Key attributes (href, src, type, role, aria-label, data-testid) */
+  attributes: Record<string, string>
+}
+
+/** Request to navigate the embedded browser to a URL. */
+export interface BrowserNavigateRequest {
+  url: string
 }
 
 // ── Git ─────────────────────────────────────────────────────

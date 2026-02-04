@@ -23,6 +23,7 @@ export function createMainWindow(): BrowserWindow {
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
       navigateOnDragDrop: false,
+      webviewTag: true,
     },
   })
 

@@ -32,10 +32,11 @@ interface TerminalGridProps {
   projectId: string
   cwd: string
   palette: string
+  onLocalhostDetected?: (url: string) => void
 }
 
 export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(function TerminalGrid(
-  { projectId, cwd, palette },
+  { projectId, cwd, palette, onLocalhostDetected },
   ref,
 ) {
   const [layout, setLayout] = useState<LayoutNode | null>(null)
@@ -273,6 +274,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
         onFocusLeaf={setActiveLeafId}
         onRatioChange={handleRatioChange}
         onCommandSent={handleCommandSent}
+        onLocalhostDetected={onLocalhostDetected}
       />
     </div>
   )
@@ -288,6 +290,7 @@ interface LayoutRendererProps {
   onFocusLeaf: (id: string) => void
   onRatioChange: (branchId: string, newRatio: number) => void
   onCommandSent: (terminalId: string) => void
+  onLocalhostDetected?: (url: string) => void
 }
 
 function LayoutRenderer({
@@ -300,6 +303,7 @@ function LayoutRenderer({
   onFocusLeaf,
   onRatioChange,
   onCommandSent,
+  onLocalhostDetected,
 }: LayoutRendererProps) {
   if (node.type === 'leaf') {
     return (
@@ -312,6 +316,7 @@ function LayoutRenderer({
         pendingCommand={pendingCommands[node.terminalId]}
         onFocus={() => onFocusLeaf(node.id)}
         onCommandSent={() => onCommandSent(node.terminalId)}
+        onLocalhostDetected={onLocalhostDetected}
       />
     )
   }
@@ -338,6 +343,7 @@ function LayoutRenderer({
           onFocusLeaf={onFocusLeaf}
           onRatioChange={onRatioChange}
           onCommandSent={onCommandSent}
+          onLocalhostDetected={onLocalhostDetected}
         />
       </div>
       <SplitDivider branchId={node.id} direction={node.direction} onRatioChange={onRatioChange} />
@@ -352,6 +358,7 @@ function LayoutRenderer({
           onFocusLeaf={onFocusLeaf}
           onRatioChange={onRatioChange}
           onCommandSent={onCommandSent}
+          onLocalhostDetected={onLocalhostDetected}
         />
       </div>
     </div>

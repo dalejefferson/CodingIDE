@@ -16,7 +16,6 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { extractOsc7Cwd } from '@shared/osc7Parser'
-import { PaneHeader } from './PaneHeader'
 import { PaneInputBar } from './PaneInputBar'
 
 interface TerminalPaneProps {
@@ -28,6 +27,7 @@ interface TerminalPaneProps {
   pendingCommand?: string
   onFocus: () => void
   onCommandSent?: () => void
+  onLocalhostDetected?: (url: string) => void
 }
 
 /** Palette-aware terminal theme — reads CSS custom properties from the active palette. */
@@ -44,6 +44,22 @@ function getXtermTheme(): Record<string, string> {
   }
 }
 
+/** Strip all ANSI escape sequences (CSI, OSC, single-char escapes) */
+function stripAnsi(s: string): string {
+  // eslint-disable-next-line no-control-regex
+  const CSI = /\x1b\[[0-9;?]*[a-zA-Z]/g
+  // eslint-disable-next-line no-control-regex
+  const OSC = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g
+  // eslint-disable-next-line no-control-regex
+  const CHARSET = /\x1b[()][AB012]/g
+  // eslint-disable-next-line no-control-regex
+  const MISC = /\x1b[>=<NOM78HDEFZ]/g
+  return s.replace(CSI, '').replace(OSC, '').replace(CHARSET, '').replace(MISC, '')
+}
+
+/** Regex to detect localhost URLs in terminal output */
+const LOCALHOST_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)(?:\/[^\s'")>]*)?/
+
 export function TerminalPane({
   terminalId,
   projectId,
@@ -53,18 +69,22 @@ export function TerminalPane({
   pendingCommand,
   onFocus,
   onCommandSent,
+  onLocalhostDetected,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const pendingCommandRef = useRef(pendingCommand)
   const onCommandSentRef = useRef(onCommandSent)
+  const onLocalhostDetectedRef = useRef(onLocalhostDetected)
+  const localhostFiredRef = useRef(false)
   const [currentCwd, setCurrentCwd] = useState(cwd)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
 
   // Keep refs in sync
   pendingCommandRef.current = pendingCommand
   onCommandSentRef.current = onCommandSent
+  onLocalhostDetectedRef.current = onLocalhostDetected
 
   // Send command from input bar to PTY
   const handleSendCommand = useCallback(
@@ -176,6 +196,12 @@ export function TerminalPane({
       window.electronAPI.terminal.write({ terminalId, data })
     })
 
+    // Reset localhost detection flag for new terminal sessions
+    localhostFiredRef.current = false
+
+    // Buffer recent output for localhost detection across chunk boundaries
+    let localhostBuffer = ''
+
     // Receive PTY output — queue until replay finishes, then write live
     const removeDataListener = window.electronAPI.terminal.onData((id, data) => {
       if (id !== terminalId || disposed) return
@@ -183,6 +209,24 @@ export function TerminalPane({
         term.write(data)
         const newCwd = extractOsc7Cwd(data)
         if (newCwd) setCurrentCwd(newCwd)
+
+        // Detect localhost URL in terminal output (only fire once per session)
+        if (!localhostFiredRef.current && onLocalhostDetectedRef.current) {
+          // Accumulate recent data and strip ANSI for matching
+          localhostBuffer += data
+          // Keep only last 2KB to avoid unbounded growth
+          if (localhostBuffer.length > 2048) {
+            localhostBuffer = localhostBuffer.slice(-2048)
+          }
+          const clean = stripAnsi(localhostBuffer)
+          const match = LOCALHOST_RE.exec(clean)
+          if (match) {
+            localhostFiredRef.current = true
+            // Clean trailing punctuation or path artifacts
+            const url = match[0].replace(/[.,;:]+$/, '')
+            onLocalhostDetectedRef.current(url)
+          }
+        }
       } else {
         pendingData.push(data)
       }
@@ -319,9 +363,8 @@ export function TerminalPane({
 
   return (
     <div className={`terminal-pane${isActive ? ' terminal-pane--active' : ''}`} onClick={onFocus}>
-      <PaneHeader cwd={currentCwd} gitBranch={gitBranch} />
       <div ref={containerRef} className="terminal-pane-xterm" onClick={handleXtermClick} />
-      <PaneInputBar onSendCommand={handleSendCommand} />
+      <PaneInputBar cwd={currentCwd} gitBranch={gitBranch} onSendCommand={handleSendCommand} />
     </div>
   )
 }

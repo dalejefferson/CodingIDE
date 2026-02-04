@@ -5,4 +5,161 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+
+/* ── Toggle Bar ──────────────────────────────────────────────── */
+
+.workspace-toggle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 28px;
+  padding: 0 var(--space-sm);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+  flex-shrink: 0;
+}
+
+.workspace-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.workspace-toggle-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.workspace-toggle-btn--active {
+  color: var(--color-accent-primary);
+}
+
+/* ── Panels ──────────────────────────────────────────────────── */
+
+.workspace-panels {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-terminal {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-browser {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.workspace-panels--split .workspace-terminal {
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.workspace-panels--split .workspace-browser {
+  flex: 1;
+  min-width: 250px;
+  overflow: hidden;
+}
+
+/* ── Resizable Divider ──────────────────────────────────────── */
+
+.workspace-divider {
+  width: 5px;
+  cursor: col-resize;
+  background: var(--color-border-primary);
+  flex-shrink: 0;
+  position: relative;
+  transition: background-color var(--transition-fast);
+}
+
+.workspace-divider:hover,
+.workspace-divider:active {
+  background: var(--color-accent-primary);
+}
+
+/* Transparent overlay to prevent webview from stealing mouse events during drag */
+.workspace-drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: col-resize;
+}
+
+/* ── Picked Element Toast ────────────────────────────────────── */
+
+.workspace-picked-toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-md);
+  box-shadow: var(--shadow-md);
+  max-width: 600px;
+  width: 90%;
+  z-index: 100;
+}
+
+.workspace-picked-content {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 var(--space-sm) 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.workspace-picked-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.workspace-picked-btn {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.workspace-picked-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.workspace-picked-btn--copy {
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+}
+
+.workspace-picked-btn--copy:hover {
+  opacity: 0.85;
+  background: var(--color-accent-primary);
+  color: var(--color-bg-primary);
 }

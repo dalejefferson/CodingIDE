@@ -7,6 +7,8 @@ import type {
   GitBranchResponse,
   ThemeId,
   SetProjectThemeRequest,
+  SetProjectStatusRequest,
+  ProjectStatusChange,
   TerminalCreateRequest,
   TerminalWriteRequest,
   TerminalResizeRequest,
@@ -14,6 +16,7 @@ import type {
   NativeNotifyRequest,
   ClaudeActivityMap,
   CommandPreset,
+  BrowserNavigateRequest,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -39,6 +42,8 @@ export interface ElectronAPI {
     getAll: () => Promise<Project[]>
     add: (request: AddProjectRequest) => Promise<Project>
     remove: (id: string) => Promise<void>
+    setStatus: (request: SetProjectStatusRequest) => Promise<void>
+    onStatusChanged: (callback: (change: ProjectStatusChange) => void) => () => void
   }
   theme: {
     getGlobal: () => Promise<ThemeId>
@@ -71,6 +76,9 @@ export interface ElectronAPI {
     getAll: () => Promise<CommandPreset[]>
     setAll: (presets: CommandPreset[]) => Promise<void>
   }
+  browser: {
+    navigate: (request: BrowserNavigateRequest) => Promise<void>
+  }
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => () => void
   }
@@ -98,6 +106,17 @@ const electronAPI: ElectronAPI = {
     add: (request: AddProjectRequest) =>
       safeInvoke(IPC_CHANNELS.ADD_PROJECT, request) as Promise<Project>,
     remove: (id: string) => safeInvoke(IPC_CHANNELS.REMOVE_PROJECT, id) as Promise<void>,
+    setStatus: (request: SetProjectStatusRequest) =>
+      safeInvoke(IPC_CHANNELS.SET_PROJECT_STATUS, request) as Promise<void>,
+    onStatusChanged: (callback: (change: ProjectStatusChange) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, change: ProjectStatusChange) => {
+        callback(change)
+      }
+      ipcRenderer.on('project:status-changed', listener)
+      return () => {
+        ipcRenderer.removeListener('project:status-changed', listener)
+      }
+    },
   },
   theme: {
     getGlobal: () => safeInvoke(IPC_CHANNELS.GET_GLOBAL_THEME) as Promise<ThemeId>,
@@ -170,6 +189,10 @@ const electronAPI: ElectronAPI = {
     getAll: () => safeInvoke(IPC_CHANNELS.GET_PRESETS) as Promise<CommandPreset[]>,
     setAll: (presets: CommandPreset[]) =>
       safeInvoke(IPC_CHANNELS.SET_PRESETS, { presets }) as Promise<void>,
+  },
+  browser: {
+    navigate: (request: BrowserNavigateRequest) =>
+      safeInvoke(IPC_CHANNELS.BROWSER_NAVIGATE, request) as Promise<void>,
   },
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => {

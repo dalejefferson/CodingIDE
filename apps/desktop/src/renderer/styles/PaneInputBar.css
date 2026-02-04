@@ -2,14 +2,69 @@
 
 .pane-input-bar {
   display: flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 var(--space-sm);
+  flex-direction: column;
   background: var(--color-bg-secondary);
   border-top: 1px solid var(--color-border-primary);
   flex-shrink: 0;
-  gap: var(--space-sm);
   border-radius: 0;
+}
+
+/* ── Info Row (CWD + branch) ─────────────────────────────────── */
+
+.pane-input-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 var(--space-sm);
+  gap: var(--space-sm);
+  user-select: none;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.pane-input-cwd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  flex: 1;
+}
+
+.pane-input-info-icon {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.pane-input-path {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pane-input-branch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.pane-input-branch-name {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Input Row ───────────────────────────────────────────────── */
+
+.pane-input-row {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--space-sm);
+  gap: var(--space-sm);
 }
 
 /* ── Mode Toggle ──────────────────────────────────────────────── */

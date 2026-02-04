@@ -19,6 +19,7 @@ import type {
   GitBranchResponse,
   ThemeId,
   SetProjectThemeRequest,
+  SetProjectStatusRequest,
   TerminalCreateRequest,
   TerminalWriteRequest,
   TerminalResizeRequest,
@@ -28,8 +29,9 @@ import type {
   NativeNotifyRequest,
   CommandPreset,
   SetPresetsRequest,
+  BrowserNavigateRequest,
 } from './types'
-import { THEME_IDS } from './types'
+import { THEME_IDS, PROJECT_STATUSES } from './types'
 import { isValidLayout } from './terminalLayout'
 
 // ── Channel Constants ──────────────────────────────────────────
@@ -60,6 +62,8 @@ export const IPC_CHANNELS = {
   OPEN_EXTERNAL_URL: 'ipc:open-external-url',
   GET_PRESETS: 'ipc:get-presets',
   SET_PRESETS: 'ipc:set-presets',
+  SET_PROJECT_STATUS: 'ipc:set-project-status',
+  BROWSER_NAVIGATE: 'ipc:browser-navigate',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -168,6 +172,14 @@ export interface IPCContracts {
   }
   [IPC_CHANNELS.SET_PRESETS]: {
     request: SetPresetsRequest
+    response: void
+  }
+  [IPC_CHANNELS.SET_PROJECT_STATUS]: {
+    request: SetProjectStatusRequest
+    response: void
+  }
+  [IPC_CHANNELS.BROWSER_NAVIGATE]: {
+    request: BrowserNavigateRequest
     response: void
   }
 }
@@ -291,6 +303,25 @@ export function isNativeNotifyRequest(payload: unknown): boolean {
   return true
 }
 
+/** Payload must be a valid SetProjectStatusRequest */
+export function isSetProjectStatusRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  if (typeof obj['id'] !== 'string' || obj['id'].length === 0) return false
+  return (
+    typeof obj['status'] === 'string' &&
+    (PROJECT_STATUSES as readonly string[]).includes(obj['status'])
+  )
+}
+
+/** Payload must be a valid BrowserNavigateRequest */
+export function isBrowserNavigateRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  if (typeof obj['url'] !== 'string' || obj['url'].length === 0) return false
+  return obj['url'].startsWith('https://') || obj['url'].startsWith('http://')
+}
+
 /** Payload must be a valid SetPresetsRequest */
 export function isSetPresetsRequest(payload: unknown): boolean {
   if (typeof payload !== 'object' || payload === null) return false
@@ -340,6 +371,8 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.OPEN_EXTERNAL_URL]: isNonEmptyString,
   [IPC_CHANNELS.GET_PRESETS]: isVoid,
   [IPC_CHANNELS.SET_PRESETS]: isSetPresetsRequest,
+  [IPC_CHANNELS.SET_PROJECT_STATUS]: isSetProjectStatusRequest,
+  [IPC_CHANNELS.BROWSER_NAVIGATE]: isBrowserNavigateRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

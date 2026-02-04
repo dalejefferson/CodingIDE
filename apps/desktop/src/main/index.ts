@@ -29,10 +29,20 @@ if (!gotTheLock) {
     })
   })
 
-  // Block <webview> tag creation in any renderer
+  // Secure webview creation: allow only with safe preferences
   app.on('web-contents-created', (_event, contents) => {
-    contents.on('will-attach-webview', (event) => {
-      event.preventDefault()
+    contents.on('will-attach-webview', (event, webPreferences, params) => {
+      // Strip any dangerous preferences the webview might request
+      delete webPreferences.preload
+      delete (webPreferences as Record<string, unknown>)['preloadURL']
+      webPreferences.nodeIntegration = false
+      webPreferences.nodeIntegrationInSubFrames = false
+      webPreferences.contextIsolation = true
+
+      // Only allow webviews with an isolated partition (not the default session)
+      if (!params.partition || !params.partition.startsWith('persist:browser')) {
+        event.preventDefault()
+      }
     })
   })
 

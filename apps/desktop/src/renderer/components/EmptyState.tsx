@@ -63,7 +63,7 @@ const RocketIcon = () => (
   </svg>
 )
 
-const WrenchIcon = () => (
+const LoopIcon = () => (
   <svg
     width="24"
     height="24"
@@ -74,7 +74,10 @@ const WrenchIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    <path d="M17 2l4 4-4 4" />
+    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+    <path d="M7 22l-4-4 4-4" />
+    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
   </svg>
 )
 
@@ -99,7 +102,7 @@ const BookIcon = () => (
 export default function EmptyState({ onOpenFolder }: EmptyStateProps) {
   const suggestions: SuggestionCard[] = [
     { icon: <RocketIcon />, label: 'Start a new project', onClick: onOpenFolder },
-    { icon: <WrenchIcon />, label: 'Configure workspace' },
+    { icon: <LoopIcon />, label: 'Ralph Loop' },
     { icon: <BookIcon />, label: 'Browse templates' },
   ]
 

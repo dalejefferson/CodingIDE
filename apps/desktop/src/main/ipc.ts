@@ -9,6 +9,7 @@ import { TerminalLayoutStore } from '@services/terminalLayoutStore'
 import { PresetStore } from '@services/presetStore'
 import { getGitBranch } from '@services/gitService'
 import type { LayoutNode } from '../shared/terminalLayout'
+import type { ProjectStatus, ProjectStatusChange } from '../shared/types'
 
 let router: IPCRouter | null = null
 let projectStore: ProjectStore | null = null
@@ -17,6 +18,17 @@ let terminalService: TerminalService | null = null
 let terminalLayoutStore: TerminalLayoutStore | null = null
 let presetStore: PresetStore | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
+let lastClaudeActivity: Record<string, number> = {}
+
+/** Broadcast a project status change to all renderer windows */
+function broadcastStatusChange(id: string, status: ProjectStatus): void {
+  const change: ProjectStatusChange = { id, status }
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('project:status-changed', change)
+    }
+  }
+}
 
 export function setupIPC(): void {
   router = new IPCRouter()
@@ -108,14 +120,6 @@ export function setupIPC(): void {
     }
   })
 
-  terminalService!.onCommandDone((event) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('terminal:command-done', event)
-      }
-    }
-  })
-
   router.handle(IPC_CHANNELS.TERMINAL_CREATE, (_event, payload) => {
     terminalService!.create(
       payload.terminalId,
@@ -188,10 +192,54 @@ export function setupIPC(): void {
     presetStore!.setAll(payload.presets)
   })
 
+  // ── Project Status IPC ─────────────────────────────────────
+  router.handle(IPC_CHANNELS.SET_PROJECT_STATUS, (_event, payload) => {
+    projectStore!.setStatus(payload.id, payload.status)
+    broadcastStatusChange(payload.id, payload.status)
+  })
+
+  // ── Browser IPC ────────────────────────────────────────────────
+  // Navigate is a no-op in the main process — the renderer handles
+  // webview navigation directly. The channel exists so the contract
+  // and validator pipeline remain consistent.
+  router.handle(IPC_CHANNELS.BROWSER_NAVIGATE, () => {})
+
+  // ── Auto-status: terminal busy → running, command done → idle ──
+  terminalService!.onCommandDone((event) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('terminal:command-done', event)
+      }
+    }
+    // Auto-set project to idle when command finishes (unless Claude is active)
+    const activity = lastClaudeActivity[event.projectId] ?? 0
+    if (activity === 0) {
+      projectStore!.setStatus(event.projectId, 'idle')
+      broadcastStatusChange(event.projectId, 'idle')
+    }
+  })
+
   // ── Claude Activity Polling ─────────────────────────────────
   claudeActivityInterval = setInterval(async () => {
     if (!terminalService) return
     const activity = await terminalService.getClaudeActivity()
+
+    // Detect status transitions from Claude activity changes
+    for (const projectId of Object.keys(activity)) {
+      const prev = lastClaudeActivity[projectId] ?? 0
+      if (prev === 0 && activity[projectId] > 0) {
+        projectStore!.setStatus(projectId, 'running')
+        broadcastStatusChange(projectId, 'running')
+      }
+    }
+    for (const projectId of Object.keys(lastClaudeActivity)) {
+      if ((lastClaudeActivity[projectId] ?? 0) > 0 && (activity[projectId] ?? 0) === 0) {
+        projectStore!.setStatus(projectId, 'done')
+        broadcastStatusChange(projectId, 'done')
+      }
+    }
+    lastClaudeActivity = { ...activity }
+
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send('claude:activity', activity)
@@ -213,4 +261,5 @@ export function disposeIPC(): void {
   terminalService = null
   terminalLayoutStore = null
   presetStore = null
+  lastClaudeActivity = {}
 }

@@ -55,6 +55,14 @@ export function App() {
     return window.electronAPI.claude.onActivity(setClaudeActivity)
   }, [])
 
+  useEffect(() => {
+    return window.electronAPI.projects.onStatusChanged((change) => {
+      setProjects((prev) =>
+        prev.map((p) => (p.id === change.id ? { ...p, status: change.status } : p)),
+      )
+    })
+  }, [])
+
   const totalActiveClaudes = Object.values(claudeActivity).reduce((sum, n) => sum + n, 0)
 
   const handleRunCommand = useCallback((command: string) => {

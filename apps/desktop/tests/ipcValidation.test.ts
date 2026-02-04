@@ -6,8 +6,10 @@ import {
   isAddProjectRequest,
   isThemeId,
   isSetProjectThemeRequest,
+  isSetProjectStatusRequest,
   isNativeNotifyRequest,
   isSetPresetsRequest,
+  isBrowserNavigateRequest,
   isAllowedChannel,
   validatePayload,
   IPC_CHANNELS,
@@ -178,6 +180,44 @@ describe('isSetProjectThemeRequest', () => {
   })
 })
 
+// ── SetProjectStatusRequest Validator ────────────────────────
+
+describe('isSetProjectStatusRequest', () => {
+  it('accepts valid request with each status', () => {
+    expect(isSetProjectStatusRequest({ id: 'abc-123', status: 'idle' })).toBe(true)
+    expect(isSetProjectStatusRequest({ id: 'abc-123', status: 'running' })).toBe(true)
+    expect(isSetProjectStatusRequest({ id: 'abc-123', status: 'done' })).toBe(true)
+    expect(isSetProjectStatusRequest({ id: 'abc-123', status: 'needs_input' })).toBe(true)
+  })
+
+  it('rejects empty id', () => {
+    expect(isSetProjectStatusRequest({ id: '', status: 'idle' })).toBe(false)
+  })
+
+  it('rejects missing id', () => {
+    expect(isSetProjectStatusRequest({ status: 'idle' })).toBe(false)
+  })
+
+  it('rejects invalid status string', () => {
+    expect(isSetProjectStatusRequest({ id: 'abc', status: 'unknown' })).toBe(false)
+    expect(isSetProjectStatusRequest({ id: 'abc', status: '' })).toBe(false)
+    expect(isSetProjectStatusRequest({ id: 'abc', status: 'IDLE' })).toBe(false)
+  })
+
+  it('rejects non-string status', () => {
+    expect(isSetProjectStatusRequest({ id: 'abc', status: 42 })).toBe(false)
+    expect(isSetProjectStatusRequest({ id: 'abc', status: null })).toBe(false)
+    expect(isSetProjectStatusRequest({ id: 'abc', status: true })).toBe(false)
+  })
+
+  it('rejects non-objects', () => {
+    expect(isSetProjectStatusRequest(undefined)).toBe(false)
+    expect(isSetProjectStatusRequest(null)).toBe(false)
+    expect(isSetProjectStatusRequest('string')).toBe(false)
+    expect(isSetProjectStatusRequest(42)).toBe(false)
+  })
+})
+
 // ── NativeNotifyRequest Validator ────────────────────────────
 
 describe('isNativeNotifyRequest', () => {
@@ -272,6 +312,45 @@ describe('isSetPresetsRequest', () => {
   })
 })
 
+// ── BrowserNavigateRequest Validator ─────────────────────────
+
+describe('isBrowserNavigateRequest', () => {
+  it('accepts valid https URL', () => {
+    expect(isBrowserNavigateRequest({ url: 'https://example.com' })).toBe(true)
+  })
+
+  it('accepts valid http URL', () => {
+    expect(isBrowserNavigateRequest({ url: 'http://localhost:3000' })).toBe(true)
+  })
+
+  it('rejects empty url', () => {
+    expect(isBrowserNavigateRequest({ url: '' })).toBe(false)
+  })
+
+  it('rejects url without protocol', () => {
+    expect(isBrowserNavigateRequest({ url: 'example.com' })).toBe(false)
+  })
+
+  it('rejects javascript: protocol', () => {
+    expect(isBrowserNavigateRequest({ url: 'javascript:alert(1)' })).toBe(false)
+  })
+
+  it('rejects file: protocol', () => {
+    expect(isBrowserNavigateRequest({ url: 'file:///etc/passwd' })).toBe(false)
+  })
+
+  it('rejects non-objects', () => {
+    expect(isBrowserNavigateRequest(undefined)).toBe(false)
+    expect(isBrowserNavigateRequest(null)).toBe(false)
+    expect(isBrowserNavigateRequest('string')).toBe(false)
+    expect(isBrowserNavigateRequest(42)).toBe(false)
+  })
+
+  it('rejects missing url', () => {
+    expect(isBrowserNavigateRequest({})).toBe(false)
+  })
+})
+
 // ── Channel Allowlist ──────────────────────────────────────────
 
 describe('isAllowedChannel', () => {
@@ -362,6 +441,16 @@ describe('validatePayload', () => {
     expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, 'string')).toBe(false)
   })
 
+  it('validates SET_PROJECT_STATUS payload', () => {
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_STATUS, { id: 'x', status: 'running' })).toBe(
+      true,
+    )
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_STATUS, { id: 'x', status: 'done' })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_STATUS, { id: '', status: 'idle' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_STATUS, undefined)).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_PROJECT_STATUS, 'string')).toBe(false)
+  })
+
   it('validates NATIVE_NOTIFY payload', () => {
     expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, { title: 'Done' })).toBe(true)
     expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, { title: 'Done', body: '3s' })).toBe(true)
@@ -374,6 +463,15 @@ describe('validatePayload', () => {
     expect(validatePayload(IPC_CHANNELS.GET_PRESETS, undefined)).toBe(true)
     expect(validatePayload(IPC_CHANNELS.GET_PRESETS, { projectId: 'abc' })).toBe(false)
     expect(validatePayload(IPC_CHANNELS.GET_PRESETS, 'string')).toBe(false)
+  })
+
+  it('validates BROWSER_NAVIGATE payload', () => {
+    expect(validatePayload(IPC_CHANNELS.BROWSER_NAVIGATE, { url: 'https://example.com' })).toBe(
+      true,
+    )
+    expect(validatePayload(IPC_CHANNELS.BROWSER_NAVIGATE, { url: '' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.BROWSER_NAVIGATE, { url: 'ftp://bad' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.BROWSER_NAVIGATE, undefined)).toBe(false)
   })
 
   it('validates SET_PRESETS payload', () => {

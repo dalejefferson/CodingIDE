@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, renameSync, existsSync } from 'node:fs'
 import { dirname, basename, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { Project, AddProjectRequest, ThemeId } from '@shared/types'
+import type { Project, AddProjectRequest, ThemeId, ProjectStatus } from '@shared/types'
 
 /**
  * JSON file-based project store.
@@ -110,6 +110,18 @@ export class ProjectStore {
       project.theme = theme
     }
 
+    this.persist()
+    return true
+  }
+
+  /** Update a project's status. Returns true if found and updated. */
+  setStatus(id: string, status: ProjectStatus): boolean {
+    const projects = this.load()
+    const project = projects.find((p) => p.id === id)
+    if (!project) return false
+
+    if (project.status === status) return true
+    project.status = status
     this.persist()
     return true
   }

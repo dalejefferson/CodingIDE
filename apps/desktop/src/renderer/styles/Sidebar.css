@@ -222,8 +222,32 @@
   border-radius: 50%;
 }
 
-.sidebar-thread-item:hover .sidebar-done-dot {
+.sidebar-input-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--color-warning);
+  border-radius: 50%;
+}
+
+.sidebar-thread-item:hover .sidebar-done-dot,
+.sidebar-thread-item:hover .sidebar-input-dot {
   display: none;
+}
+
+/* ── Needs-input / warning highlight ───────────────────────────────────────── */
+
+.sidebar-thread-item--needs-input {
+  background: var(--color-warning-subtle);
+  border: 1.5px solid var(--color-warning);
+}
+
+.sidebar-thread-item--needs-input:hover {
+  background: var(--color-warning-subtle);
+}
+
+.sidebar-thread-item--needs-input svg {
+  color: var(--color-warning);
 }
 
 /* ── Delete button (visible on hover) ──────────────────────────────────────── */
@@ -242,10 +266,6 @@
     opacity var(--transition-fast),
     background var(--transition-fast),
     color var(--transition-fast);
-}
-
-.sidebar-thread-item:hover .sidebar-status {
-  display: none;
 }
 
 .sidebar-thread-item:hover .sidebar-delete-btn {
@@ -267,35 +287,7 @@
   white-space: nowrap;
 }
 
-/* ── Status badge ────────────────────────────────────────────────────────────── */
-
-.sidebar-status {
-  flex-shrink: 0;
-  font-size: var(--font-size-xs);
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-  line-height: 1.4;
-}
-
-.sidebar-status--idle {
-  color: var(--color-text-tertiary);
-  background: var(--color-bg-tertiary);
-}
-
-.sidebar-status--running {
-  color: var(--color-accent);
-  background: var(--color-accent-subtle);
-}
-
-.sidebar-status--done {
-  color: var(--color-success);
-  background: var(--color-success-subtle);
-}
-
-.sidebar-status--needs_input {
-  color: var(--color-warning);
-  background: var(--color-warning-subtle);
-}
+/* ── Status badge (unused text labels removed — now using dot indicators) ──── */
 
 /* ── Spinning loader (shown for running projects) ──────────────────────────── */
 

@@ -126,13 +126,6 @@ function GearIcon() {
   )
 }
 
-const STATUS_LABELS: Record<Project['status'], string> = {
-  idle: 'Idle',
-  running: 'Running',
-  done: 'Done',
-  needs_input: 'Needs input',
-}
-
 export function Sidebar({
   projects,
   activeProjectId,
@@ -200,7 +193,7 @@ export function Sidebar({
           return (
             <div
               key={project.id}
-              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${claudeCount > 0 ? ' sidebar-thread-item--claude' : ''}${project.status === 'done' ? ' sidebar-thread-item--done' : ''}`}
+              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${claudeCount > 0 ? ' sidebar-thread-item--claude' : ''}${project.status === 'done' ? ' sidebar-thread-item--done' : ''}${project.status === 'needs_input' ? ' sidebar-thread-item--needs-input' : ''}`}
               onClick={() => onSelectProject(project.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
@@ -224,12 +217,10 @@ export function Sidebar({
               ) : project.status === 'running' ? (
                 <span className="sidebar-spinner" title="Running" />
               ) : project.status === 'done' ? (
-                <span className="sidebar-done-dot" title="Done — needs attention" />
-              ) : (
-                <span className={`sidebar-status sidebar-status--${project.status}`}>
-                  {STATUS_LABELS[project.status]}
-                </span>
-              )}
+                <span className="sidebar-done-dot" title="Done" />
+              ) : project.status === 'needs_input' ? (
+                <span className="sidebar-input-dot" title="Needs input" />
+              ) : null}
               <button
                 type="button"
                 className="sidebar-delete-btn"
