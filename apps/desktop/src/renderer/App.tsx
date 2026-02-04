@@ -151,33 +151,13 @@ export function App() {
           onOpenSettings={toggleSettings}
         />
       </div>
-      {sidebarCollapsed && (
-        <button
-          className="sidebar-expand-btn"
-          type="button"
-          onClick={toggleSidebar}
-          aria-label="Expand sidebar"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M6 3L11 8L6 13" />
-          </svg>
-        </button>
-      )}
       <div className="main-pane">
         <Toolbar
           projectName={activeProject?.name ?? null}
           projects={projects}
           activeProjectId={activeProjectId}
           sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={toggleSidebar}
           onSelectProject={(id) => {
             setActiveProjectId(id)
             setSettingsOpen(false)

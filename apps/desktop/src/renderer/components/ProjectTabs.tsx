@@ -38,7 +38,7 @@ export function ProjectTabs({
       {projects.map((project) => (
         <div
           key={project.id}
-          className={`project-tab${activeProjectId === project.id ? ' project-tab--active' : ''}`}
+          className={`project-tab${activeProjectId === project.id ? ' project-tab--active' : ''}${project.status === 'done' ? ' project-tab--done' : ''}`}
           onClick={() => onSelectProject(project.id)}
           role="tab"
           aria-selected={activeProjectId === project.id}
@@ -51,6 +51,7 @@ export function ProjectTabs({
           }}
         >
           {project.status === 'running' && <span className="project-tab-spinner" title="Running" />}
+          {project.status === 'done' && <span className="project-tab-done-dot" title="Done" />}
           <span className="project-tab-name">{project.name}</span>
           <button
             type="button"

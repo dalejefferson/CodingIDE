@@ -91,6 +91,25 @@
   color: var(--color-error);
 }
 
+/* ── Done tab highlight ────────────────────────────────────────────────────── */
+
+.project-tab--done {
+  color: var(--color-success);
+  border-bottom-color: var(--color-success);
+}
+
+.project-tab--done:hover {
+  color: var(--color-success);
+}
+
+.project-tab-done-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
 /* ── Tab spinner (shown for running projects) ──────────────────────────────── */
 
 .project-tab-spinner {

@@ -10,6 +10,7 @@ import {
   countLeaves,
   serializeLayout,
   isValidLayout,
+  updateRatio,
 } from '../src/shared/terminalLayout'
 import type { LayoutNode, LeafNode, BranchNode } from '../src/shared/terminalLayout'
 
@@ -345,5 +346,59 @@ describe('isValidLayout', () => {
 
   it('rejects unknown type', () => {
     expect(isValidLayout({ type: 'unknown', id: 'a' })).toBe(false)
+  })
+})
+
+// ── updateRatio ─────────────────────────────────────────────
+
+describe('updateRatio', () => {
+  it('updates ratio of a target branch node', () => {
+    const leaf = createLeaf()
+    const tree = splitRight(leaf, leaf.id)
+    const branch = tree as BranchNode
+    expect(branch.ratio).toBe(0.5)
+
+    const result = updateRatio(tree, branch.id, 0.7)
+    expect(result.type).toBe('branch')
+    expect((result as BranchNode).ratio).toBe(0.7)
+  })
+
+  it('clamps ratio below 0.1 to 0.1', () => {
+    const leaf = createLeaf()
+    const tree = splitRight(leaf, leaf.id)
+    const branch = tree as BranchNode
+
+    const result = updateRatio(tree, branch.id, 0.01)
+    expect((result as BranchNode).ratio).toBe(0.1)
+
+    const result2 = updateRatio(tree, branch.id, -5)
+    expect((result2 as BranchNode).ratio).toBe(0.1)
+  })
+
+  it('clamps ratio above 0.9 to 0.9', () => {
+    const leaf = createLeaf()
+    const tree = splitRight(leaf, leaf.id)
+    const branch = tree as BranchNode
+
+    const result = updateRatio(tree, branch.id, 0.99)
+    expect((result as BranchNode).ratio).toBe(0.9)
+
+    const result2 = updateRatio(tree, branch.id, 5)
+    expect((result2 as BranchNode).ratio).toBe(0.9)
+  })
+
+  it('returns root unchanged if branchId not found', () => {
+    const leaf = createLeaf()
+    const tree = splitRight(leaf, leaf.id)
+
+    const result = updateRatio(tree, 'nonexistent', 0.7)
+    expect(result).toBe(tree)
+  })
+
+  it('returns root unchanged if root is a leaf', () => {
+    const leaf = createLeaf()
+
+    const result = updateRatio(leaf, 'any-id', 0.7)
+    expect(result).toBe(leaf)
   })
 })

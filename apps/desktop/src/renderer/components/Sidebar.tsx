@@ -200,7 +200,7 @@ export function Sidebar({
           return (
             <div
               key={project.id}
-              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${claudeCount > 0 ? ' sidebar-thread-item--claude' : ''}`}
+              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${claudeCount > 0 ? ' sidebar-thread-item--claude' : ''}${project.status === 'done' ? ' sidebar-thread-item--done' : ''}`}
               onClick={() => onSelectProject(project.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
@@ -223,6 +223,8 @@ export function Sidebar({
                 </span>
               ) : project.status === 'running' ? (
                 <span className="sidebar-spinner" title="Running" />
+              ) : project.status === 'done' ? (
+                <span className="sidebar-done-dot" title="Done — needs attention" />
               ) : (
                 <span className={`sidebar-status sidebar-status--${project.status}`}>
                   {STATUS_LABELS[project.status]}

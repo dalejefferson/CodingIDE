@@ -199,6 +199,33 @@
   color: var(--color-accent);
 }
 
+/* ── Done / needs-attention highlight ───────────────────────────────────────── */
+
+.sidebar-thread-item--done {
+  background: var(--color-success-subtle);
+  border: 1.5px solid var(--color-success);
+}
+
+.sidebar-thread-item--done:hover {
+  background: var(--color-success-subtle);
+}
+
+.sidebar-thread-item--done svg {
+  color: var(--color-success);
+}
+
+.sidebar-done-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.sidebar-thread-item:hover .sidebar-done-dot {
+  display: none;
+}
+
 /* ── Delete button (visible on hover) ──────────────────────────────────────── */
 
 .sidebar-delete-btn {

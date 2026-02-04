@@ -7,6 +7,7 @@ interface ToolbarProps {
   projects: Project[]
   activeProjectId: string | null
   sidebarCollapsed: boolean
+  onToggleSidebar: () => void
   onSelectProject: (id: string) => void
   onRemoveProject: (id: string) => void
   onOpenFolder: () => void
@@ -17,12 +18,34 @@ export function Toolbar({
   projects,
   activeProjectId,
   sidebarCollapsed,
+  onToggleSidebar,
   onSelectProject,
   onRemoveProject,
   onOpenFolder,
 }: ToolbarProps) {
   return (
     <div className={`toolbar${sidebarCollapsed ? ' toolbar--no-sidebar' : ''}`}>
+      {sidebarCollapsed && (
+        <button
+          className="toolbar-expand-btn"
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label="Expand sidebar"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M6 3L11 8L6 13" />
+          </svg>
+        </button>
+      )}
       {/* Left: tabs when collapsed, title when expanded */}
       <div className="toolbar-left">
         {sidebarCollapsed && projects.length > 0 ? (

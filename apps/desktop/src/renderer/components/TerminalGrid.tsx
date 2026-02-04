@@ -19,6 +19,7 @@ import {
   getAllLeafIds,
   findLeaf,
   findLeafIdByTerminalId,
+  updateRatio,
 } from '@shared/terminalLayout'
 import { TerminalPane } from './TerminalPane'
 import '../styles/TerminalGrid.css'
@@ -162,6 +163,10 @@ export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
     }
   }, [])
 
+  const handleRatioChange = useCallback((branchId: string, newRatio: number) => {
+    setLayout((prev) => (prev ? updateRatio(prev, branchId, newRatio) : prev))
+  }, [])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -202,6 +207,7 @@ export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
         cwd={cwd}
         palette={palette}
         onFocusLeaf={setActiveLeafId}
+        onRatioChange={handleRatioChange}
       />
     </div>
   )
@@ -214,6 +220,7 @@ interface LayoutRendererProps {
   cwd: string
   palette: string
   onFocusLeaf: (id: string) => void
+  onRatioChange: (branchId: string, newRatio: number) => void
 }
 
 function LayoutRenderer({
@@ -223,6 +230,7 @@ function LayoutRenderer({
   cwd,
   palette,
   onFocusLeaf,
+  onRatioChange,
 }: LayoutRendererProps) {
   if (node.type === 'leaf') {
     return (
@@ -256,9 +264,10 @@ function LayoutRenderer({
           cwd={cwd}
           palette={palette}
           onFocusLeaf={onFocusLeaf}
+          onRatioChange={onRatioChange}
         />
       </div>
-      <div className="terminal-split-divider" />
+      <SplitDivider branchId={node.id} direction={node.direction} onRatioChange={onRatioChange} />
       <div className="terminal-split-child" style={{ flexBasis: secondPercent }}>
         <LayoutRenderer
           node={node.children[1]}
@@ -267,8 +276,56 @@ function LayoutRenderer({
           cwd={cwd}
           palette={palette}
           onFocusLeaf={onFocusLeaf}
+          onRatioChange={onRatioChange}
         />
       </div>
     </div>
   )
+}
+
+/** Interactive split divider with drag-to-resize */
+function SplitDivider({
+  branchId,
+  direction,
+  onRatioChange,
+}: {
+  branchId: string
+  direction: 'horizontal' | 'vertical'
+  onRatioChange: (branchId: string, newRatio: number) => void
+}) {
+  const dividerRef = useRef<HTMLDivElement>(null)
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+
+      const parent = dividerRef.current?.parentElement
+      if (!parent) return
+
+      const isH = direction === 'horizontal'
+      document.body.classList.add(isH ? 'is-resizing-h' : 'is-resizing-v')
+
+      const parentRect = parent.getBoundingClientRect()
+      const totalSize = isH ? parentRect.width : parentRect.height
+      const parentStart = isH ? parentRect.left : parentRect.top
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const pos = isH ? ev.clientX : ev.clientY
+        const newRatio = (pos - parentStart) / totalSize
+        onRatioChange(branchId, newRatio)
+      }
+
+      const onMouseUp = () => {
+        document.body.classList.remove('is-resizing-h', 'is-resizing-v')
+        window.removeEventListener('mousemove', onMouseMove)
+        window.removeEventListener('mouseup', onMouseUp)
+      }
+
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('mouseup', onMouseUp)
+    },
+    [branchId, direction, onRatioChange],
+  )
+
+  return <div ref={dividerRef} className="terminal-split-divider" onMouseDown={handleMouseDown} />
 }

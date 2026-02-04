@@ -162,6 +162,25 @@ export function serializeLayout(root: LayoutNode): LayoutNode {
   return JSON.parse(JSON.stringify(root)) as LayoutNode
 }
 
+/** Update the ratio of a branch node by its ID. Clamps between 0.1 and 0.9. */
+export function updateRatio(root: LayoutNode, branchId: string, newRatio: number): LayoutNode {
+  const clamped = Math.max(0.1, Math.min(0.9, newRatio))
+
+  if (root.type === 'leaf') return root
+
+  if (root.id === branchId) {
+    if (root.ratio === clamped) return root
+    return { ...root, ratio: clamped }
+  }
+
+  const [left, right] = root.children
+  const newLeft = updateRatio(left, branchId, newRatio)
+  const newRight = updateRatio(right, branchId, newRatio)
+
+  if (newLeft === left && newRight === right) return root
+  return { ...root, children: [newLeft, newRight] }
+}
+
 /** Validate a deserialized layout node */
 export function isValidLayout(value: unknown): value is LayoutNode {
   if (typeof value !== 'object' || value === null) return false

@@ -184,14 +184,15 @@ export function TerminalPane({
         if (disposed) return
         fitAddon.fit()
 
-        const { cols, rows } = term
+        const cols = term.cols >= 10 ? term.cols : 80
+        const rows = term.rows >= 2 ? term.rows : 24
         window.electronAPI.terminal
           .create({
             projectId,
             terminalId,
             cwd,
-            cols: cols > 0 ? cols : 80,
-            rows: rows > 0 ? rows : 24,
+            cols,
+            rows,
           })
           .then(() => window.electronAPI.terminal.getBuffer(terminalId))
           .then((buffer) => {
@@ -216,7 +217,9 @@ export function TerminalPane({
       })
     })
 
-    // Handle resize — debounce via rAF and guard against disposed state
+    // Handle resize — debounce via rAF and guard against disposed state.
+    // Enforce minimum 10 cols / 2 rows to prevent staircase rendering when
+    // the container briefly collapses during layout transitions.
     let resizeRaf = 0
     const resizeObserver = new ResizeObserver(() => {
       cancelAnimationFrame(resizeRaf)
@@ -224,7 +227,7 @@ export function TerminalPane({
         if (disposed) return
         fitAddon.fit()
         const { cols, rows } = term
-        if (cols > 0 && rows > 0) {
+        if (cols >= 10 && rows >= 2) {
           window.electronAPI.terminal.resize({ terminalId, cols, rows })
         }
       })

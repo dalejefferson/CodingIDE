@@ -9,7 +9,7 @@
   border-top: 1px solid var(--color-border-primary);
   flex-shrink: 0;
   gap: var(--space-sm);
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border-radius: 0;
 }
 
 /* ── Mode Toggle ──────────────────────────────────────────────── */

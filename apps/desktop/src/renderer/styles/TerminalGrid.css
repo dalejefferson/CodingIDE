@@ -6,6 +6,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  background: var(--terminal-bg, #1c2128);
 }
 
 /* ── Split Container ──────────────────────────────────────────── */
@@ -32,14 +33,39 @@
 .terminal-split-divider {
   flex-shrink: 0;
   background: var(--color-border-primary);
+  transition: background-color 150ms ease;
+  position: relative;
+  z-index: 1;
+}
+
+.terminal-split-divider:hover {
+  background: var(--color-accent, #58a6ff);
 }
 
 .terminal-split--horizontal > .terminal-split-divider {
   width: 4px;
+  cursor: col-resize;
 }
 
 .terminal-split--vertical > .terminal-split-divider {
   height: 4px;
+  cursor: row-resize;
+}
+
+/* During drag: lock cursor globally and prevent text selection */
+body.is-resizing-h {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.is-resizing-v {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+
+body.is-resizing-h *,
+body.is-resizing-v * {
+  cursor: inherit !important;
 }
 
 /* ── Terminal Pane (3-zone: header / xterm / input bar) ───────── */

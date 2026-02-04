@@ -1,34 +1,38 @@
 import { describe, it, expect } from 'vitest'
 import { capScrollback, MAX_SCROLLBACK_LINES } from '../src/services/terminalService'
 
-describe('capScrollback', () => {
+describe('capScrollback (character-based)', () => {
   it('does not modify buffer under the cap', () => {
-    const buffer = ['line1', 'line2', 'line3']
+    const buffer = ['hello', 'world']
     const result = capScrollback(buffer, 100)
-    expect(result).toHaveLength(3)
-    expect(result).toEqual(['line1', 'line2', 'line3'])
+    expect(result).toHaveLength(2)
+    expect(result).toEqual(['hello', 'world'])
   })
 
   it('does not modify buffer at exactly the cap', () => {
-    const buffer = Array.from({ length: 100 }, (_, i) => `line-${i}`)
-    const result = capScrollback(buffer, 100)
-    expect(result).toHaveLength(100)
+    const buffer = ['aaaaa', 'bbbbb'] // 10 chars total
+    const result = capScrollback(buffer, 10)
+    expect(result).toHaveLength(2)
   })
 
-  it('trims oldest lines when over the cap', () => {
-    const buffer = Array.from({ length: 150 }, (_, i) => `line-${i}`)
-    const result = capScrollback(buffer, 100)
-    expect(result).toHaveLength(100)
-    // Should keep the last 100 lines (line-50 through line-149)
-    expect(result[0]).toBe('line-50')
-    expect(result[99]).toBe('line-149')
+  it('trims oldest chunks when over the cap', () => {
+    const buffer = ['aaaa', 'bbbb', 'cccc'] // 12 chars total
+    const result = capScrollback(buffer, 8)
+    // Should drop 'aaaa' (oldest), keeping 'bbbb' + 'cccc' = 8 chars
+    expect(result).toEqual(['bbbb', 'cccc'])
   })
 
-  it('handles single-line overflow', () => {
-    const buffer = Array.from({ length: 101 }, (_, i) => `line-${i}`)
-    const result = capScrollback(buffer, 100)
-    expect(result).toHaveLength(100)
-    expect(result[0]).toBe('line-1')
+  it('drops multiple old chunks to fit under cap', () => {
+    const buffer = ['aaa', 'bbb', 'ccc', 'ddd'] // 12 chars
+    const result = capScrollback(buffer, 6)
+    expect(result).toEqual(['ccc', 'ddd'])
+  })
+
+  it('always keeps at least one chunk', () => {
+    const buffer = ['a-very-long-chunk']
+    const result = capScrollback(buffer, 1)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toBe('a-very-long-chunk')
   })
 
   it('handles empty buffer', () => {
@@ -36,19 +40,11 @@ describe('capScrollback', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('handles cap of 1', () => {
-    const buffer = ['a', 'b', 'c']
-    const result = capScrollback(buffer, 1)
-    expect(result).toHaveLength(1)
-    expect(result[0]).toBe('c')
-  })
-
   it('modifies the buffer in place', () => {
-    const buffer = ['a', 'b', 'c', 'd', 'e']
-    const result = capScrollback(buffer, 3)
+    const buffer = ['aaaa', 'bbbb', 'cccc']
+    const result = capScrollback(buffer, 8)
     expect(result).toBe(buffer) // same reference
-    expect(buffer).toHaveLength(3)
-    expect(buffer).toEqual(['c', 'd', 'e'])
+    expect(buffer).toEqual(['bbbb', 'cccc'])
   })
 
   it('exports MAX_SCROLLBACK_LINES constant', () => {

@@ -20,6 +20,9 @@ const DEFAULT_SHELL = process.env.SHELL || '/bin/zsh'
 /** Maximum scrollback lines per terminal to prevent unbounded memory growth */
 export const MAX_SCROLLBACK_LINES = 5000
 
+/** Approximate character budget for raw scrollback storage (~120 chars/line) */
+const MAX_SCROLLBACK_CHARS = MAX_SCROLLBACK_LINES * 120
+
 /**
  * Minimum command duration (ms) before firing a completion event.
  * Very fast commands (e.g. pressing Enter on an empty prompt) are
@@ -85,10 +88,13 @@ export class TerminalService {
   ): void {
     if (this.terminals.has(terminalId)) return
 
+    const safeCols = cols >= 10 ? cols : DEFAULT_COLS
+    const safeRows = rows >= 2 ? rows : DEFAULT_ROWS
+
     const ptyProcess = pty.spawn(DEFAULT_SHELL, [], {
       name: 'xterm-256color',
-      cols,
-      rows,
+      cols: safeCols,
+      rows: safeRows,
       cwd,
       env: { ...process.env } as Record<string, string>,
     })
@@ -129,8 +135,9 @@ export class TerminalService {
     instance.pty.write(data)
   }
 
-  /** Resize a terminal */
+  /** Resize a terminal — ignores pathologically small values to prevent staircase rendering */
   resize(terminalId: string, cols: number, rows: number): void {
+    if (cols < 10 || rows < 2) return
     this.terminals.get(terminalId)?.pty.resize(cols, rows)
   }
 
@@ -138,7 +145,7 @@ export class TerminalService {
   kill(terminalId: string): void {
     const instance = this.terminals.get(terminalId)
     if (!instance) return
-    instance.pty.kill()
+    this.forceKillPty(instance)
     this.terminals.delete(terminalId)
   }
 
@@ -146,7 +153,7 @@ export class TerminalService {
   killAllForProject(projectId: string): void {
     for (const [id, instance] of this.terminals) {
       if (instance.projectId === projectId) {
-        instance.pty.kill()
+        this.forceKillPty(instance)
         this.terminals.delete(id)
       }
     }
@@ -155,9 +162,43 @@ export class TerminalService {
   /** Kill all terminals */
   killAll(): void {
     for (const [id, instance] of this.terminals) {
-      instance.pty.kill()
+      this.forceKillPty(instance)
       this.terminals.delete(id)
     }
+  }
+
+  /**
+   * Force-kill a PTY and its entire process tree.
+   * Sends SIGTERM to the process group first (kills shell + all children),
+   * then SIGKILL after a timeout if anything survives.
+   */
+  private forceKillPty(instance: TerminalInstance): void {
+    const pid = instance.pty.pid
+    if (pid <= 0) return
+
+    // Kill entire process group with SIGTERM (negative PID = process group)
+    try {
+      process.kill(-pid, 'SIGTERM')
+    } catch {
+      // Process group may already be dead
+    }
+
+    // Also call pty.kill() for node-pty internal cleanup
+    try {
+      instance.pty.kill()
+    } catch {
+      // May already be dead
+    }
+
+    // SIGKILL fallback after 500ms if process is still alive
+    setTimeout(() => {
+      try {
+        process.kill(pid, 0) // Throws if process is dead — that's good
+        process.kill(-pid, 'SIGKILL')
+      } catch {
+        // Already dead
+      }
+    }, 500)
   }
 
   /** Check if a terminal exists */
@@ -169,7 +210,7 @@ export class TerminalService {
   getBuffer(terminalId: string): string {
     const instance = this.terminals.get(terminalId)
     if (!instance) return ''
-    return instance.buffer.join('\n')
+    return instance.buffer.join('')
   }
 
   /**
@@ -270,26 +311,33 @@ export class TerminalService {
   }
 
   /**
-   * Append data to the scrollback buffer, capping at MAX_SCROLLBACK_LINES.
-   * Splits incoming data by newlines and trims the oldest lines when over cap.
+   * Append raw PTY data to the scrollback buffer.
+   * Stores chunks verbatim (no split/join) so escape sequences like \r
+   * are preserved exactly, preventing duplicate prompt artifacts on replay.
+   * Caps total character count to limit memory.
    */
   private appendToBuffer(instance: TerminalInstance, data: string): void {
-    const lines = data.split('\n')
-    instance.buffer.push(...lines)
+    instance.buffer.push(data)
 
-    if (instance.buffer.length > MAX_SCROLLBACK_LINES) {
-      instance.buffer.splice(0, instance.buffer.length - MAX_SCROLLBACK_LINES)
+    let totalLen = 0
+    for (const chunk of instance.buffer) totalLen += chunk.length
+    while (totalLen > MAX_SCROLLBACK_CHARS && instance.buffer.length > 1) {
+      totalLen -= instance.buffer[0].length
+      instance.buffer.shift()
     }
   }
 }
 
 /**
  * Standalone scrollback cap function for testing purposes.
- * Takes a buffer array and caps it in place, returning the modified array.
+ * Caps total character count in a raw-chunk buffer, dropping oldest chunks.
  */
-export function capScrollback(buffer: string[], maxLines: number): string[] {
-  if (buffer.length > maxLines) {
-    buffer.splice(0, buffer.length - maxLines)
+export function capScrollback(buffer: string[], maxChars: number): string[] {
+  let totalLen = 0
+  for (const chunk of buffer) totalLen += chunk.length
+  while (totalLen > maxChars && buffer.length > 1) {
+    totalLen -= buffer[0].length
+    buffer.shift()
   }
   return buffer
 }
