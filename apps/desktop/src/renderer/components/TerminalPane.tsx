@@ -195,11 +195,20 @@ export function TerminalPane({
       console.warn('WebGL addon failed to load, using canvas renderer')
     }
 
-    // Clickable links — opens in default browser
+    // Route localhost URLs to the embedded browser pane, others to system browser
+    const handleLinkClick = (url: string) => {
+      if (/^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)/i.test(url)) {
+        window.dispatchEvent(new CustomEvent('browser:navigate', { detail: url }))
+      } else {
+        window.electronAPI.shell.openExternal(url)
+      }
+    }
+
+    // Clickable links
     term.loadAddon(
       new WebLinksAddon(
         (_event, url) => {
-          window.electronAPI.shell.openExternal(url)
+          handleLinkClick(url)
         },
         {
           hover: (_event, text, location) => {
@@ -232,7 +241,7 @@ export function TerminalPane({
             },
             text: match[0],
             activate: (_event, linkText) => {
-              window.electronAPI.shell.openExternal(linkText)
+              handleLinkClick(linkText)
             },
           })
         }
@@ -299,8 +308,8 @@ export function TerminalPane({
     }
 
     // Receive PTY output — queue until replay finishes, then write live
-    const removeDataListener = window.electronAPI.terminal.onData((id, data) => {
-      if (id !== terminalId || disposed) return
+    const removeDataListener = window.electronAPI.terminal.onData(terminalId, (data) => {
+      if (disposed) return
       if (replayDone) {
         term.write(data)
         const newCwd = extractOsc7Cwd(data)

@@ -42,8 +42,10 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
   const [layout, setLayout] = useState<LayoutNode | null>(null)
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null)
   const [pendingCommands, setPendingCommands] = useState<Record<string, string>>({})
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false)
   const layoutRef = useRef<LayoutNode | null>(null)
   const activeLeafRef = useRef<string | null>(null)
+  const closeConfirmRef = useRef<HTMLButtonElement>(null)
 
   // Keep refs in sync for keyboard handler
   useEffect(() => {
@@ -222,13 +224,36 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
     setLayout((prev) => (prev ? updateRatio(prev, branchId, newRatio) : prev))
   }, [])
 
+  // Auto-focus the confirm button when the dialog appears
+  useEffect(() => {
+    if (showCloseConfirm) {
+      closeConfirmRef.current?.focus()
+    }
+  }, [showCloseConfirm])
+
+  const confirmAndClose = useCallback(() => {
+    setShowCloseConfirm(false)
+    handleClosePane()
+  }, [handleClosePane])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+W: close active pane
+      // Cmd+W: show close confirmation for active pane
       if (e.metaKey && !e.shiftKey && e.key === 'w') {
         e.preventDefault()
-        handleClosePane()
+        if (showCloseConfirm) {
+          confirmAndClose()
+        } else {
+          setShowCloseConfirm(true)
+        }
+        return
+      }
+
+      // Escape: dismiss close confirmation
+      if (e.key === 'Escape' && showCloseConfirm) {
+        e.preventDefault()
+        setShowCloseConfirm(false)
         return
       }
 
@@ -249,7 +274,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleSplitRight, handleSplitDown, handleClosePane])
+  }, [handleSplitRight, handleSplitDown, handleClosePane, showCloseConfirm, confirmAndClose])
 
   const handleCommandSent = useCallback((terminalId: string) => {
     setPendingCommands((prev) => {
@@ -276,6 +301,31 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
         onCommandSent={handleCommandSent}
         onLocalhostDetected={onLocalhostDetected}
       />
+
+      {showCloseConfirm && (
+        <div className="terminal-close-confirm">
+          <div className="terminal-close-confirm-box">
+            <span className="terminal-close-confirm-msg">Close this terminal?</span>
+            <div className="terminal-close-confirm-actions">
+              <button
+                ref={closeConfirmRef}
+                type="button"
+                className="terminal-close-confirm-btn terminal-close-confirm-btn--close"
+                onClick={confirmAndClose}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="terminal-close-confirm-btn terminal-close-confirm-btn--cancel"
+                onClick={() => setShowCloseConfirm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

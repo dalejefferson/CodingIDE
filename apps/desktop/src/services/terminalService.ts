@@ -60,6 +60,8 @@ interface TerminalInstance {
   busySince: number
   /** Timestamp (ms) of the most recent PTY data output */
   lastOutputAt: number
+  /** Timestamp (ms) of the most recent PTY resize (for SIGWINCH echo suppression) */
+  lastResizedAt: number
 }
 
 export class TerminalService {
@@ -111,11 +113,17 @@ export class TerminalService {
       busy: false,
       busySince: 0,
       lastOutputAt: 0,
+      lastResizedAt: 0,
     }
 
     ptyProcess.onData((data: string) => {
       instance.lastOutputAt = Date.now()
-      this.appendToBuffer(instance, data)
+      // Suppress buffer writes briefly after resize to avoid storing
+      // SIGWINCH-triggered prompt reprints in the scrollback
+      const isResizeEcho = Date.now() - instance.lastResizedAt < 150
+      if (!isResizeEcho) {
+        this.appendToBuffer(instance, data)
+      }
       this.detectPrompt(terminalId, instance, data)
       this.onDataCallback?.(terminalId, data)
     })
@@ -146,7 +154,10 @@ export class TerminalService {
   /** Resize a terminal — ignores pathologically small values to prevent staircase rendering */
   resize(terminalId: string, cols: number, rows: number): void {
     if (cols < 10 || rows < 2) return
-    this.terminals.get(terminalId)?.pty.resize(cols, rows)
+    const instance = this.terminals.get(terminalId)
+    if (!instance) return
+    instance.lastResizedAt = Date.now()
+    instance.pty.resize(cols, rows)
   }
 
   /** Kill a specific terminal */

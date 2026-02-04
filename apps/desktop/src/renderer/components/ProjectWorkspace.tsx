@@ -116,6 +116,23 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
     return () => window.removeEventListener('browser:set-view-mode', handler)
   }, [])
 
+  // Navigate the embedded browser when a localhost link is clicked in the terminal
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const url = (e as CustomEvent).detail as string
+      setBrowserUrl(url)
+      setViewMode((prev) => {
+        if (prev === 'closed') {
+          window.dispatchEvent(new Event('sidebar:collapse'))
+          return 'split'
+        }
+        return prev
+      })
+    }
+    window.addEventListener('browser:navigate', handler)
+    return () => window.removeEventListener('browser:navigate', handler)
+  }, [])
+
   useEffect(() => {
     if (viewMode !== 'fullscreen' && viewMode !== 'pip') return
     const handler = (e: KeyboardEvent) => {
@@ -246,7 +263,7 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
           className={`workspace-terminal${viewMode === 'focused' ? ' workspace-terminal--collapsed' : ''}`}
           style={terminalStyle}
         >
-          {viewMode === 'focused' ? (
+          {viewMode === 'focused' && (
             <div
               className="workspace-collapsed-bar"
               onClick={() => setViewMode('split')}
@@ -266,7 +283,14 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
               </svg>
               Terminal
             </div>
-          ) : (
+          )}
+          <div
+            style={{
+              display: viewMode === 'focused' ? 'none' : 'flex',
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
             <TerminalGrid
               ref={gridRef}
               projectId={project.id}
@@ -274,7 +298,7 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
               palette={palette}
               onLocalhostDetected={handleLocalhostDetected}
             />
-          )}
+          </div>
         </div>
 
         {showSplitBrowser && (

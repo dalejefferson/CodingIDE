@@ -43,12 +43,12 @@
 }
 
 .terminal-split--horizontal > .terminal-split-divider {
-  width: 2px;
+  width: 1px;
   cursor: col-resize;
 }
 
 .terminal-split--vertical > .terminal-split-divider {
-  height: 2px;
+  height: 1px;
   cursor: row-resize;
 }
 
@@ -116,4 +116,84 @@ body.is-resizing-v * {
 /* High-DPI canvas rendering */
 .terminal-pane-xterm canvas {
   image-rendering: auto;
+}
+
+/* ── Close Confirmation Overlay ──────────────────────────────── */
+
+.terminal-close-confirm {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 10;
+  animation: terminal-confirm-fade-in 120ms ease;
+}
+
+@keyframes terminal-confirm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.terminal-close-confirm-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.terminal-close-confirm-msg {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.terminal-close-confirm-actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.terminal-close-confirm-btn {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.terminal-close-confirm-btn--close {
+  background: var(--color-error);
+  color: #fff;
+}
+
+.terminal-close-confirm-btn--close:hover {
+  background: #e0342a;
+}
+
+.terminal-close-confirm-btn--close:focus-visible {
+  outline: 2px solid var(--color-error);
+  outline-offset: 2px;
+}
+
+.terminal-close-confirm-btn--cancel {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.terminal-close-confirm-btn--cancel:hover {
+  background: var(--color-bg-active);
+  color: var(--color-text-primary);
 }

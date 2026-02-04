@@ -61,7 +61,7 @@ export interface ElectronAPI {
     getBuffer: (terminalId: string) => Promise<string>
     getLayout: (projectId: string) => Promise<LayoutNode | null>
     setLayout: (projectId: string, layout: LayoutNode) => Promise<void>
-    onData: (callback: (terminalId: string, data: string) => void) => () => void
+    onData: (terminalId: string, callback: (data: string) => void) => () => void
     onExit: (callback: (terminalId: string, exitCode: number) => void) => () => void
     onCommandDone: (callback: (event: CommandCompletionEvent) => void) => () => void
   }
@@ -87,6 +87,22 @@ export interface ElectronAPI {
     onDone: (callback: (event: ClaudeDoneEvent) => void) => () => void
   }
 }
+
+/**
+ * Per-terminal data routing — one global IPC listener dispatches to
+ * per-terminalId subscriber sets, so N panes never means N global listeners.
+ */
+const dataSubscribers = new Map<string, Set<(data: string) => void>>()
+
+ipcRenderer.on(
+  'terminal:data',
+  (_event: Electron.IpcRendererEvent, terminalId: string, data: string) => {
+    const subs = dataSubscribers.get(terminalId)
+    if (subs) {
+      for (const cb of subs) cb(data)
+    }
+  },
+)
 
 /** Only invoke channels that exist in the allowlist */
 function safeInvoke(channel: string, ...args: unknown[]): Promise<unknown> {
@@ -146,13 +162,19 @@ const electronAPI: ElectronAPI = {
       safeInvoke(IPC_CHANNELS.TERMINAL_GET_LAYOUT, { projectId }) as Promise<LayoutNode | null>,
     setLayout: (projectId: string, layout: LayoutNode) =>
       safeInvoke(IPC_CHANNELS.TERMINAL_SET_LAYOUT, { projectId, layout }) as Promise<void>,
-    onData: (callback: (terminalId: string, data: string) => void) => {
-      const listener = (_event: Electron.IpcRendererEvent, terminalId: string, data: string) => {
-        callback(terminalId, data)
+    onData: (terminalId: string, callback: (data: string) => void) => {
+      let subs = dataSubscribers.get(terminalId)
+      if (!subs) {
+        subs = new Set()
+        dataSubscribers.set(terminalId, subs)
       }
-      ipcRenderer.on('terminal:data', listener)
+      subs.add(callback)
       return () => {
-        ipcRenderer.removeListener('terminal:data', listener)
+        const set = dataSubscribers.get(terminalId)
+        if (set) {
+          set.delete(callback)
+          if (set.size === 0) dataSubscribers.delete(terminalId)
+        }
       }
     },
     onExit: (callback: (terminalId: string, exitCode: number) => void) => {

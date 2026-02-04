@@ -198,6 +198,10 @@ export function App() {
           onOpenFolder={handleOpenFolder}
           onRemoveProject={handleRemoveProject}
           onOpenSettings={toggleSettings}
+          onGoHome={() => {
+            setActiveProjectId(null)
+            setSettingsOpen(false)
+          }}
         />
       </div>
       <div className="main-pane">

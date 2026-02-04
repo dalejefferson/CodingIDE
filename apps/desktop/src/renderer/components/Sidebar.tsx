@@ -14,6 +14,7 @@ interface SidebarProps {
   onOpenFolder: () => void
   onRemoveProject: (id: string) => void
   onOpenSettings: () => void
+  onGoHome: () => void
 }
 
 function ChevronLeftIcon() {
@@ -109,6 +110,24 @@ function SparkleIcon() {
   )
 }
 
+function HomeIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 6.5L8 2L13.5 6.5V13a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1V6.5Z" />
+      <path d="M6 14V9h4v5" />
+    </svg>
+  )
+}
+
 function GearIcon() {
   return (
     <svg
@@ -140,7 +159,9 @@ export function Sidebar({
   onOpenFolder,
   onRemoveProject,
   onOpenSettings,
+  onGoHome,
 }: SidebarProps) {
+  const isHome = !activeProjectId && !settingsOpen
   return (
     <aside className="sidebar" aria-label="Sidebar" aria-hidden={collapsed}>
       <div className="sidebar-drag-region">
@@ -157,6 +178,15 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-actions">
+        <button
+          className={`sidebar-action-btn${isHome ? ' sidebar-action-btn--active' : ''}`}
+          type="button"
+          onClick={onGoHome}
+          aria-label="Home Page"
+        >
+          <HomeIcon />
+          <span>Home Page</span>
+        </button>
         <button className="sidebar-action-btn" type="button">
           <BoltIcon />
           <span>Automations</span>

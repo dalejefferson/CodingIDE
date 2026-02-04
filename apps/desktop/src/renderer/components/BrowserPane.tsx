@@ -13,7 +13,7 @@
  *   - Received messages validated before use
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { buildCssSelector, trimInnerText, formatPickerPayload } from '@shared/elementPicker'
 import type { ElementPickerPayload, BrowserViewMode } from '@shared/types'
 import '../styles/BrowserPane.css'
@@ -100,6 +100,9 @@ const PICKER_CLEANUP_SCRIPT = `
 
 const DEFAULT_URL = 'https://www.google.com'
 
+/** Virtual viewport width used to render pages at desktop layout */
+const VIRTUAL_WIDTH = 1280
+
 export function BrowserPane({
   initialUrl,
   onPickElement,
@@ -114,6 +117,35 @@ export function BrowserPane({
   const [loading, setLoading] = useState(true)
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
   const readyRef = useRef(false)
+  const webviewContainerRef = useRef<HTMLDivElement>(null)
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
+
+  // Track the webview container dimensions for desktop-viewport scaling
+  useEffect(() => {
+    const el = webviewContainerRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      const { width, height } = entry.contentRect
+      if (width > 0 && height > 0) setContainerSize({ w: width, h: height })
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Compute scale and virtual height so the webview always renders at desktop width
+  const viewportStyle = useMemo(() => {
+    if (!containerSize || containerSize.w >= VIRTUAL_WIDTH) return undefined
+    const scale = containerSize.w / VIRTUAL_WIDTH
+    const virtualHeight = Math.round(containerSize.h / scale)
+    return {
+      width: `${VIRTUAL_WIDTH}px`,
+      height: `${virtualHeight}px`,
+      transform: `scale(${scale})`,
+      transformOrigin: 'top left' as const,
+    }
+  }, [containerSize])
 
   const navigateTo = useCallback((targetUrl: string) => {
     const wv = webviewRef.current
@@ -428,12 +460,15 @@ export function BrowserPane({
         )}
       </div>
 
-      <webview
-        ref={webviewRef as React.LegacyRef<Electron.WebviewTag>}
-        className="browser-webview"
-        src={startUrl}
-        partition="persist:browser"
-      />
+      <div ref={webviewContainerRef} className="browser-webview-container">
+        <webview
+          ref={webviewRef as React.LegacyRef<Electron.WebviewTag>}
+          className="browser-webview"
+          src={startUrl}
+          partition="persist:browser"
+          style={viewportStyle}
+        />
+      </div>
     </div>
   )
 }
