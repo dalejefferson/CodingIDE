@@ -63,6 +63,23 @@ export function App() {
     })
   }, [])
 
+  // Collapse sidebar when browser pane opens
+  useEffect(() => {
+    const handler = () => setSidebarCollapsed(true)
+    window.addEventListener('sidebar:collapse', handler)
+    return () => window.removeEventListener('sidebar:collapse', handler)
+  }, [])
+
+  // Run terminal commands dispatched from other components (e.g. Send to Claude)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const command = (e as CustomEvent).detail as string
+      gridRef.current?.runCommand(command)
+    }
+    window.addEventListener('terminal:run-command', handler)
+    return () => window.removeEventListener('terminal:run-command', handler)
+  }, [])
+
   const totalActiveClaudes = Object.values(claudeActivity).reduce((sum, n) => sum + n, 0)
 
   const handleRunCommand = useCallback((command: string) => {

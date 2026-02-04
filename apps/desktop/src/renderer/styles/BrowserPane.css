@@ -117,6 +117,49 @@
   }
 }
 
+/* ── View Mode Buttons ──────────────────────────────────────── */
+
+.browser-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.browser-view-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+/* ── PiP Compact Toolbar ────────────────────────────────────── */
+
+.browser-toolbar--pip {
+  height: 28px;
+  padding: 0 var(--space-xs);
+  cursor: grab;
+}
+
+.browser-toolbar--pip:active {
+  cursor: grabbing;
+}
+
+.browser-toolbar--pip .browser-address-bar {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.browser-pane--pip {
+  border-left: none;
+}
+
 /* ── Webview ─────────────────────────────────────────────────── */
 
 .browser-webview {

@@ -58,7 +58,27 @@ function stripAnsi(s: string): string {
 }
 
 /** Regex to detect localhost URLs in terminal output */
-const LOCALHOST_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)(?:\/[^\s'")>]*)?/
+const LOCALHOST_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)(?:\/[^\s'")>]*)?/g
+
+/** Context keywords that indicate a frontend dev server */
+const DEV_SERVER_RE =
+  /\b(?:vite|hmr|hot\s*module|webpack|next(?:\.js)?|nuxt|svelte|angular|react|dev\s*server|compiled\s*(?:in|successfully)|ready\s*in|app\s*running|Local:|Network:)\b/i
+
+/** Context keywords that indicate an API / backend server */
+const API_SERVER_RE =
+  /\b(?:api\s*(?:server|listening|started|running)|express|fastify|nestjs|flask|django|uvicorn|gunicorn|rails|sinatra|graphql|rest\s*api|backend\s*(?:server|listening|running|started))\b/i
+
+/**
+ * Classify whether the terminal context around a URL indicates a dev server.
+ * Returns true for dev servers (open in browser), false for API/backend servers.
+ */
+function isDevServerUrl(context: string): boolean {
+  const hasDev = DEV_SERVER_RE.test(context)
+  const hasApi = API_SERVER_RE.test(context)
+  if (hasDev) return true // Dev indicators present → open browser
+  if (hasApi) return false // Only API indicators → skip browser
+  return true // Ambiguous → default to dev server
+}
 
 export function TerminalPane({
   terminalId,
@@ -78,6 +98,7 @@ export function TerminalPane({
   const onCommandSentRef = useRef(onCommandSent)
   const onLocalhostDetectedRef = useRef(onLocalhostDetected)
   const localhostFiredRef = useRef(false)
+  const seenUrlsRef = useRef<Set<string>>(new Set())
   const [currentCwd, setCurrentCwd] = useState(cwd)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
 
@@ -196,8 +217,9 @@ export function TerminalPane({
       window.electronAPI.terminal.write({ terminalId, data })
     })
 
-    // Reset localhost detection flag for new terminal sessions
+    // Reset localhost detection state for new terminal sessions
     localhostFiredRef.current = false
+    seenUrlsRef.current.clear()
 
     // Buffer recent output for localhost detection across chunk boundaries
     let localhostBuffer = ''
@@ -210,21 +232,34 @@ export function TerminalPane({
         const newCwd = extractOsc7Cwd(data)
         if (newCwd) setCurrentCwd(newCwd)
 
-        // Detect localhost URL in terminal output (only fire once per session)
+        // Detect localhost URL in terminal output.
+        // Classifies each URL as dev-server vs API/backend based on
+        // surrounding context. Only opens the browser for dev servers.
+        // Keeps listening after API URLs so a later dev server still triggers.
         if (!localhostFiredRef.current && onLocalhostDetectedRef.current) {
-          // Accumulate recent data and strip ANSI for matching
           localhostBuffer += data
-          // Keep only last 2KB to avoid unbounded growth
           if (localhostBuffer.length > 2048) {
             localhostBuffer = localhostBuffer.slice(-2048)
           }
           const clean = stripAnsi(localhostBuffer)
-          const match = LOCALHOST_RE.exec(clean)
-          if (match) {
-            localhostFiredRef.current = true
-            // Clean trailing punctuation or path artifacts
+          LOCALHOST_RE.lastIndex = 0
+          let match: RegExpExecArray | null
+          while ((match = LOCALHOST_RE.exec(clean)) !== null) {
             const url = match[0].replace(/[.,;:]+$/, '')
-            onLocalhostDetectedRef.current(url)
+            if (seenUrlsRef.current.has(url)) continue
+            seenUrlsRef.current.add(url)
+
+            // Check ~300 chars around the URL for classification hints
+            const ctxStart = Math.max(0, match.index - 300)
+            const ctxEnd = Math.min(clean.length, match.index + match[0].length + 300)
+            const context = clean.slice(ctxStart, ctxEnd)
+
+            if (isDevServerUrl(context)) {
+              localhostFiredRef.current = true
+              onLocalhostDetectedRef.current(url)
+              break
+            }
+            // API/backend URL — skip browser, keep listening for dev server
           }
         }
       } else {

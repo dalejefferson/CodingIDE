@@ -158,6 +158,10 @@ export interface NativeNotifyRequest {
   body?: string
 }
 
+// ── Browser View Modes ─────────────────────────────────────
+
+export type BrowserViewMode = 'closed' | 'split' | 'focused' | 'fullscreen' | 'pip'
+
 // ── Browser / Element Picker ────────────────────────────────
 
 /** Payload produced by the element picker when user clicks an element in the browser pane. */

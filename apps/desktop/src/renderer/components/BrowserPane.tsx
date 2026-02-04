@@ -15,12 +15,14 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { buildCssSelector, trimInnerText, formatPickerPayload } from '@shared/elementPicker'
-import type { ElementPickerPayload } from '@shared/types'
+import type { ElementPickerPayload, BrowserViewMode } from '@shared/types'
 import '../styles/BrowserPane.css'
 
 interface BrowserPaneProps {
   initialUrl?: string
   onPickElement: (formatted: string) => void
+  viewMode?: BrowserViewMode
+  onChangeViewMode?: (mode: BrowserViewMode) => void
 }
 
 /** Prefix used to identify picker messages in console output */
@@ -98,7 +100,12 @@ const PICKER_CLEANUP_SCRIPT = `
 
 const DEFAULT_URL = 'https://www.google.com'
 
-export function BrowserPane({ initialUrl, onPickElement }: BrowserPaneProps) {
+export function BrowserPane({
+  initialUrl,
+  onPickElement,
+  viewMode = 'split',
+  onChangeViewMode,
+}: BrowserPaneProps) {
   const startUrl = initialUrl || DEFAULT_URL
   const [addressBarValue, setAddressBarValue] = useState(startUrl)
   const [pickerActive, setPickerActive] = useState(false)
@@ -217,9 +224,8 @@ export function BrowserPane({ initialUrl, onPickElement }: BrowserPaneProps) {
 
         onPickElement(formatPickerPayload(payload))
 
-        // Auto-disable picker after selection
-        wv.executeJavaScript(PICKER_CLEANUP_SCRIPT).catch(() => {})
-        setPickerActive(false)
+        // Keep picker active for chaining multiple selections.
+        // User can manually toggle it off via the picker button.
       } catch {
         // Ignore malformed messages
       }
@@ -243,8 +249,8 @@ export function BrowserPane({ initialUrl, onPickElement }: BrowserPaneProps) {
   }, [onPickElement])
 
   return (
-    <div className="browser-pane">
-      <div className="browser-toolbar">
+    <div className={`browser-pane${viewMode === 'pip' ? ' browser-pane--pip' : ''}`}>
+      <div className={`browser-toolbar${viewMode === 'pip' ? ' browser-toolbar--pip' : ''}`}>
         <button
           type="button"
           className="browser-nav-btn"
@@ -333,6 +339,93 @@ export function BrowserPane({ initialUrl, onPickElement }: BrowserPaneProps) {
             <path d="M10 10l3.5 3.5" />
           </svg>
         </button>
+
+        {onChangeViewMode && viewMode !== 'pip' && (
+          <button
+            type="button"
+            className="browser-view-btn"
+            onClick={() => onChangeViewMode('pip')}
+            title="Mini window"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1" y="1" width="14" height="10" rx="1.5" />
+              <rect x="8" y="6" width="6" height="4" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+        )}
+
+        {onChangeViewMode && viewMode === 'fullscreen' ? (
+          <button
+            type="button"
+            className="browser-view-btn"
+            onClick={() => onChangeViewMode('split')}
+            title="Exit fullscreen"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M6 2v4H2M10 14v-4h4M14 2l-4 4M2 14l4-4" />
+            </svg>
+          </button>
+        ) : onChangeViewMode && viewMode !== 'pip' ? (
+          <button
+            type="button"
+            className="browser-view-btn"
+            onClick={() => onChangeViewMode('fullscreen')}
+            title="Fullscreen"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 6V2h4M14 10v4h-4M14 2l-5 5M2 14l5-5" />
+            </svg>
+          </button>
+        ) : null}
+
+        {onChangeViewMode && viewMode === 'pip' && (
+          <button
+            type="button"
+            className="browser-view-btn"
+            onClick={() => onChangeViewMode('split')}
+            title="Expand"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 6V2h4M14 10v4h-4M14 2l-5 5M2 14l5-5" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <webview
