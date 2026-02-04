@@ -9,11 +9,9 @@
  *   - Git branch polling
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { WebglAddon } from '@xterm/addon-webgl'
-import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { extractOsc7Cwd } from '@shared/osc7Parser'
 import { PaneInputBar } from './PaneInputBar'
@@ -125,7 +123,7 @@ function pickBestUrl(candidates: CollectedUrl[]): string | null {
   return null
 }
 
-export function TerminalPane({
+function TerminalPaneInner({
   terminalId,
   projectId,
   cwd,
@@ -184,17 +182,26 @@ export function TerminalPane({
     term.open(container)
     term.options.theme = getXtermTheme()
 
+    // Guard against writes after disposal
+    let disposed = false
+
     // Load WebGL renderer for crisp, GPU-accelerated text
-    try {
-      const webglAddon = new WebglAddon()
-      webglAddon.onContextLoss(() => {
-        webglAddon.dispose()
+    import('@xterm/addon-webgl')
+      .then(({ WebglAddon }) => {
+        if (disposed) return
+        try {
+          const webglAddon = new WebglAddon()
+          webglAddon.onContextLoss(() => {
+            webglAddon.dispose()
+          })
+          term.loadAddon(webglAddon)
+        } catch {
+          console.warn('WebGL addon failed to load, using canvas renderer')
+        }
       })
-      term.loadAddon(webglAddon)
-    } catch {
-      // WebGL not available — falls back to canvas renderer
-      console.warn('WebGL addon failed to load, using canvas renderer')
-    }
+      .catch(() => {
+        console.warn('WebGL addon import failed, using canvas renderer')
+      })
 
     // Route localhost URLs to the embedded browser pane, others to system browser
     const handleLinkClick = (url: string) => {
@@ -206,20 +213,26 @@ export function TerminalPane({
     }
 
     // Clickable links
-    term.loadAddon(
-      new WebLinksAddon(
-        (_event, url) => {
-          handleLinkClick(url)
-        },
-        {
-          hover: (_event, text, location) => {
-            // xterm renders underline decoration automatically via the link provider
-            void text
-            void location
-          },
-        },
-      ),
-    )
+    import('@xterm/addon-web-links')
+      .then(({ WebLinksAddon }) => {
+        if (disposed) return
+        term.loadAddon(
+          new WebLinksAddon(
+            (_event, url) => {
+              handleLinkClick(url)
+            },
+            {
+              hover: (_event, text, location) => {
+                void text
+                void location
+              },
+            },
+          ),
+        )
+      })
+      .catch(() => {
+        console.warn('WebLinksAddon import failed')
+      })
 
     // Also register via the terminal's link provider for Cmd+Click support
     term.registerLinkProvider({
@@ -261,9 +274,6 @@ export function TerminalPane({
 
     termRef.current = term
     fitRef.current = fitAddon
-
-    // Guard against writes after disposal
-    let disposed = false
 
     // Queue live data until buffer replay finishes to avoid duplicates
     let replayDone = false
@@ -552,3 +562,5 @@ export function TerminalPane({
     </div>
   )
 }
+
+export const TerminalPane = React.memo(TerminalPaneInner)

@@ -20,6 +20,18 @@ let terminalLayoutStore: TerminalLayoutStore | null = null
 let presetStore: PresetStore | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
+let lastClaudeStatus: Record<string, string> = {}
+
+/** Shallow equality check for plain objects (string/number values) */
+function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if (a[key] !== b[key]) return false
+  }
+  return true
+}
 
 /** Broadcast a project status change to all renderer windows */
 function broadcastStatusChange(id: string, status: ProjectStatus): void {
@@ -249,8 +261,24 @@ export function setupIPC(): void {
   // ── Claude Activity Polling ─────────────────────────────────
   claudeActivityInterval = setInterval(async () => {
     if (!terminalService) return
-    const activity = await terminalService.getClaudeActivity()
-    const statusMap = await terminalService.getClaudeOutputStatus()
+
+    // Early exit: skip poll if no terminals exist
+    if (!terminalService.hasAny()) {
+      // Clear stale data if terminals were destroyed
+      if (Object.keys(lastClaudeActivity).length > 0) {
+        lastClaudeActivity = {}
+        lastClaudeStatus = {}
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('claude:activity', {})
+            win.webContents.send('claude:status', {})
+          }
+        }
+      }
+      return
+    }
+
+    const { activity, status: statusMap } = await terminalService.getClaudeFullStatus()
 
     // Detect status transitions from Claude activity changes
     for (const projectId of Object.keys(activity)) {
@@ -264,7 +292,6 @@ export function setupIPC(): void {
       if ((lastClaudeActivity[projectId] ?? 0) > 0 && (activity[projectId] ?? 0) === 0) {
         projectStore!.setStatus(projectId, 'done')
         broadcastStatusChange(projectId, 'done')
-        // Notify renderer that Claude finished generating for this project
         for (const win of BrowserWindow.getAllWindows()) {
           if (!win.isDestroyed()) {
             win.webContents.send('claude:done', { projectId })
@@ -272,12 +299,26 @@ export function setupIPC(): void {
         }
       }
     }
-    lastClaudeActivity = { ...activity }
 
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('claude:activity', activity)
-        win.webContents.send('claude:status', statusMap)
+    // Only broadcast if values actually changed (avoids ~95% of unnecessary IPC)
+    const activityChanged = !shallowEqual(
+      activity as Record<string, unknown>,
+      lastClaudeActivity as Record<string, unknown>,
+    )
+    const statusChanged = !shallowEqual(
+      statusMap as Record<string, unknown>,
+      lastClaudeStatus as Record<string, unknown>,
+    )
+
+    lastClaudeActivity = { ...activity }
+    lastClaudeStatus = { ...statusMap }
+
+    if (activityChanged || statusChanged) {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          if (activityChanged) win.webContents.send('claude:activity', activity)
+          if (statusChanged) win.webContents.send('claude:status', statusMap)
+        }
       }
     }
   }, 3000)
@@ -289,6 +330,11 @@ export function disposeIPC(): void {
     claudeActivityInterval = null
   }
   terminalService?.killAll()
+  projectStore?.flush()
+  themeStore?.flush()
+  terminalLayoutStore?.flush()
+  presetStore?.flush()
+  lastClaudeStatus = {}
   router?.dispose()
   router = null
   projectStore = null

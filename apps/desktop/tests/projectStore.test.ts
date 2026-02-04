@@ -70,6 +70,7 @@ describe('ProjectStore', () => {
 
   it('persists to disk and survives reload', () => {
     store.add({ path: '/tmp/persist-test' })
+    store.flush()
 
     // Create a new store instance pointing at the same file
     const store2 = new ProjectStore(storePath)
@@ -81,6 +82,7 @@ describe('ProjectStore', () => {
   it('creates storage file on first add', () => {
     expect(existsSync(storePath)).toBe(false)
     store.add({ path: '/tmp/create-file' })
+    store.flush()
     expect(existsSync(storePath)).toBe(true)
   })
 
@@ -98,10 +100,10 @@ describe('ProjectStore', () => {
 
   it('reload forces re-read from disk', () => {
     store.add({ path: '/tmp/reload-test' })
+    store.flush()
     expect(store.getAll()).toHaveLength(1)
 
     // Externally write a different file
-
     writeFileSync(storePath, '[]', 'utf-8')
 
     // Without reload, cached data is returned

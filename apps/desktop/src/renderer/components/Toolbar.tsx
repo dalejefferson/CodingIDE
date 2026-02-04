@@ -1,3 +1,4 @@
+import React from 'react'
 import type { Project, ClaudeStatusMap } from '@shared/types'
 import { ProjectTabs } from './ProjectTabs'
 import { CommandLauncher } from './CommandLauncher'
@@ -16,7 +17,7 @@ interface ToolbarProps {
   onRunCommand: (command: string) => void
 }
 
-export function Toolbar({
+function Toolbar({
   projectName,
   projects,
   activeProjectId,
@@ -115,3 +116,6 @@ export function Toolbar({
     </div>
   )
 }
+
+const MemoizedToolbar = React.memo(Toolbar)
+export { MemoizedToolbar as Toolbar }

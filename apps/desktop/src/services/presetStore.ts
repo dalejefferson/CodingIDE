@@ -14,8 +14,22 @@ export class PresetStore {
   private filePath: string
   private data: CommandPreset[] | null = null
 
+  private dirty = false
+  private flushTimer: ReturnType<typeof setTimeout> | null = null
+
   constructor(filePath: string) {
     this.filePath = filePath
+  }
+
+  /** Flush pending writes to disk immediately. Call on app quit. */
+  flush(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+    if (!this.dirty) return
+    this.dirty = false
+    this.persist()
   }
 
   private load(): CommandPreset[] {
@@ -57,6 +71,12 @@ export class PresetStore {
 
   setAll(presets: CommandPreset[]): void {
     this.data = presets
-    this.persist()
+    this.dirty = true
+    if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null
+        this.flush()
+      }, 500)
+    }
   }
 }

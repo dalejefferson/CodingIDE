@@ -13,7 +13,7 @@
  *   - Received messages validated before use
  */
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { buildCssSelector, trimInnerText, formatPickerPayload } from '@shared/elementPicker'
 import type { ElementPickerPayload, BrowserViewMode } from '@shared/types'
 import '../styles/BrowserPane.css'
@@ -105,7 +105,7 @@ const DEFAULT_URL = 'https://www.google.com'
 /** Virtual viewport width used to render pages at desktop layout */
 const VIRTUAL_WIDTH = 1280
 
-export function BrowserPane({
+function BrowserPaneInner({
   initialUrl,
   projectId,
   onPickElement,
@@ -129,14 +129,23 @@ export function BrowserPane({
   useEffect(() => {
     const el = webviewContainerRef.current
     if (!el) return
+    let rafId = 0
     const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry) return
-      const { width, height } = entry.contentRect
-      if (width > 0 && height > 0) setContainerSize({ w: width, h: height })
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        const entry = entries[0]
+        if (!entry) return
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0) {
+          setContainerSize({ w: Math.round(width), h: Math.round(height) })
+        }
+      })
     })
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      cancelAnimationFrame(rafId)
+      observer.disconnect()
+    }
   }, [])
 
   // Compute scale and virtual height so the webview always renders at desktop width
@@ -479,3 +488,5 @@ export function BrowserPane({
     </div>
   )
 }
+
+export const BrowserPane = React.memo(BrowserPaneInner)

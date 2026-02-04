@@ -51,9 +51,17 @@ export default defineConfig({
     },
     build: {
       outDir: resolve('dist-renderer'),
+      target: 'es2022',
+      chunkSizeWarningLimit: 500,
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
+        },
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-xterm': ['@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-web-links'],
+          },
         },
       },
     },

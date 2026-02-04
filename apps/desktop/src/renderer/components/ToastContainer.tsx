@@ -10,7 +10,7 @@
  *   - claude:done — Claude finished generating in a background project
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { CommandCompletionEvent } from '@shared/types'
 import '../styles/Toast.css'
 
@@ -36,10 +36,11 @@ interface ToastContainerProps {
   onFocusProject: (projectId: string) => void
 }
 
-export function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps) {
+function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [dismissing, setDismissing] = useState<Set<string>>(new Set())
   const nextId = useRef(0)
+  const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
 
   const addToast = useCallback(
     (
@@ -74,23 +75,42 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
     }, 200)
   }, [])
 
-  // Auto-dismiss timer
+  // Auto-dismiss: set timer once per toast when it first appears
   useEffect(() => {
-    if (toasts.length === 0) return
-    const timers = toasts.map((toast) => {
+    for (const toast of toasts) {
+      if (timersRef.current.has(toast.id)) continue
       const remaining = AUTO_DISMISS_MS - (Date.now() - toast.createdAt)
       if (remaining <= 0) {
         dismissToast(toast.id)
-        return undefined
+        continue
       }
-      return setTimeout(() => dismissToast(toast.id), remaining)
-    })
-    return () => {
-      for (const t of timers) {
-        if (t !== undefined) clearTimeout(t)
+      timersRef.current.set(
+        toast.id,
+        setTimeout(() => {
+          timersRef.current.delete(toast.id)
+          dismissToast(toast.id)
+        }, remaining),
+      )
+    }
+    // Clean up timers for toasts that were removed externally
+    for (const [id, timer] of timersRef.current) {
+      if (!toasts.some((t) => t.id === id)) {
+        clearTimeout(timer)
+        timersRef.current.delete(id)
       }
     }
   }, [toasts, dismissToast])
+
+  // Clean up all timers on unmount
+  useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      for (const timer of timers.values()) {
+        clearTimeout(timer)
+      }
+      timers.clear()
+    }
+  }, [])
 
   // Listen for command completion events
   useEffect(() => {
@@ -238,6 +258,9 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
     </div>
   )
 }
+
+const MemoizedToastContainer = React.memo(ToastContainer)
+export { MemoizedToastContainer as ToastContainer }
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`

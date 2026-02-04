@@ -13,9 +13,26 @@ import type { ThemeId } from '@shared/types'
 export class ThemeStore {
   private filePath: string
   private cached: ThemeId | null = null
+  private dirty = false
+  private flushTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(filePath: string) {
     this.filePath = filePath
+  }
+
+  /** Flush pending writes to disk immediately. Call on app quit. */
+  flush(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+    if (!this.dirty) return
+    this.dirty = false
+    const dir = dirname(this.filePath)
+    mkdirSync(dir, { recursive: true })
+    const tmp = join(dir, `.theme-${Date.now()}.tmp`)
+    writeFileSync(tmp, JSON.stringify({ theme: this.cached }, null, 2), 'utf-8')
+    renameSync(tmp, this.filePath)
   }
 
   get(): ThemeId {
@@ -48,11 +65,12 @@ export class ThemeStore {
 
   set(theme: ThemeId): void {
     this.cached = theme
-    const dir = dirname(this.filePath)
-    mkdirSync(dir, { recursive: true })
-
-    const tmp = join(dir, `.theme-${Date.now()}.tmp`)
-    writeFileSync(tmp, JSON.stringify({ theme }, null, 2), 'utf-8')
-    renameSync(tmp, this.filePath)
+    this.dirty = true
+    if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null
+        this.flush()
+      }, 500)
+    }
   }
 }

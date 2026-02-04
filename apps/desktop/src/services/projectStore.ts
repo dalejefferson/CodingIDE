@@ -24,8 +24,34 @@ export class ProjectStore {
   private filePath: string
   private projects: Project[] | null = null
 
+  private dirty = false
+  private flushTimer: ReturnType<typeof setTimeout> | null = null
+  private readonly DEBOUNCE_MS = 500
+
   constructor(filePath: string) {
     this.filePath = filePath
+  }
+
+  /** Mark store as needing a write — actual disk write is debounced. */
+  private markDirty(): void {
+    this.dirty = true
+    if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null
+        this.flush()
+      }, this.DEBOUNCE_MS)
+    }
+  }
+
+  /** Flush pending writes to disk immediately. Call on app quit. */
+  flush(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+    if (!this.dirty) return
+    this.dirty = false
+    this.persist()
   }
 
   /** Lazy-load from disk on first access */
@@ -86,7 +112,7 @@ export class ProjectStore {
     }
 
     projects.push(project)
-    this.persist()
+    this.markDirty()
     return project
   }
 
@@ -97,7 +123,7 @@ export class ProjectStore {
     if (idx === -1) return false
 
     projects.splice(idx, 1)
-    this.persist()
+    this.markDirty()
     return true
   }
 
@@ -116,7 +142,7 @@ export class ProjectStore {
       project.theme = theme
     }
 
-    this.persist()
+    this.markDirty()
     return true
   }
 
@@ -128,7 +154,7 @@ export class ProjectStore {
 
     if (project.status === status) return true
     project.status = status
-    this.persist()
+    this.markDirty()
     return true
   }
 
@@ -161,7 +187,7 @@ export class ProjectStore {
       }
     }
 
-    this.persist()
+    this.markDirty()
     return true
   }
 

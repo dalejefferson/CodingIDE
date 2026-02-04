@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import type { Ref } from 'react'
 import type { Project, BrowserViewMode } from '@shared/types'
 import { TerminalGrid } from './TerminalGrid'
@@ -31,7 +31,7 @@ function extractLocalhostPort(url: string | undefined): number | null {
   return match ? parseInt(match[1], 10) : null
 }
 
-export default function ProjectWorkspace({
+function ProjectWorkspace({
   project,
   palette,
   gridRef,
@@ -590,3 +590,5 @@ export default function ProjectWorkspace({
     </div>
   )
 }
+
+export default React.memo(ProjectWorkspace)

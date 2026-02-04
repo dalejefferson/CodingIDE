@@ -14,8 +14,22 @@ export class TerminalLayoutStore {
   private filePath: string
   private layouts: Record<string, LayoutNode> | null = null
 
+  private dirty = false
+  private flushTimer: ReturnType<typeof setTimeout> | null = null
+
   constructor(filePath: string) {
     this.filePath = filePath
+  }
+
+  /** Flush pending writes to disk immediately. Call on app quit. */
+  flush(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer)
+      this.flushTimer = null
+    }
+    if (!this.dirty) return
+    this.dirty = false
+    this.persist()
   }
 
   private load(): Record<string, LayoutNode> {
@@ -66,13 +80,25 @@ export class TerminalLayoutStore {
   /** Save or update the layout for a project */
   set(projectId: string, layout: LayoutNode): void {
     this.load()[projectId] = layout
-    this.persist()
+    this.dirty = true
+    if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null
+        this.flush()
+      }, 500)
+    }
   }
 
   /** Remove the layout for a project */
   remove(projectId: string): void {
     const layouts = this.load()
     delete layouts[projectId]
-    this.persist()
+    this.dirty = true
+    if (!this.flushTimer) {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null
+        this.flush()
+      }, 500)
+    }
   }
 }

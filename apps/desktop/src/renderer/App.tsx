@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import EmptyState from './components/EmptyState'
 import ProjectWorkspace from './components/ProjectWorkspace'
-import { SettingsPage } from './components/SettingsPage'
+const SettingsPage = React.lazy(() =>
+  import('./components/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+)
 import { ToastContainer } from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
 import type { TerminalGridHandle } from './components/TerminalGrid'
@@ -20,6 +22,11 @@ export function App() {
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
   const gridRefsRef = useRef(new Map<string, React.RefObject<TerminalGridHandle>>())
+
+  const activeProjectIdRef = useRef(activeProjectId)
+  activeProjectIdRef.current = activeProjectId
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
 
   // Port registry: port → projectId. Prevents browser pane port collisions across projects.
   const portRegistryRef = useRef(new Map<number, string>())
@@ -52,6 +59,16 @@ export function App() {
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), [])
   const toggleSettings = useCallback(() => setSettingsOpen((prev) => !prev), [])
+
+  const handleSelectProject = useCallback((id: string) => {
+    setActiveProjectId(id)
+    setSettingsOpen(false)
+  }, [])
+
+  const handleGoHome = useCallback(() => {
+    setActiveProjectId(null)
+    setSettingsOpen(false)
+  }, [])
 
   const loadProjects = useCallback(async () => {
     try {
@@ -129,7 +146,10 @@ export function App() {
     return () => window.removeEventListener('terminal:run-command', handler)
   }, [activeProjectId])
 
-  const totalActiveClaudes = Object.values(claudeActivity).reduce((sum, n) => sum + n, 0)
+  const totalActiveClaudes = useMemo(
+    () => Object.values(claudeActivity).reduce((sum, n) => sum + n, 0),
+    [claudeActivity],
+  )
 
   const handleRunCommand = useCallback(
     (command: string) => {
@@ -183,10 +203,11 @@ export function App() {
 
       if (e.ctrlKey && e.key === 'Tab') {
         e.preventDefault()
-        if (projects.length < 2) return
-        const currentIdx = projects.findIndex((p) => p.id === activeProjectId)
-        const nextIdx = (currentIdx + 1) % projects.length
-        setActiveProjectId(projects[nextIdx].id)
+        const currentProjects = projectsRef.current
+        if (currentProjects.length < 2) return
+        const currentIdx = currentProjects.findIndex((p) => p.id === activeProjectIdRef.current)
+        const nextIdx = (currentIdx + 1) % currentProjects.length
+        setActiveProjectId(currentProjects[nextIdx].id)
         setSettingsOpen(false)
         return
       }
@@ -194,7 +215,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeProjectId, projects, cyclePalette, cycleFont, toggleSidebar, handleOpenFolder])
+  }, [cyclePalette, cycleFont, toggleSidebar, handleOpenFolder])
 
   const handleRemoveProject = useCallback(
     async (id: string) => {
@@ -213,22 +234,21 @@ export function App() {
   const mainContent = (
     <>
       {settingsOpen && (
-        <SettingsPage
-          palette={palette}
-          font={font}
-          onSelectPalette={setPalette}
-          onSelectFont={setFont}
-        />
+        <React.Suspense fallback={null}>
+          <SettingsPage
+            palette={palette}
+            font={font}
+            onSelectPalette={setPalette}
+            onSelectFont={setFont}
+          />
+        </React.Suspense>
       )}
       {!settingsOpen && projects.length === 0 && (
         <EmptyState
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
           projects={projects}
-          onSelectProject={(id) => {
-            setActiveProjectId(id)
-            setSettingsOpen(false)
-          }}
+          onSelectProject={handleSelectProject}
         />
       )}
       {!settingsOpen && projects.length > 0 && !activeProject && (
@@ -236,10 +256,7 @@ export function App() {
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
           projects={projects}
-          onSelectProject={(id) => {
-            setActiveProjectId(id)
-            setSettingsOpen(false)
-          }}
+          onSelectProject={handleSelectProject}
         />
       )}
       {projects.map((p) => (
@@ -269,17 +286,11 @@ export function App() {
           claudeStatus={claudeStatus}
           totalActiveClaudes={totalActiveClaudes}
           onToggle={toggleSidebar}
-          onSelectProject={(id) => {
-            setActiveProjectId(id)
-            setSettingsOpen(false)
-          }}
+          onSelectProject={handleSelectProject}
           onOpenFolder={handleOpenFolder}
           onRemoveProject={handleRemoveProject}
           onOpenSettings={toggleSettings}
-          onGoHome={() => {
-            setActiveProjectId(null)
-            setSettingsOpen(false)
-          }}
+          onGoHome={handleGoHome}
         />
       </div>
       <div className="main-pane">
@@ -290,23 +301,14 @@ export function App() {
           sidebarCollapsed={sidebarCollapsed}
           claudeStatus={claudeStatus}
           onToggleSidebar={toggleSidebar}
-          onSelectProject={(id) => {
-            setActiveProjectId(id)
-            setSettingsOpen(false)
-          }}
+          onSelectProject={handleSelectProject}
           onRemoveProject={handleRemoveProject}
           onOpenFolder={handleOpenFolder}
           onRunCommand={handleRunCommand}
         />
         <div className="main-content">{mainContent}</div>
       </div>
-      <ToastContainer
-        activeProjectId={activeProjectId}
-        onFocusProject={(projectId) => {
-          setActiveProjectId(projectId)
-          setSettingsOpen(false)
-        }}
-      />
+      <ToastContainer activeProjectId={activeProjectId} onFocusProject={handleSelectProject} />
     </div>
   )
 }

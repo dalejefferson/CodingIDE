@@ -1,3 +1,4 @@
+import React from 'react'
 import type { Project, ClaudeStatusMap } from '@shared/types'
 import '../styles/ProjectTabs.css'
 
@@ -26,7 +27,7 @@ function CloseIcon() {
   )
 }
 
-export function ProjectTabs({
+function ProjectTabs({
   projects,
   activeProjectId,
   claudeStatus,
@@ -80,3 +81,6 @@ export function ProjectTabs({
     </div>
   )
 }
+
+const MemoizedProjectTabs = React.memo(ProjectTabs)
+export { MemoizedProjectTabs as ProjectTabs }

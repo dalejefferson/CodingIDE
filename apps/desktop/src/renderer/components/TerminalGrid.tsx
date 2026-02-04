@@ -9,7 +9,14 @@
  *   - Layout persisted per project
  */
 
-import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react'
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react'
 import type { LayoutNode } from '@shared/terminalLayout'
 import {
   createLeaf,
@@ -403,7 +410,7 @@ interface LayoutRendererProps {
   onLocalhostDetected?: (url: string) => void
 }
 
-function LayoutRenderer({
+const LayoutRenderer = React.memo(function LayoutRenderer({
   node,
   activeLeafId,
   projectId,
@@ -476,10 +483,10 @@ function LayoutRenderer({
       </div>
     </div>
   )
-}
+})
 
 /** Interactive split divider with drag-to-resize */
-function SplitDivider({
+const SplitDivider = React.memo(function SplitDivider({
   branchId,
   direction,
   onRatioChange,
@@ -523,4 +530,4 @@ function SplitDivider({
   )
 
   return <div ref={dividerRef} className="terminal-split-divider" onMouseDown={handleMouseDown} />
-}
+})

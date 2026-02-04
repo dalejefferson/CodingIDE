@@ -62,6 +62,8 @@ interface TerminalInstance {
   lastOutputAt: number
   /** Timestamp (ms) of the most recent PTY resize (for SIGWINCH echo suppression) */
   lastResizedAt: number
+  /** Running total of buffer character length (avoids O(n) rescan) */
+  bufferTotalLen: number
 }
 
 export class TerminalService {
@@ -114,6 +116,7 @@ export class TerminalService {
       busySince: 0,
       lastOutputAt: 0,
       lastResizedAt: 0,
+      bufferTotalLen: 0,
     }
 
     ptyProcess.onData((data: string) => {
@@ -363,6 +366,102 @@ export class TerminalService {
   }
 
   /**
+   * Combined Claude status — single `ps` invocation returns both activity and output status.
+   * Avoids the double subprocess spawn that happened when ipc.ts called
+   * getClaudeActivity() + getClaudeOutputStatus() separately.
+   */
+  getClaudeFullStatus(): Promise<{ activity: ClaudeActivityMap; status: ClaudeStatusMap }> {
+    const pids: { pid: number; projectId: string }[] = []
+    for (const [, instance] of this.terminals) {
+      const pid = instance.pty.pid
+      if (pid > 0) {
+        pids.push({ pid, projectId: instance.projectId })
+      }
+    }
+
+    if (pids.length === 0) return Promise.resolve({ activity: {}, status: {} })
+
+    return new Promise((resolve) => {
+      execFile('ps', ['-eo', 'pid,ppid,comm'], { timeout: 3000 }, (error, stdout) => {
+        if (error) {
+          resolve({ activity: {}, status: {} })
+          return
+        }
+
+        const lines = stdout.trim().split('\n').slice(1)
+        const procs: { pid: number; ppid: number; comm: string }[] = []
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/)
+          if (parts.length >= 3) {
+            procs.push({
+              pid: parseInt(parts[0]!, 10),
+              ppid: parseInt(parts[1]!, 10),
+              comm: parts.slice(2).join(' '),
+            })
+          }
+        }
+
+        const childrenOf = new Map<number, number[]>()
+        for (const p of procs) {
+          if (!childrenOf.has(p.ppid)) childrenOf.set(p.ppid, [])
+          childrenOf.get(p.ppid)!.push(p.pid)
+        }
+
+        const commByPid = new Map<number, string>()
+        for (const p of procs) {
+          commByPid.set(p.pid, p.comm)
+        }
+
+        const activity: ClaudeActivityMap = {}
+        for (const { pid: rootPid, projectId } of pids) {
+          let count = 0
+          const stack = [rootPid]
+          while (stack.length > 0) {
+            const current = stack.pop()!
+            const children = childrenOf.get(current) ?? []
+            for (const childPid of children) {
+              const comm = commByPid.get(childPid) ?? ''
+              if (comm.toLowerCase().includes('claude')) {
+                count++
+              }
+              stack.push(childPid)
+            }
+          }
+          if (count > 0) {
+            activity[projectId] = (activity[projectId] ?? 0) + count
+          }
+        }
+
+        // Compute output status using terminal output recency
+        const now = Date.now()
+        const status: ClaudeStatusMap = {}
+        for (const [projectId, count] of Object.entries(activity)) {
+          if (count <= 0) continue
+          let hasRecentOutput = false
+          for (const [, instance] of this.terminals) {
+            if (
+              instance.projectId === projectId &&
+              instance.lastOutputAt > 0 &&
+              now - instance.lastOutputAt < CLAUDE_OUTPUT_IDLE_MS
+            ) {
+              hasRecentOutput = true
+              break
+            }
+          }
+          status[projectId] = hasRecentOutput ? 'generating' : 'waiting'
+        }
+
+        resolve({ activity, status })
+      })
+    })
+  }
+
+  /** Check if any terminals are alive */
+  hasAny(): boolean {
+    return this.terminals.size > 0
+  }
+
+  /**
    * Append raw PTY data to the scrollback buffer.
    * Stores chunks verbatim (no split/join) so escape sequences like \r
    * are preserved exactly, preventing duplicate prompt artifacts on replay.
@@ -370,11 +469,9 @@ export class TerminalService {
    */
   private appendToBuffer(instance: TerminalInstance, data: string): void {
     instance.buffer.push(data)
-
-    let totalLen = 0
-    for (const chunk of instance.buffer) totalLen += chunk.length
-    while (totalLen > MAX_SCROLLBACK_CHARS && instance.buffer.length > 1) {
-      totalLen -= instance.buffer[0]!.length
+    instance.bufferTotalLen += data.length
+    while (instance.bufferTotalLen > MAX_SCROLLBACK_CHARS && instance.buffer.length > 1) {
+      instance.bufferTotalLen -= instance.buffer[0]!.length
       instance.buffer.shift()
     }
   }

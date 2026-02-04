@@ -36,17 +36,13 @@ export function useTheme() {
     return DEFAULT_FONT
   })
 
-  // Apply palette via data-theme attribute on <html>
+  // Apply palette + font in a single DOM batch
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', palette)
     localStorage.setItem(PALETTE_KEY, palette)
-  }, [palette])
-
-  // Apply font via CSS variable override on <html>
-  useEffect(() => {
     document.documentElement.style.setProperty('--font-sans', FONT_STACKS[font])
     localStorage.setItem(FONT_KEY, font)
-  }, [font])
+  }, [palette, font])
 
   /**
    * Cycle to the next palette. Called by the T-key handler.
