@@ -202,13 +202,11 @@ export function TerminalPane({
               const cwdFromBuffer = extractOsc7Cwd(buffer)
               if (cwdFromBuffer) setCurrentCwd(cwdFromBuffer)
             }
-            // Flush any data that arrived during replay
+            // The buffer already contains everything the PTY emitted up to
+            // the getBuffer() snapshot. Any live data that arrived in the
+            // meantime is a duplicate — discard it and just start writing
+            // live from this point forward.
             replayDone = true
-            for (const data of pendingData) {
-              term.write(data)
-              const newCwd = extractOsc7Cwd(data)
-              if (newCwd) setCurrentCwd(newCwd)
-            }
             pendingData.length = 0
           })
           .catch((err: unknown) => {
