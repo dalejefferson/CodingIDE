@@ -48,8 +48,7 @@ export function App() {
     return ref
   }, [])
 
-  const { palette, setPalette, font, setFont, gradient, setGradient, cyclePalette, cycleFont } =
-    useTheme()
+  const { palette, setPalette, font, setFont, cyclePalette, cycleFont } = useTheme()
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), [])
   const toggleSettings = useCallback(() => setSettingsOpen((prev) => !prev), [])
@@ -217,10 +216,8 @@ export function App() {
         <SettingsPage
           palette={palette}
           font={font}
-          gradient={gradient}
           onSelectPalette={setPalette}
           onSelectFont={setFont}
-          onSelectGradient={setGradient}
         />
       )}
       {!settingsOpen && projects.length === 0 && (
@@ -261,7 +258,7 @@ export function App() {
   )
 
   return (
-    <div className={`app gradient-overlay${gradient === 'none' ? ' gradient-overlay--none' : ''}`}>
+    <div className="app">
       <div className={`sidebar-wrapper${sidebarCollapsed ? ' sidebar-wrapper--collapsed' : ''}`}>
         <Sidebar
           projects={projects}

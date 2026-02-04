@@ -13,8 +13,8 @@ import {
 // ── Palette definitions ─────────────────────────────────────────
 
 describe('PALETTE_IDS', () => {
-  it('contains exactly 15 palettes', () => {
-    expect(PALETTE_IDS).toHaveLength(15)
+  it('contains exactly 19 palettes', () => {
+    expect(PALETTE_IDS).toHaveLength(19)
   })
 
   it('has unique entries', () => {
@@ -38,6 +38,10 @@ describe('PALETTE_IDS', () => {
     expect(PALETTE_IDS).toContain('terra-olive')
     expect(PALETTE_IDS).toContain('linen-sky')
     expect(PALETTE_IDS).toContain('copper-tide')
+    expect(PALETTE_IDS).toContain('mint-sky')
+    expect(PALETTE_IDS).toContain('crimson-gold')
+    expect(PALETTE_IDS).toContain('amber-blaze')
+    expect(PALETTE_IDS).toContain('ocean-indigo')
   })
 })
 

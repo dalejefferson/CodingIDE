@@ -40,8 +40,15 @@ export default function ProjectWorkspace({
   registerPort,
   unregisterPort,
 }: ProjectWorkspaceProps) {
-  // Restore persisted browser state from the project, or default to closed/undefined
-  const [viewMode, setViewMode] = useState<BrowserViewMode>(project.browserViewMode ?? 'closed')
+  // Restore persisted browser state from the project, or default to closed/undefined.
+  // Only restore split/focused if there's actually a URL to show — otherwise the browser
+  // pane opens to a blank white page and wastes screen space.
+  const [viewMode, setViewMode] = useState<BrowserViewMode>(() => {
+    const persisted = project.browserViewMode
+    if (!persisted || persisted === 'closed') return 'closed'
+    if (!project.browserUrl) return 'closed'
+    return persisted
+  })
   const [browserUrl, setBrowserUrl] = useState<string | undefined>(project.browserUrl ?? undefined)
   const [splitRatio, setSplitRatio] = useState(0.35)
   const [isDragging, setIsDragging] = useState(false)
@@ -357,12 +364,15 @@ export default function ProjectWorkspace({
     [pipPos, pipSize],
   )
 
+  // Use individual flex properties instead of the `flex` shorthand to avoid
+  // the shorthand resetting `flex-basis` when applied after it in inline styles.
+  // In 'closed' mode, omit inline flex so the CSS `flex: 1` rule fills the space.
   const terminalStyle =
     viewMode === 'split'
-      ? { flexBasis: `${splitRatio * 100}%`, flex: 'none' as const }
+      ? { flexGrow: 0, flexShrink: 0, flexBasis: `${splitRatio * 100}%` }
       : viewMode === 'focused'
-        ? { flexBasis: '28px', flex: 'none' as const, overflow: 'hidden' as const }
-        : { flexBasis: '100%', flex: 'none' as const }
+        ? { flexGrow: 0, flexShrink: 0, flexBasis: '28px', overflow: 'hidden' as const }
+        : {}
 
   const browserPane = (
     <BrowserPane
@@ -472,10 +482,22 @@ export default function ProjectWorkspace({
         >
           {browserPane}
           {/* Resize handles — edges */}
-          <div className="pip-resize pip-resize--n" onMouseDown={(e) => handlePipResizeStart(e, 'n')} />
-          <div className="pip-resize pip-resize--s" onMouseDown={(e) => handlePipResizeStart(e, 's')} />
-          <div className="pip-resize pip-resize--e" onMouseDown={(e) => handlePipResizeStart(e, 'e')} />
-          <div className="pip-resize pip-resize--w" onMouseDown={(e) => handlePipResizeStart(e, 'w')} />
+          <div
+            className="pip-resize pip-resize--n"
+            onMouseDown={(e) => handlePipResizeStart(e, 'n')}
+          />
+          <div
+            className="pip-resize pip-resize--s"
+            onMouseDown={(e) => handlePipResizeStart(e, 's')}
+          />
+          <div
+            className="pip-resize pip-resize--e"
+            onMouseDown={(e) => handlePipResizeStart(e, 'e')}
+          />
+          <div
+            className="pip-resize pip-resize--w"
+            onMouseDown={(e) => handlePipResizeStart(e, 'w')}
+          />
           {/* Resize handles — corners */}
           <div
             className="pip-resize pip-resize--ne"

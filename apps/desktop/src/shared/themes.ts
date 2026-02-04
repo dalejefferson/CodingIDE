@@ -26,6 +26,10 @@ export const PALETTE_IDS = [
   'terra-olive',
   'linen-sky',
   'copper-tide',
+  'mint-sky',
+  'crimson-gold',
+  'amber-blaze',
+  'ocean-indigo',
 ] as const
 
 export type PaletteId = (typeof PALETTE_IDS)[number]
@@ -103,6 +107,10 @@ export const PALETTES: Record<PaletteId, PaletteTokens> = {
   'terra-olive': buildPalette('#FCFAEE', '#ECDFCC', '#A5B68D', '#DA8359'),
   'linen-sky': buildPalette('#F5EFE6', '#E8DFCA', '#6D94C5', '#CBDCEB'),
   'copper-tide': buildPalette('#F4E9D7', '#B8C4A9', '#6FA4AF', '#D97D55'),
+  'mint-sky': buildPalette('#e3ffe7', '#d9e7ff', '#3a7a8a', '#6bc5d6'),
+  'crimson-gold': buildPalette('#2d0e1a', '#d53369', '#cb5e3c', '#daae51'),
+  'amber-blaze': buildPalette('#fcff9e', '#f0a830', '#7a4e00', '#c67700'),
+  'ocean-indigo': buildPalette('#0a1628', '#1a7adb', '#3a47d5', '#00d2ff'),
 }
 
 function buildPalette(c1: string, c2: string, c3: string, c4: string): PaletteTokens {
@@ -157,6 +165,10 @@ export const PALETTE_LABELS: Record<PaletteId, string> = {
   'terra-olive': 'Terra Olive',
   'linen-sky': 'Linen Sky',
   'copper-tide': 'Copper Tide',
+  'mint-sky': 'Mint Sky',
+  'crimson-gold': 'Crimson Gold',
+  'amber-blaze': 'Amber Blaze',
+  'ocean-indigo': 'Ocean Indigo',
 }
 
 // ── Font Options ─────────────────────────────────────────────
@@ -210,32 +222,4 @@ export const FONT_LABELS: Record<FontId, string> = {
   'press-start-2p': 'Press Start 2P',
   caveat: 'Caveat',
   orbitron: 'Orbitron',
-}
-
-// ── Gradient Options ──────────────────────────────────────────
-
-export const GRADIENT_IDS = [
-  'none',
-  'mint-sky',
-  'crimson-gold',
-  'amber-blaze',
-  'ocean-indigo',
-] as const
-
-export type GradientId = (typeof GRADIENT_IDS)[number]
-
-export const GRADIENT_DEFS: Record<GradientId, string> = {
-  none: 'none',
-  'mint-sky': 'linear-gradient(135deg, #e3ffe7 0%, #d9e7ff 50%, #c3f0ff 100%)',
-  'crimson-gold': 'linear-gradient(135deg, #d53369 0%, #cb5e3c 50%, #daae51 100%)',
-  'amber-blaze': 'linear-gradient(135deg, #fcff9e 0%, #f0a830 50%, #c67700 100%)',
-  'ocean-indigo': 'linear-gradient(135deg, #00d2ff 0%, #1a7adb 50%, #3a47d5 100%)',
-}
-
-export const GRADIENT_LABELS: Record<GradientId, string> = {
-  none: 'None',
-  'mint-sky': 'Mint Sky',
-  'crimson-gold': 'Crimson Gold',
-  'amber-blaze': 'Amber Blaze',
-  'ocean-indigo': 'Ocean Indigo',
 }
