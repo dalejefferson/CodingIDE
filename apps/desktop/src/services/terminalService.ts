@@ -11,7 +11,7 @@
 import * as pty from 'node-pty'
 import type { IPty } from 'node-pty'
 import { execFile } from 'node:child_process'
-import type { CommandCompletionEvent, ClaudeActivityMap } from '@shared/types'
+import type { CommandCompletionEvent, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 
 const DEFAULT_COLS = 80
 const DEFAULT_ROWS = 24
@@ -47,6 +47,9 @@ export type TerminalDataCallback = (terminalId: string, data: string) => void
 export type TerminalExitCallback = (terminalId: string, exitCode: number) => void
 export type CommandDoneCallback = (event: CommandCompletionEvent) => void
 
+/** How long (ms) after last PTY output before we consider Claude "waiting" instead of "generating" */
+const CLAUDE_OUTPUT_IDLE_MS = 2500
+
 interface TerminalInstance {
   pty: IPty
   buffer: string[]
@@ -55,6 +58,8 @@ interface TerminalInstance {
   busy: boolean
   /** Timestamp (ms) when the terminal became busy */
   busySince: number
+  /** Timestamp (ms) of the most recent PTY data output */
+  lastOutputAt: number
 }
 
 export class TerminalService {
@@ -78,15 +83,15 @@ export class TerminalService {
     this.onCommandDoneCallback = callback
   }
 
-  /** Create a new PTY-backed terminal */
+  /** Create a new PTY-backed terminal. Returns true if a new PTY was spawned. */
   create(
     terminalId: string,
     projectId: string,
     cwd: string,
     cols = DEFAULT_COLS,
     rows = DEFAULT_ROWS,
-  ): void {
-    if (this.terminals.has(terminalId)) return
+  ): boolean {
+    if (this.terminals.has(terminalId)) return false
 
     const safeCols = cols >= 10 ? cols : DEFAULT_COLS
     const safeRows = rows >= 2 ? rows : DEFAULT_ROWS
@@ -105,9 +110,11 @@ export class TerminalService {
       projectId,
       busy: false,
       busySince: 0,
+      lastOutputAt: 0,
     }
 
     ptyProcess.onData((data: string) => {
+      instance.lastOutputAt = Date.now()
       this.appendToBuffer(instance, data)
       this.detectPrompt(terminalId, instance, data)
       this.onDataCallback?.(terminalId, data)
@@ -119,6 +126,7 @@ export class TerminalService {
     })
 
     this.terminals.set(terminalId, instance)
+    return true
   }
 
   /** Write data (user input) to a terminal */
@@ -266,8 +274,8 @@ export class TerminalService {
           const parts = line.trim().split(/\s+/)
           if (parts.length >= 3) {
             procs.push({
-              pid: parseInt(parts[0], 10),
-              ppid: parseInt(parts[1], 10),
+              pid: parseInt(parts[0]!, 10),
+              ppid: parseInt(parts[1]!, 10),
               comm: parts.slice(2).join(' '),
             })
           }
@@ -311,6 +319,39 @@ export class TerminalService {
   }
 
   /**
+   * Determine per-project Claude output status by combining process detection
+   * with terminal output recency. Returns 'generating' if Claude is active AND
+   * terminal output was received within CLAUDE_OUTPUT_IDLE_MS, or 'waiting' if
+   * Claude is active but the terminal has gone quiet.
+   */
+  async getClaudeOutputStatus(): Promise<ClaudeStatusMap> {
+    const activity = await this.getClaudeActivity()
+    const now = Date.now()
+    const result: ClaudeStatusMap = {}
+
+    for (const [projectId, count] of Object.entries(activity)) {
+      if (count <= 0) continue
+
+      // Check if any terminal for this project had recent output
+      let hasRecentOutput = false
+      for (const [, instance] of this.terminals) {
+        if (
+          instance.projectId === projectId &&
+          instance.lastOutputAt > 0 &&
+          now - instance.lastOutputAt < CLAUDE_OUTPUT_IDLE_MS
+        ) {
+          hasRecentOutput = true
+          break
+        }
+      }
+
+      result[projectId] = hasRecentOutput ? 'generating' : 'waiting'
+    }
+
+    return result
+  }
+
+  /**
    * Append raw PTY data to the scrollback buffer.
    * Stores chunks verbatim (no split/join) so escape sequences like \r
    * are preserved exactly, preventing duplicate prompt artifacts on replay.
@@ -322,7 +363,7 @@ export class TerminalService {
     let totalLen = 0
     for (const chunk of instance.buffer) totalLen += chunk.length
     while (totalLen > MAX_SCROLLBACK_CHARS && instance.buffer.length > 1) {
-      totalLen -= instance.buffer[0].length
+      totalLen -= instance.buffer[0]!.length
       instance.buffer.shift()
     }
   }
@@ -336,7 +377,7 @@ export function capScrollback(buffer: string[], maxChars: number): string[] {
   let totalLen = 0
   for (const chunk of buffer) totalLen += chunk.length
   while (totalLen > maxChars && buffer.length > 1) {
-    totalLen -= buffer[0].length
+    totalLen -= buffer[0]!.length
     buffer.shift()
   }
   return buffer

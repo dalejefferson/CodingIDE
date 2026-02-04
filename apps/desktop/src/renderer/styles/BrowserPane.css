@@ -63,7 +63,7 @@
 }
 
 .browser-address-bar:focus {
-  border-color: var(--color-accent-primary);
+  border-color: var(--color-accent);
 }
 
 /* ── Picker Button ───────────────────────────────────────────── */
@@ -89,12 +89,12 @@
 }
 
 .browser-picker-btn--active {
-  background: var(--color-accent-primary);
+  background: var(--color-accent);
   color: var(--color-bg-primary);
 }
 
 .browser-picker-btn--active:hover {
-  background: var(--color-accent-primary);
+  background: var(--color-accent);
   color: var(--color-bg-primary);
   opacity: 0.85;
 }

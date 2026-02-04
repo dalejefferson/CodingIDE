@@ -1,4 +1,4 @@
-import type { Project } from '@shared/types'
+import type { Project, ClaudeStatusMap } from '@shared/types'
 import { ProjectTabs } from './ProjectTabs'
 import { CommandLauncher } from './CommandLauncher'
 import '../styles/Toolbar.css'
@@ -8,6 +8,7 @@ interface ToolbarProps {
   projects: Project[]
   activeProjectId: string | null
   sidebarCollapsed: boolean
+  claudeStatus: ClaudeStatusMap
   onToggleSidebar: () => void
   onSelectProject: (id: string) => void
   onRemoveProject: (id: string) => void
@@ -20,6 +21,7 @@ export function Toolbar({
   projects,
   activeProjectId,
   sidebarCollapsed,
+  claudeStatus,
   onToggleSidebar,
   onSelectProject,
   onRemoveProject,
@@ -55,6 +57,7 @@ export function Toolbar({
           <ProjectTabs
             projects={projects}
             activeProjectId={activeProjectId}
+            claudeStatus={claudeStatus}
             onSelectProject={onSelectProject}
             onRemoveProject={onRemoveProject}
           />

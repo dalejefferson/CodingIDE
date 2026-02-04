@@ -139,6 +139,19 @@ export interface ClaudeActivityMap {
   [projectId: string]: number
 }
 
+/** Whether Claude is actively generating output or waiting for user input. */
+export type ClaudeStatus = 'generating' | 'waiting'
+
+/** Per-project Claude status: generating (output flowing) or waiting (idle, needs input). */
+export interface ClaudeStatusMap {
+  [projectId: string]: ClaudeStatus
+}
+
+/** Emitted when Claude finishes generating in a project (activity transitions >0 → 0). */
+export interface ClaudeDoneEvent {
+  projectId: string
+}
+
 // ── Command Presets ─────────────────────────────────────────
 
 export interface CommandPreset {

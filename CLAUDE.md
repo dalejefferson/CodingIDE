@@ -148,7 +148,16 @@ Configured in `tsconfig.json` and `electron.vite.config.ts`:
 - `tests/ipcValidation.test.ts` — isVoid, isString, isNonEmptyString, isThemeId, isSetProjectThemeRequest, isAllowedChannel, validatePayload, registry integrity
 - `tests/logger.test.ts` — All log levels, context, timestamps, cap, clear, immutable copies
 
-## Style
+## Communication Style
+
+When explaining concepts, changes, or decisions, always provide **two versions**:
+
+1. **Simple version** — Explain it like you're talking to a 12-year-old. Use everyday analogies, no jargon.
+2. **Technical version** — The precise, developer-level explanation with proper terminology.
+
+This helps the user learn what's actually happening under the hood.
+
+## Code Style
 
 - Prettier: no semicolons, single quotes, trailing commas, 100 char width, LF endings
 - ESLint: typescript-eslint recommended, react-hooks, react-refresh, no-explicit-any warn

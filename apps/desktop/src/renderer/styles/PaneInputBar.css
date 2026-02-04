@@ -19,7 +19,6 @@
   padding: 0 var(--space-sm);
   gap: var(--space-sm);
   user-select: none;
-  border-bottom: 1px solid var(--color-border-primary);
 }
 
 .pane-input-cwd {

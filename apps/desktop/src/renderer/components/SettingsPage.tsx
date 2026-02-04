@@ -45,7 +45,7 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
         {showPalettes && (
           <>
             <p className="settings-section-hint">
-              Choose a palette or press T to cycle through them.
+              Choose a palette or press {isMac ? '⌘' : 'Ctrl'}+T to cycle through them.
             </p>
 
             <div className="settings-palette-grid">
@@ -170,10 +170,14 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
                 <span className="settings-shortcut-label">Run command preset</span>
               </div>
               <div className="settings-shortcut-row">
+                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">T</kbd>
                 <span className="settings-shortcut-label">Cycle color palette</span>
               </div>
               <div className="settings-shortcut-row">
+                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">F</kbd>
                 <span className="settings-shortcut-label">Cycle font</span>
               </div>
@@ -196,6 +200,12 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">W</kbd>
                 <span className="settings-shortcut-label">Close terminal pane</span>
+              </div>
+              <div className="settings-shortcut-row">
+                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <span className="settings-kbd-plus">+</span>
+                <kbd className="settings-kbd">G</kbd>
+                <span className="settings-shortcut-label">Toggle browser</span>
               </div>
             </div>
           </>

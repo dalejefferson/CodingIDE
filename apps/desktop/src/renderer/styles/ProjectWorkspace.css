@@ -41,7 +41,7 @@
 }
 
 .workspace-toggle-btn--active {
-  color: var(--color-accent-primary);
+  color: var(--color-accent);
 }
 
 /* ── Panels ──────────────────────────────────────────────────── */
@@ -91,7 +91,7 @@
 
 .workspace-divider:hover,
 .workspace-divider:active {
-  background: var(--color-accent-primary);
+  background: var(--color-accent);
 }
 
 /* Transparent overlay to prevent webview from stealing mouse events during drag */
@@ -236,7 +236,7 @@
 }
 
 .workspace-change-input:focus {
-  border-color: var(--color-accent-primary);
+  border-color: var(--color-accent);
 }
 
 .workspace-change-actions {
@@ -268,13 +268,13 @@
 }
 
 .workspace-change-btn--primary {
-  background: var(--color-accent-primary);
+  background: var(--color-accent);
   color: var(--color-bg-primary);
 }
 
 .workspace-change-btn--primary:hover:not(:disabled) {
   opacity: 0.85;
-  background: var(--color-accent-primary);
+  background: var(--color-accent);
   color: var(--color-bg-primary);
 }
 
@@ -373,12 +373,12 @@
 }
 
 .workspace-change-btn--send {
-  background: var(--color-accent-primary);
+  background: var(--color-accent);
   color: var(--color-bg-primary);
+  font-weight: 600;
 }
 
 .workspace-change-btn--send:hover {
-  opacity: 0.85;
-  background: var(--color-accent-primary);
+  background: var(--color-accent-hover);
   color: var(--color-bg-primary);
 }

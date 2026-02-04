@@ -121,13 +121,14 @@ export function setupIPC(): void {
   })
 
   router.handle(IPC_CHANNELS.TERMINAL_CREATE, (_event, payload) => {
-    terminalService!.create(
+    const created = terminalService!.create(
       payload.terminalId,
       payload.projectId,
       payload.cwd,
       payload.cols,
       payload.rows,
     )
+    return { created }
   })
 
   router.handle(IPC_CHANNELS.TERMINAL_WRITE, (_event, payload) => {
@@ -223,11 +224,12 @@ export function setupIPC(): void {
   claudeActivityInterval = setInterval(async () => {
     if (!terminalService) return
     const activity = await terminalService.getClaudeActivity()
+    const statusMap = await terminalService.getClaudeOutputStatus()
 
     // Detect status transitions from Claude activity changes
     for (const projectId of Object.keys(activity)) {
       const prev = lastClaudeActivity[projectId] ?? 0
-      if (prev === 0 && activity[projectId] > 0) {
+      if (prev === 0 && (activity[projectId] ?? 0) > 0) {
         projectStore!.setStatus(projectId, 'running')
         broadcastStatusChange(projectId, 'running')
       }
@@ -236,6 +238,12 @@ export function setupIPC(): void {
       if ((lastClaudeActivity[projectId] ?? 0) > 0 && (activity[projectId] ?? 0) === 0) {
         projectStore!.setStatus(projectId, 'done')
         broadcastStatusChange(projectId, 'done')
+        // Notify renderer that Claude finished generating for this project
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('claude:done', { projectId })
+          }
+        }
       }
     }
     lastClaudeActivity = { ...activity }
@@ -243,6 +251,7 @@ export function setupIPC(): void {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send('claude:activity', activity)
+        win.webContents.send('claude:status', statusMap)
       }
     }
   }, 3000)

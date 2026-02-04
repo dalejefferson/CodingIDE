@@ -7,7 +7,7 @@ import { SettingsPage } from './components/SettingsPage'
 import { ToastContainer } from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
 import type { TerminalGridHandle } from './components/TerminalGrid'
-import type { Project, ClaudeActivityMap } from '@shared/types'
+import type { Project, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 import './styles/App.css'
 
 export function App() {
@@ -16,6 +16,7 @@ export function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
+  const [claudeStatus, setClaudeStatus] = useState<ClaudeStatusMap>({})
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
   const gridRef = useRef<TerminalGridHandle>(null)
@@ -56,6 +57,10 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    return window.electronAPI.claude.onStatus(setClaudeStatus)
+  }, [])
+
+  useEffect(() => {
     return window.electronAPI.projects.onStatusChanged((change) => {
       setProjects((prev) =>
         prev.map((p) => (p.id === change.id ? { ...p, status: change.status } : p)),
@@ -90,12 +95,11 @@ export function App() {
    * Global keyboard handler.
    *
    * Cmd/Ctrl+N — open folder dialog (new project)
+   * Cmd/Ctrl+P — open command launcher
    * Cmd/Ctrl+B — toggle sidebar
-   * Shift+Tab — cycle projects forward
-   * T key — cycle through all 9 palettes in order.
-   *
-   * T is ignored when the user is typing in an input, textarea, or
-   * contentEditable element to avoid accidental theme changes.
+   * Cmd/Ctrl+T — cycle through color palettes
+   * Cmd/Ctrl+F — cycle through fonts
+   * Ctrl+Tab   — cycle projects forward
    */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,7 +121,19 @@ export function App() {
         return
       }
 
-      if (e.shiftKey && e.key === 'Tab') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+        e.preventDefault()
+        cyclePalette()
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        cycleFont()
+        return
+      }
+
+      if (e.ctrlKey && e.key === 'Tab') {
         e.preventDefault()
         if (projects.length < 2) return
         const currentIdx = projects.findIndex((p) => p.id === activeProjectId)
@@ -125,21 +141,6 @@ export function App() {
         setActiveProjectId(projects[nextIdx].id)
         setSettingsOpen(false)
         return
-      }
-
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
-        return
-      }
-
-      if (e.key === 't' || e.key === 'T') {
-        e.preventDefault()
-        cyclePalette()
-      }
-
-      if (e.key === 'f' || e.key === 'F') {
-        e.preventDefault()
-        cycleFont()
       }
     }
 
@@ -168,7 +169,12 @@ export function App() {
       onSelectFont={setFont}
     />
   ) : activeProject ? (
-    <ProjectWorkspace project={activeProject} palette={palette} gridRef={gridRef} />
+    <ProjectWorkspace
+      key={activeProject.id}
+      project={activeProject}
+      palette={palette}
+      gridRef={gridRef}
+    />
   ) : (
     <EmptyState onOpenFolder={handleOpenFolder} />
   )
@@ -182,6 +188,7 @@ export function App() {
           collapsed={sidebarCollapsed}
           settingsOpen={settingsOpen}
           claudeActivity={claudeActivity}
+          claudeStatus={claudeStatus}
           totalActiveClaudes={totalActiveClaudes}
           onToggle={toggleSidebar}
           onSelectProject={(id) => {
@@ -199,6 +206,7 @@ export function App() {
           projects={projects}
           activeProjectId={activeProjectId}
           sidebarCollapsed={sidebarCollapsed}
+          claudeStatus={claudeStatus}
           onToggleSidebar={toggleSidebar}
           onSelectProject={(id) => {
             setActiveProjectId(id)

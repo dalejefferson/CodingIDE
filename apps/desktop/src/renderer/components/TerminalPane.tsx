@@ -68,16 +68,61 @@ const DEV_SERVER_RE =
 const API_SERVER_RE =
   /\b(?:api\s*(?:server|listening|started|running)|express|fastify|nestjs|flask|django|uvicorn|gunicorn|rails|sinatra|graphql|rest\s*api|backend\s*(?:server|listening|running|started))\b/i
 
+/** Well-known frontend dev server ports — used to break ties between ambiguous URLs. */
+const DEV_SERVER_PORTS = new Set([3000, 3001, 4200, 4321, 5173, 5174, 8000, 8080, 8888])
+
+/** Extract port number from a URL string, defaults to 80. */
+function extractPort(url: string): number {
+  const match = url.match(/:(\d+)/)
+  return match ? parseInt(match[1], 10) : 80
+}
+
+/** Collected URL entry for the detection window. */
+interface CollectedUrl {
+  url: string
+  classification: 'dev' | 'api' | 'ambiguous'
+  port: number
+}
+
 /**
- * Classify whether the terminal context around a URL indicates a dev server.
- * Returns true for dev servers (open in browser), false for API/backend servers.
+ * Classify whether the terminal context around a URL indicates a dev server,
+ * an API/backend server, or is ambiguous.
  */
-function isDevServerUrl(context: string): boolean {
+function classifyServerUrl(context: string): 'dev' | 'api' | 'ambiguous' {
   const hasDev = DEV_SERVER_RE.test(context)
   const hasApi = API_SERVER_RE.test(context)
-  if (hasDev) return true // Dev indicators present → open browser
-  if (hasApi) return false // Only API indicators → skip browser
-  return true // Ambiguous → default to dev server
+  if (hasDev) return 'dev'
+  if (hasApi) return 'api'
+  return 'ambiguous'
+}
+
+/**
+ * Pick the best URL from a set of candidates collected during the detection window.
+ *
+ * Priority:
+ * 1. Definite dev server (has dev keywords in context)
+ * 2. Ambiguous URL on a well-known dev server port
+ * 3. Ambiguous URL on any port
+ * 4. null if everything is an API server
+ */
+function pickBestUrl(candidates: CollectedUrl[]): string | null {
+  // 1. Prefer definite dev servers
+  const devUrls = candidates.filter((c) => c.classification === 'dev')
+  if (devUrls.length > 0) {
+    // Among dev URLs, prefer well-known ports
+    const onKnownPort = devUrls.find((c) => DEV_SERVER_PORTS.has(c.port))
+    return (onKnownPort ?? devUrls[0]).url
+  }
+
+  // 2. Ambiguous URLs — prefer well-known dev server ports
+  const ambiguous = candidates.filter((c) => c.classification === 'ambiguous')
+  if (ambiguous.length > 0) {
+    const onKnownPort = ambiguous.find((c) => DEV_SERVER_PORTS.has(c.port))
+    return (onKnownPort ?? ambiguous[0]).url
+  }
+
+  // 3. All are API servers — don't open browser
+  return null
 }
 
 export function TerminalPane({
@@ -195,10 +240,11 @@ export function TerminalPane({
       },
     })
 
-    // Let Shift+Tab bubble to the global handler (project cycling)
+    // Let app-level shortcuts bubble to the global handler in App.tsx
     // instead of being consumed by xterm as terminal input.
     term.attachCustomKeyEventHandler((e) => {
-      if (e.shiftKey && e.key === 'Tab') return false
+      if (e.ctrlKey && e.key === 'Tab') return false
+      if ((e.metaKey || e.ctrlKey) && ['p', 'n', 'b', 't', 'f'].includes(e.key)) return false
       return true
     })
 
@@ -224,6 +270,34 @@ export function TerminalPane({
     // Buffer recent output for localhost detection across chunk boundaries
     let localhostBuffer = ''
 
+    // Suppress localhost detection briefly after reconnecting to an existing PTY.
+    // When switching back to a project whose dev server is still running, live
+    // data arrives immediately after replay — without this grace period the
+    // browser pane would auto-re-open on every project switch.
+    let localhostSuppressedUntil = 0
+
+    // Collection window: gather all detected URLs for 3 seconds before picking the best one.
+    // If a definite dev server URL appears, fire immediately (no need to wait).
+    const collectedUrls: CollectedUrl[] = []
+    let collectionTimer: ReturnType<typeof setTimeout> | null = null
+    const COLLECTION_WINDOW_MS = 3000
+
+    /** Flush the collection window — pick the best URL and fire the callback. */
+    function flushCollectionWindow() {
+      collectionTimer = null
+      if (localhostFiredRef.current || !onLocalhostDetectedRef.current) return
+      if (collectedUrls.length === 0) return
+
+      const best = pickBestUrl(collectedUrls)
+      if (best) {
+        localhostFiredRef.current = true
+        onLocalhostDetectedRef.current(best)
+      }
+      // If best is null (all API), keep listening — a dev server might start later.
+      // Clear collected so future URLs get a fresh window.
+      collectedUrls.length = 0
+    }
+
     // Receive PTY output — queue until replay finishes, then write live
     const removeDataListener = window.electronAPI.terminal.onData((id, data) => {
       if (id !== terminalId || disposed) return
@@ -232,11 +306,14 @@ export function TerminalPane({
         const newCwd = extractOsc7Cwd(data)
         if (newCwd) setCurrentCwd(newCwd)
 
-        // Detect localhost URL in terminal output.
-        // Classifies each URL as dev-server vs API/backend based on
-        // surrounding context. Only opens the browser for dev servers.
-        // Keeps listening after API URLs so a later dev server still triggers.
-        if (!localhostFiredRef.current && onLocalhostDetectedRef.current) {
+        // Detect localhost URLs in terminal output.
+        // Uses a collection window: gathers all URLs for 3 seconds, then picks
+        // the best candidate. Definite dev server URLs fire immediately.
+        if (
+          !localhostFiredRef.current &&
+          onLocalhostDetectedRef.current &&
+          Date.now() > localhostSuppressedUntil
+        ) {
           localhostBuffer += data
           if (localhostBuffer.length > 2048) {
             localhostBuffer = localhostBuffer.slice(-2048)
@@ -254,12 +331,25 @@ export function TerminalPane({
             const ctxEnd = Math.min(clean.length, match.index + match[0].length + 300)
             const context = clean.slice(ctxStart, ctxEnd)
 
-            if (isDevServerUrl(context)) {
+            const classification = classifyServerUrl(context)
+            const port = extractPort(url)
+            collectedUrls.push({ url, classification, port })
+
+            // Definite dev server → fire immediately, no need to wait
+            if (classification === 'dev') {
+              if (collectionTimer) {
+                clearTimeout(collectionTimer)
+                collectionTimer = null
+              }
               localhostFiredRef.current = true
               onLocalhostDetectedRef.current(url)
               break
             }
-            // API/backend URL — skip browser, keep listening for dev server
+
+            // Ambiguous or API — start/reset collection window
+            if (!collectionTimer) {
+              collectionTimer = setTimeout(flushCollectionWindow, COLLECTION_WINDOW_MS)
+            }
           }
         }
       } else {
@@ -283,9 +373,25 @@ export function TerminalPane({
             cols,
             rows,
           })
-          .then(() => window.electronAPI.terminal.getBuffer(terminalId))
-          .then((buffer) => {
+          .then(({ created }) => {
             if (disposed) return
+
+            if (created) {
+              // Brand-new PTY — no buffer to replay. Flush any live data
+              // that arrived during create() (e.g. the initial shell prompt).
+              replayDone = true
+              for (const chunk of pendingData) {
+                term.write(chunk)
+              }
+              pendingData.length = 0
+              return
+            }
+
+            // Existing PTY — fetch and replay scrollback for reconnection
+            return window.electronAPI.terminal.getBuffer(terminalId)
+          })
+          .then((buffer) => {
+            if (disposed || replayDone) return
             // Replay scrollback buffer (restores output from before project switch)
             if (buffer) {
               term.write(buffer)
@@ -299,6 +405,13 @@ export function TerminalPane({
             replayDone = true
             pendingData.length = 0
 
+            // Suppress localhost detection for 2 seconds after reconnection.
+            // Live data from a still-running dev server would otherwise
+            // re-trigger the browser pane every time the user switches back.
+            localhostSuppressedUntil = Date.now() + 2000
+          })
+          .then(() => {
+            if (disposed) return
             // If a command was queued (e.g. from the play button), send it
             // after a brief delay so the shell prompt is ready.
             if (pendingCommandRef.current) {
@@ -337,6 +450,7 @@ export function TerminalPane({
 
     return () => {
       disposed = true
+      if (collectionTimer) clearTimeout(collectionTimer)
       onDataDispose.dispose()
       removeDataListener()
       cancelAnimationFrame(resizeRaf)

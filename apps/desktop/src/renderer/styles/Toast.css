@@ -60,6 +60,11 @@
   flex-shrink: 0;
 }
 
+.toast-icon--claude {
+  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.15));
+  color: var(--color-accent, #6366f1);
+}
+
 .toast-content {
   display: flex;
   flex-direction: column;

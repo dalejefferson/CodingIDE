@@ -1,5 +1,5 @@
 /**
- * Theme / Palette Definitions — 15 color palettes + 10 font options.
+ * Theme / Palette Definitions — 15 color palettes + 13 font options.
  *
  * Each palette defines 4 source colors which are used to derive a full
  * CSS variable token set. The tokens are applied via `data-theme` attribute
@@ -172,6 +172,9 @@ export const FONT_IDS = [
   'crimson-pro',
   'rubik',
   'bricolage-grotesque',
+  'press-start-2p',
+  'caveat',
+  'orbitron',
 ] as const
 
 export type FontId = (typeof FONT_IDS)[number]
@@ -188,6 +191,9 @@ export const FONT_STACKS: Record<FontId, string> = {
   'crimson-pro': "'Crimson Pro', 'Georgia', 'Times New Roman', serif",
   rubik: "'Rubik', -apple-system, BlinkMacSystemFont, sans-serif",
   'bricolage-grotesque': "'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, sans-serif",
+  'press-start-2p': "'Press Start 2P', 'Courier New', monospace",
+  caveat: "'Caveat', 'Marker Felt', cursive",
+  orbitron: "'Orbitron', 'Eurostile', sans-serif",
 }
 
 export const FONT_LABELS: Record<FontId, string> = {
@@ -201,4 +207,7 @@ export const FONT_LABELS: Record<FontId, string> = {
   'crimson-pro': 'Crimson Pro',
   rubik: 'Rubik',
   'bricolage-grotesque': 'Bricolage Grotesque',
+  'press-start-2p': 'Press Start 2P',
+  caveat: 'Caveat',
+  orbitron: 'Orbitron',
 }

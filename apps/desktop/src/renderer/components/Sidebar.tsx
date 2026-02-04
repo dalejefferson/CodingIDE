@@ -1,4 +1,4 @@
-import type { Project, ClaudeActivityMap } from '@shared/types'
+import type { Project, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 import '../styles/Sidebar.css'
 
 interface SidebarProps {
@@ -7,6 +7,7 @@ interface SidebarProps {
   collapsed: boolean
   settingsOpen: boolean
   claudeActivity: ClaudeActivityMap
+  claudeStatus: ClaudeStatusMap
   totalActiveClaudes: number
   onToggle: () => void
   onSelectProject: (id: string) => void
@@ -132,6 +133,7 @@ export function Sidebar({
   collapsed,
   settingsOpen,
   claudeActivity,
+  claudeStatus,
   totalActiveClaudes,
   onToggle,
   onSelectProject,
@@ -190,10 +192,13 @@ export function Sidebar({
         {projects.length === 0 && <span className="sidebar-empty-hint">No projects yet</span>}
         {projects.map((project) => {
           const claudeCount = claudeActivity[project.id] ?? 0
+          const cStatus = claudeStatus[project.id]
+          const isGenerating = cStatus === 'generating'
+          const isWaiting = cStatus === 'waiting' || project.status === 'done'
           return (
             <div
               key={project.id}
-              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${claudeCount > 0 ? ' sidebar-thread-item--claude' : ''}${project.status === 'done' ? ' sidebar-thread-item--done' : ''}${project.status === 'needs_input' ? ' sidebar-thread-item--needs-input' : ''}`}
+              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${isGenerating ? ' sidebar-thread-item--claude' : ''}${isWaiting ? ' sidebar-thread-item--done' : ''}${project.status === 'needs_input' ? ' sidebar-thread-item--needs-input' : ''}`}
               onClick={() => onSelectProject(project.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
@@ -210,14 +215,16 @@ export function Sidebar({
             >
               <FolderIcon open={activeProjectId === project.id} />
               <span className="sidebar-project-name">{project.name}</span>
-              {claudeCount > 0 ? (
-                <span className="sidebar-claude-badge" title={`${claudeCount} Claude active`}>
-                  {claudeCount}
-                </span>
-              ) : project.status === 'running' ? (
-                <span className="sidebar-spinner" title="Running" />
-              ) : project.status === 'done' ? (
-                <span className="sidebar-done-dot" title="Done" />
+              {isGenerating ? (
+                claudeCount > 0 ? (
+                  <span className="sidebar-claude-badge" title={`${claudeCount} Claude generating`}>
+                    {claudeCount}
+                  </span>
+                ) : (
+                  <span className="sidebar-spinner" title="Generating" />
+                )
+              ) : isWaiting ? (
+                <span className="sidebar-done-dot" title="Waiting for input" />
               ) : project.status === 'needs_input' ? (
                 <span className="sidebar-input-dot" title="Needs input" />
               ) : null}
@@ -244,7 +251,7 @@ export function Sidebar({
                   <path d="M3 3l6 6M9 3l-6 6" />
                 </svg>
               </button>
-              {claudeCount > 0 && <div className="sidebar-claude-bar" />}
+              {isGenerating && <div className="sidebar-claude-bar" />}
             </div>
           )
         })}

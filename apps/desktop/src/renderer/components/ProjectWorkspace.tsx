@@ -58,7 +58,7 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
 
   const handleSendToClaude = useCallback(() => {
     if (pickedChanges.length === 0) return
-    const lines = ['Make the following UI changes:']
+    const lines = ['Use /task to make the following UI changes in parallel:']
     pickedChanges.forEach((change, i) => {
       lines.push('')
       lines.push(`${i + 1}. ${change.element.split('\n')[0]}`)
@@ -93,6 +93,16 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
     })
   }, [])
 
+  const toggleBrowser = useCallback(() => {
+    setViewMode((prev) => {
+      if (prev === 'closed') {
+        window.dispatchEvent(new Event('sidebar:collapse'))
+        return 'split'
+      }
+      return 'closed'
+    })
+  }, [])
+
   useEffect(() => {
     const handler = (e: Event) => {
       const mode = (e as CustomEvent).detail as BrowserViewMode
@@ -118,6 +128,19 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
     window.addEventListener('keydown', handler, true)
     return () => window.removeEventListener('keydown', handler, true)
   }, [viewMode])
+
+  // Cmd+G: toggle browser open/closed
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'g') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleBrowser()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [toggleBrowser])
 
   useEffect(() => {
     if (viewMode === 'split' || viewMode === 'closed') {
@@ -173,16 +196,6 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
     },
     [pipPos],
   )
-
-  const toggleBrowser = useCallback(() => {
-    setViewMode((prev) => {
-      if (prev === 'closed') {
-        window.dispatchEvent(new Event('sidebar:collapse'))
-        return 'split'
-      }
-      return 'closed'
-    })
-  }, [])
 
   const terminalStyle =
     viewMode === 'split'

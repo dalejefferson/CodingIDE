@@ -308,6 +308,7 @@ function LayoutRenderer({
   if (node.type === 'leaf') {
     return (
       <TerminalPane
+        key={node.id}
         terminalId={node.terminalId}
         projectId={projectId}
         cwd={cwd}
@@ -334,6 +335,7 @@ function LayoutRenderer({
     >
       <div className="terminal-split-child" style={{ flexBasis: firstPercent }}>
         <LayoutRenderer
+          key={node.children[0].id}
           node={node.children[0]}
           activeLeafId={activeLeafId}
           projectId={projectId}
@@ -349,6 +351,7 @@ function LayoutRenderer({
       <SplitDivider branchId={node.id} direction={node.direction} onRatioChange={onRatioChange} />
       <div className="terminal-split-child" style={{ flexBasis: secondPercent }}>
         <LayoutRenderer
+          key={node.children[1].id}
           node={node.children[1]}
           activeLeafId={activeLeafId}
           projectId={projectId}

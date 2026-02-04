@@ -124,7 +124,7 @@ export interface IPCContracts {
   }
   [IPC_CHANNELS.TERMINAL_CREATE]: {
     request: TerminalCreateRequest
-    response: void
+    response: { created: boolean }
   }
   [IPC_CHANNELS.TERMINAL_WRITE]: {
     request: TerminalWriteRequest

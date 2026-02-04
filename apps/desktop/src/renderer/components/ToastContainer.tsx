@@ -4,6 +4,10 @@
  * Positioned fixed at bottom-right. Toasts slide in from right,
  * auto-dismiss after a timeout, and can be clicked to trigger an action.
  * Max 3 visible at once; oldest is evicted when limit is reached.
+ *
+ * Handles two event types:
+ *   - terminal:command-done — command completed in a background project
+ *   - claude:done — Claude finished generating in a background project
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -15,9 +19,13 @@ const AUTO_DISMISS_MS = 5000
 /** Commands longer than this also get a native macOS notification */
 const NATIVE_NOTIFY_THRESHOLD_MS = 3000
 
+export type ToastKind = 'command' | 'claude'
+
 export interface ToastItem {
   id: string
-  event: CommandCompletionEvent
+  kind: ToastKind
+  event: CommandCompletionEvent | null
+  projectId: string
   projectName: string
   /** Timestamp when toast was created */
   createdAt: number
@@ -33,17 +41,25 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
   const [dismissing, setDismissing] = useState<Set<string>>(new Set())
   const nextId = useRef(0)
 
-  const addToast = useCallback((event: CommandCompletionEvent, projectName: string) => {
-    const id = `toast-${++nextId.current}`
-    setToasts((prev) => {
-      const next = [...prev, { id, event, projectName, createdAt: Date.now() }]
-      // Evict oldest if over limit
-      if (next.length > MAX_VISIBLE) {
-        return next.slice(next.length - MAX_VISIBLE)
-      }
-      return next
-    })
-  }, [])
+  const addToast = useCallback(
+    (
+      kind: ToastKind,
+      projectId: string,
+      projectName: string,
+      event: CommandCompletionEvent | null,
+    ) => {
+      const id = `toast-${++nextId.current}`
+      setToasts((prev) => {
+        const next = [...prev, { id, kind, event, projectId, projectName, createdAt: Date.now() }]
+        // Evict oldest if over limit
+        if (next.length > MAX_VISIBLE) {
+          return next.slice(next.length - MAX_VISIBLE)
+        }
+        return next
+      })
+    },
+    [],
+  )
 
   const dismissToast = useCallback((id: string) => {
     setDismissing((prev) => new Set(prev).add(id))
@@ -88,7 +104,7 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
         .then((projects) => {
           const project = projects.find((p) => p.id === event.projectId)
           const name = project?.name ?? 'Terminal'
-          addToast(event, name)
+          addToast('command', event.projectId, name, event)
 
           // Fire native notification for long-running commands
           if (event.elapsedMs >= NATIVE_NOTIFY_THRESHOLD_MS) {
@@ -101,7 +117,35 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
           }
         })
         .catch(() => {
-          addToast(event, 'Terminal')
+          addToast('command', event.projectId, 'Terminal', event)
+        })
+    })
+    return unsubscribe
+  }, [activeProjectId, addToast])
+
+  // Listen for Claude done events
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.claude.onDone((event) => {
+      // Only show toast if Claude finished in a NON-ACTIVE project
+      if (event.projectId === activeProjectId) return
+
+      window.electronAPI.projects
+        .getAll()
+        .then((projects) => {
+          const project = projects.find((p) => p.id === event.projectId)
+          const name = project?.name ?? 'Project'
+          addToast('claude', event.projectId, name, null)
+
+          // Always fire native notification for Claude completions
+          window.electronAPI.notify
+            .native({
+              title: 'Claude finished',
+              body: name,
+            })
+            .catch(() => {})
+        })
+        .catch(() => {
+          addToast('claude', event.projectId, 'Project', null)
         })
     })
     return unsubscribe
@@ -109,7 +153,7 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
 
   const handleClick = useCallback(
     (toast: ToastItem) => {
-      onFocusProject(toast.event.projectId)
+      onFocusProject(toast.projectId)
       dismissToast(toast.id)
     },
     [onFocusProject, dismissToast],
@@ -130,24 +174,42 @@ export function ToastContainer({ activeProjectId, onFocusProject }: ToastContain
             if (e.key === 'Enter' || e.key === ' ') handleClick(toast)
           }}
         >
-          <div className="toast-icon">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="2 8 6 12 14 4" />
-            </svg>
+          <div className={`toast-icon${toast.kind === 'claude' ? ' toast-icon--claude' : ''}`}>
+            {toast.kind === 'claude' ? (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8 1v4M8 11v4M1 8h4M11 8h4M3 3l2.5 2.5M10.5 10.5L13 13M13 3l-2.5 2.5M5.5 10.5L3 13" />
+              </svg>
+            ) : (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="2 8 6 12 14 4" />
+              </svg>
+            )}
           </div>
           <div className="toast-content">
-            <span className="toast-title">Command completed</span>
+            <span className="toast-title">
+              {toast.kind === 'claude' ? 'Claude finished' : 'Command completed'}
+            </span>
             <span className="toast-detail">
-              {toast.projectName} &middot; {formatDuration(toast.event.elapsedMs)}
+              {toast.projectName}
+              {toast.event ? ` \u00B7 ${formatDuration(toast.event.elapsedMs)}` : ''}
             </span>
           </div>
           <button

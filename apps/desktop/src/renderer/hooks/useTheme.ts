@@ -14,8 +14,8 @@ const DEFAULT_FONT: FontId = 'system'
  * CSS mechanism: `data-theme` attribute on `<html>` for palette,
  *                `--font-sans` CSS variable override for font.
  *
- * T-key behavior:
- *   Press T to cycle through all 9 palettes in order.
+ * Cmd/Ctrl+T behavior:
+ *   Press Cmd+T (macOS) or Ctrl+T (other) to cycle through palettes.
  *   (Per-project override from the previous light/dark system is
  *   superseded by this palette system.)
  */

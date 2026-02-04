@@ -54,10 +54,11 @@
   color: var(--color-text-primary);
   font-weight: 500;
   border-bottom-color: var(--color-accent);
+  background: var(--color-bg-active);
 }
 
 .project-tab--active:hover {
-  background: transparent;
+  background: var(--color-bg-active);
 }
 
 .project-tab-name {
@@ -126,4 +127,31 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ── Generating tab (Claude actively outputting) ───────────────────────────── */
+
+.project-tab--generating {
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes tab-claude-bar-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.project-tab-claude-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 1px;
+  animation: tab-claude-bar-slide 1.5s ease-in-out infinite;
 }

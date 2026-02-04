@@ -101,8 +101,8 @@ describe('PALETTE_LABELS', () => {
 // ── Font definitions ─────────────────────────────────────────────
 
 describe('FONT_IDS', () => {
-  it('contains exactly 10 fonts', () => {
-    expect(FONT_IDS).toHaveLength(10)
+  it('contains exactly 13 fonts', () => {
+    expect(FONT_IDS).toHaveLength(13)
   })
 
   it('has unique entries', () => {

@@ -15,6 +15,8 @@ import type {
   CommandCompletionEvent,
   NativeNotifyRequest,
   ClaudeActivityMap,
+  ClaudeStatusMap,
+  ClaudeDoneEvent,
   CommandPreset,
   BrowserNavigateRequest,
 } from '../shared/types'
@@ -51,7 +53,7 @@ export interface ElectronAPI {
     setProjectTheme: (request: SetProjectThemeRequest) => Promise<void>
   }
   terminal: {
-    create: (request: TerminalCreateRequest) => Promise<void>
+    create: (request: TerminalCreateRequest) => Promise<{ created: boolean }>
     write: (request: TerminalWriteRequest) => Promise<void>
     resize: (request: TerminalResizeRequest) => Promise<void>
     kill: (terminalId: string) => Promise<void>
@@ -81,6 +83,8 @@ export interface ElectronAPI {
   }
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => () => void
+    onStatus: (callback: (status: ClaudeStatusMap) => void) => () => void
+    onDone: (callback: (event: ClaudeDoneEvent) => void) => () => void
   }
 }
 
@@ -127,7 +131,7 @@ const electronAPI: ElectronAPI = {
   },
   terminal: {
     create: (request: TerminalCreateRequest) =>
-      safeInvoke(IPC_CHANNELS.TERMINAL_CREATE, request) as Promise<void>,
+      safeInvoke(IPC_CHANNELS.TERMINAL_CREATE, request) as Promise<{ created: boolean }>,
     write: (request: TerminalWriteRequest) =>
       safeInvoke(IPC_CHANNELS.TERMINAL_WRITE, request) as Promise<void>,
     resize: (request: TerminalResizeRequest) =>
@@ -202,6 +206,24 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.on('claude:activity', listener)
       return () => {
         ipcRenderer.removeListener('claude:activity', listener)
+      }
+    },
+    onStatus: (callback: (status: ClaudeStatusMap) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, status: ClaudeStatusMap) => {
+        callback(status)
+      }
+      ipcRenderer.on('claude:status', listener)
+      return () => {
+        ipcRenderer.removeListener('claude:status', listener)
+      }
+    },
+    onDone: (callback: (event: ClaudeDoneEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, event: ClaudeDoneEvent) => {
+        callback(event)
+      }
+      ipcRenderer.on('claude:done', listener)
+      return () => {
+        ipcRenderer.removeListener('claude:done', listener)
       }
     },
   },
