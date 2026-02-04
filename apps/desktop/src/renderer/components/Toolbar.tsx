@@ -1,5 +1,6 @@
 import type { Project } from '@shared/types'
 import { ProjectTabs } from './ProjectTabs'
+import { CommandLauncher } from './CommandLauncher'
 import '../styles/Toolbar.css'
 
 interface ToolbarProps {
@@ -11,6 +12,7 @@ interface ToolbarProps {
   onSelectProject: (id: string) => void
   onRemoveProject: (id: string) => void
   onOpenFolder: () => void
+  onRunCommand: (command: string) => void
 }
 
 export function Toolbar({
@@ -22,6 +24,7 @@ export function Toolbar({
   onSelectProject,
   onRemoveProject,
   onOpenFolder,
+  onRunCommand,
 }: ToolbarProps) {
   return (
     <div className={`toolbar${sidebarCollapsed ? ' toolbar--no-sidebar' : ''}`}>
@@ -67,6 +70,9 @@ export function Toolbar({
           <span className="toolbar-diff-add">+12</span>
           <span className="toolbar-diff-del">-3</span>
         </span>
+
+        {/* Command launcher (play button) */}
+        <CommandLauncher projectId={activeProjectId} onRunCommand={onRunCommand} />
 
         {/* Open button */}
         <button type="button" className="toolbar-btn" onClick={onOpenFolder}>

@@ -25,7 +25,9 @@ interface TerminalPaneProps {
   cwd: string
   isActive: boolean
   palette: string
+  pendingCommand?: string
   onFocus: () => void
+  onCommandSent?: () => void
 }
 
 /** Palette-aware terminal theme — reads CSS custom properties from the active palette. */
@@ -48,13 +50,21 @@ export function TerminalPane({
   cwd,
   isActive,
   palette,
+  pendingCommand,
   onFocus,
+  onCommandSent,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
+  const pendingCommandRef = useRef(pendingCommand)
+  const onCommandSentRef = useRef(onCommandSent)
   const [currentCwd, setCurrentCwd] = useState(cwd)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
+
+  // Keep refs in sync
+  pendingCommandRef.current = pendingCommand
+  onCommandSentRef.current = onCommandSent
 
   // Send command from input bar to PTY
   const handleSendCommand = useCallback(
@@ -209,6 +219,18 @@ export function TerminalPane({
             // live from this point forward.
             replayDone = true
             pendingData.length = 0
+
+            // If a command was queued (e.g. from the play button), send it
+            // after a brief delay so the shell prompt is ready.
+            if (pendingCommandRef.current) {
+              const cmd = pendingCommandRef.current
+              setTimeout(() => {
+                if (!disposed) {
+                  window.electronAPI.terminal.write({ terminalId, data: cmd + '\n' })
+                  onCommandSentRef.current?.()
+                }
+              }, 300)
+            }
           })
           .catch((err: unknown) => {
             console.error('Failed to create/reconnect PTY:', err)

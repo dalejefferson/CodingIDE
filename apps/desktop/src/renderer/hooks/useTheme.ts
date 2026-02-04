@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { PALETTE_IDS, FONT_STACKS } from '@shared/themes'
+import { PALETTE_IDS, FONT_IDS, FONT_STACKS } from '@shared/themes'
 import type { PaletteId, FontId } from '@shared/themes'
 
 const PALETTE_KEY = 'codingide-palette'
@@ -59,5 +59,12 @@ export function useTheme() {
     })
   }, [])
 
-  return { palette, setPalette, font, setFont, cyclePalette }
+  const cycleFont = useCallback(() => {
+    setFont((current) => {
+      const idx = FONT_IDS.indexOf(current)
+      return FONT_IDS[(idx + 1) % FONT_IDS.length]
+    })
+  }, [])
+
+  return { palette, setPalette, font, setFont, cyclePalette, cycleFont }
 }

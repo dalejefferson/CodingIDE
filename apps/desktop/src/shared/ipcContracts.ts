@@ -26,6 +26,8 @@ import type {
   TerminalLayoutRequest,
   TerminalSetLayoutRequest,
   NativeNotifyRequest,
+  CommandPreset,
+  SetPresetsRequest,
 } from './types'
 import { THEME_IDS } from './types'
 import { isValidLayout } from './terminalLayout'
@@ -56,6 +58,8 @@ export const IPC_CHANNELS = {
   GIT_BRANCH: 'ipc:git-branch',
   NATIVE_NOTIFY: 'ipc:native-notify',
   OPEN_EXTERNAL_URL: 'ipc:open-external-url',
+  GET_PRESETS: 'ipc:get-presets',
+  SET_PRESETS: 'ipc:set-presets',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -156,6 +160,14 @@ export interface IPCContracts {
   }
   [IPC_CHANNELS.OPEN_EXTERNAL_URL]: {
     request: string
+    response: void
+  }
+  [IPC_CHANNELS.GET_PRESETS]: {
+    request: void
+    response: CommandPreset[]
+  }
+  [IPC_CHANNELS.SET_PRESETS]: {
+    request: SetPresetsRequest
     response: void
   }
 }
@@ -279,6 +291,25 @@ export function isNativeNotifyRequest(payload: unknown): boolean {
   return true
 }
 
+/** Payload must be a valid SetPresetsRequest */
+export function isSetPresetsRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  if (!Array.isArray(obj['presets'])) return false
+  return (obj['presets'] as unknown[]).every((item) => {
+    if (typeof item !== 'object' || item === null) return false
+    const p = item as Record<string, unknown>
+    return (
+      typeof p['id'] === 'string' &&
+      p['id'].length > 0 &&
+      typeof p['name'] === 'string' &&
+      p['name'].length > 0 &&
+      typeof p['command'] === 'string' &&
+      p['command'].length > 0
+    )
+  })
+}
+
 /**
  * Validator registry — exactly one validator per channel.
  * Adding a channel without a validator is a compile error.
@@ -307,6 +338,8 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.GIT_BRANCH]: isGitBranchRequest,
   [IPC_CHANNELS.NATIVE_NOTIFY]: isNativeNotifyRequest,
   [IPC_CHANNELS.OPEN_EXTERNAL_URL]: isNonEmptyString,
+  [IPC_CHANNELS.GET_PRESETS]: isVoid,
+  [IPC_CHANNELS.SET_PRESETS]: isSetPresetsRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

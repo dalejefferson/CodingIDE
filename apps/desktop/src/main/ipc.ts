@@ -6,6 +6,7 @@ import { ProjectStore } from '@services/projectStore'
 import { ThemeStore } from '@services/themeStore'
 import { TerminalService } from '@services/terminalService'
 import { TerminalLayoutStore } from '@services/terminalLayoutStore'
+import { PresetStore } from '@services/presetStore'
 import { getGitBranch } from '@services/gitService'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -14,6 +15,7 @@ let projectStore: ProjectStore | null = null
 let themeStore: ThemeStore | null = null
 let terminalService: TerminalService | null = null
 let terminalLayoutStore: TerminalLayoutStore | null = null
+let presetStore: PresetStore | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 
 export function setupIPC(): void {
@@ -24,6 +26,7 @@ export function setupIPC(): void {
   terminalLayoutStore = new TerminalLayoutStore(
     join(app.getPath('userData'), 'terminal-layouts.json'),
   )
+  presetStore = new PresetStore(join(app.getPath('userData'), 'command-presets.json'))
 
   router.handle(IPC_CHANNELS.PING, () => 'pong')
 
@@ -176,6 +179,15 @@ export function setupIPC(): void {
     return { branch: await getGitBranch(payload.cwd) }
   })
 
+  // ── Command Presets IPC ─────────────────────────────────────
+  router.handle(IPC_CHANNELS.GET_PRESETS, () => {
+    return presetStore!.getAll()
+  })
+
+  router.handle(IPC_CHANNELS.SET_PRESETS, (_event, payload) => {
+    presetStore!.setAll(payload.presets)
+  })
+
   // ── Claude Activity Polling ─────────────────────────────────
   claudeActivityInterval = setInterval(async () => {
     if (!terminalService) return
@@ -200,4 +212,5 @@ export function disposeIPC(): void {
   themeStore = null
   terminalService = null
   terminalLayoutStore = null
+  presetStore = null
 }

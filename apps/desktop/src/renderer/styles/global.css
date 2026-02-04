@@ -543,6 +543,336 @@
   --terminal-selection-fg: #f0f0f4;
 }
 
+/* ==========================================================================
+   Palette: meadow-sage
+   Source: #F1F3E0 #D2DCB6 #A1BC98 #778873
+   ========================================================================== */
+
+[data-theme='meadow-sage'] {
+  --color-bg-primary: #f1f3e0;
+  --color-bg-secondary: #e5e8d4;
+  --color-bg-tertiary: #d9dcc8;
+  --color-bg-sidebar: #d2dcb6;
+  --color-bg-hover: rgba(0, 0, 0, 0.05);
+  --color-bg-active: rgba(0, 0, 0, 0.09);
+  --color-bg-input: #f8fae8;
+  --color-bg-overlay: rgba(0, 0, 0, 0.08);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #4a4a4e;
+  --color-text-tertiary: #6e6e73;
+  --color-text-placeholder: #aeaeb2;
+  --color-text-inverse: #f5f5f7;
+
+  --color-border-primary: rgba(0, 0, 0, 0.1);
+  --color-border-secondary: rgba(0, 0, 0, 0.14);
+  --color-border-focus: #a1bc98;
+
+  --color-accent: #778873;
+  --color-accent-hover: #6a7b66;
+  --color-accent-active: #5d6e5a;
+  --color-accent-subtle: rgba(119, 136, 115, 0.15);
+
+  --color-primary: #a1bc98;
+  --color-on-primary: #1d1d1f;
+
+  --color-success: #34c759;
+  --color-success-subtle: rgba(52, 199, 89, 0.12);
+  --color-warning: #ff9f0a;
+  --color-warning-subtle: rgba(255, 159, 10, 0.12);
+  --color-error: #ff3b30;
+  --color-error-subtle: rgba(255, 59, 48, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
+  --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(119, 136, 115, 0.35);
+
+  /* --- Terminal (mossy dark) --- */
+  --terminal-bg: #1a1e18;
+  --terminal-fg: #d0d8cc;
+  --terminal-cursor-accent: #1a1e18;
+  --terminal-selection-bg: rgba(119, 136, 115, 0.25);
+  --terminal-selection-fg: #f0f0f4;
+}
+
+/* ==========================================================================
+   Palette: ember-clay
+   Source: #EA7B7B #D25353 #9E3B3B #FFEAD3
+   ========================================================================== */
+
+[data-theme='ember-clay'] {
+  --color-bg-primary: #ffead3;
+  --color-bg-secondary: #f5dec8;
+  --color-bg-tertiary: #ebd2bd;
+  --color-bg-sidebar: #f0d6c0;
+  --color-bg-hover: rgba(0, 0, 0, 0.05);
+  --color-bg-active: rgba(0, 0, 0, 0.09);
+  --color-bg-input: #fff4e8;
+  --color-bg-overlay: rgba(0, 0, 0, 0.08);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #4a4a4e;
+  --color-text-tertiary: #6e6e73;
+  --color-text-placeholder: #aeaeb2;
+  --color-text-inverse: #f5f5f7;
+
+  --color-border-primary: rgba(0, 0, 0, 0.1);
+  --color-border-secondary: rgba(0, 0, 0, 0.15);
+  --color-border-focus: #d25353;
+
+  --color-accent: #9e3b3b;
+  --color-accent-hover: #8d3434;
+  --color-accent-active: #7c2d2d;
+  --color-accent-subtle: rgba(158, 59, 59, 0.15);
+
+  --color-primary: #d25353;
+  --color-on-primary: #f5f5f7;
+
+  --color-success: #34c759;
+  --color-success-subtle: rgba(52, 199, 89, 0.12);
+  --color-warning: #ff9f0a;
+  --color-warning-subtle: rgba(255, 159, 10, 0.12);
+  --color-error: #ff3b30;
+  --color-error-subtle: rgba(255, 59, 48, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
+  --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(158, 59, 59, 0.35);
+
+  /* --- Terminal (warm clay) --- */
+  --terminal-bg: #1e1618;
+  --terminal-fg: #d8ccc8;
+  --terminal-cursor-accent: #1e1618;
+  --terminal-selection-bg: rgba(158, 59, 59, 0.25);
+  --terminal-selection-fg: #f0f0f4;
+}
+
+/* ==========================================================================
+   Palette: blush-petal
+   Source: #FCF8F8 #FBEFEF #F9DFDF #F5AFAF
+   ========================================================================== */
+
+[data-theme='blush-petal'] {
+  --color-bg-primary: #fcf8f8;
+  --color-bg-secondary: #f8f0f0;
+  --color-bg-tertiary: #f4e8e8;
+  --color-bg-sidebar: #fbefef;
+  --color-bg-hover: rgba(0, 0, 0, 0.04);
+  --color-bg-active: rgba(0, 0, 0, 0.07);
+  --color-bg-input: #ffffff;
+  --color-bg-overlay: rgba(0, 0, 0, 0.06);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #4a4a4e;
+  --color-text-tertiary: #6e6e73;
+  --color-text-placeholder: #aeaeb2;
+  --color-text-inverse: #f5f5f7;
+
+  --color-border-primary: rgba(0, 0, 0, 0.08);
+  --color-border-secondary: rgba(0, 0, 0, 0.12);
+  --color-border-focus: #f5afaf;
+
+  --color-accent: #f5afaf;
+  --color-accent-hover: #e89e9e;
+  --color-accent-active: #db8d8d;
+  --color-accent-subtle: rgba(245, 175, 175, 0.2);
+
+  --color-primary: #f5afaf;
+  --color-on-primary: #1d1d1f;
+
+  --color-success: #34c759;
+  --color-success-subtle: rgba(52, 199, 89, 0.12);
+  --color-warning: #ff9f0a;
+  --color-warning-subtle: rgba(255, 159, 10, 0.12);
+  --color-error: #ff3b30;
+  --color-error-subtle: rgba(255, 59, 48, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.04);
+  --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-focus: 0 0 0 3px rgba(245, 175, 175, 0.35);
+
+  /* --- Terminal (soft rose dark) --- */
+  --terminal-bg: #1e1818;
+  --terminal-fg: #d8d0d0;
+  --terminal-cursor-accent: #1e1818;
+  --terminal-selection-bg: rgba(245, 175, 175, 0.22);
+  --terminal-selection-fg: #f0f0f4;
+}
+
+/* ==========================================================================
+   Palette: terra-olive
+   Source: #A5B68D #ECDFCC #FCFAEE #DA8359
+   ========================================================================== */
+
+[data-theme='terra-olive'] {
+  --color-bg-primary: #fcfaee;
+  --color-bg-secondary: #f2efe2;
+  --color-bg-tertiary: #e8e4d6;
+  --color-bg-sidebar: #ecdfcc;
+  --color-bg-hover: rgba(0, 0, 0, 0.05);
+  --color-bg-active: rgba(0, 0, 0, 0.09);
+  --color-bg-input: #fffef4;
+  --color-bg-overlay: rgba(0, 0, 0, 0.08);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #4a4a4e;
+  --color-text-tertiary: #6e6e73;
+  --color-text-placeholder: #aeaeb2;
+  --color-text-inverse: #f5f5f7;
+
+  --color-border-primary: rgba(0, 0, 0, 0.1);
+  --color-border-secondary: rgba(0, 0, 0, 0.14);
+  --color-border-focus: #a5b68d;
+
+  --color-accent: #da8359;
+  --color-accent-hover: #c87548;
+  --color-accent-active: #b56738;
+  --color-accent-subtle: rgba(218, 131, 89, 0.15);
+
+  --color-primary: #a5b68d;
+  --color-on-primary: #1d1d1f;
+
+  --color-success: #34c759;
+  --color-success-subtle: rgba(52, 199, 89, 0.12);
+  --color-warning: #ff9f0a;
+  --color-warning-subtle: rgba(255, 159, 10, 0.12);
+  --color-error: #ff3b30;
+  --color-error-subtle: rgba(255, 59, 48, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
+  --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(218, 131, 89, 0.35);
+
+  /* --- Terminal (warm earth) --- */
+  --terminal-bg: #1c1a16;
+  --terminal-fg: #d4d0c8;
+  --terminal-cursor-accent: #1c1a16;
+  --terminal-selection-bg: rgba(218, 131, 89, 0.22);
+  --terminal-selection-fg: #f0f0f4;
+}
+
+/* ==========================================================================
+   Palette: linen-sky
+   Source: #F5EFE6 #E8DFCA #6D94C5 #CBDCEB
+   ========================================================================== */
+
+[data-theme='linen-sky'] {
+  --color-bg-primary: #f5efe6;
+  --color-bg-secondary: #ece5db;
+  --color-bg-tertiary: #e2dbd0;
+  --color-bg-sidebar: #e8dfca;
+  --color-bg-hover: rgba(0, 0, 0, 0.05);
+  --color-bg-active: rgba(0, 0, 0, 0.09);
+  --color-bg-input: #faf6ee;
+  --color-bg-overlay: rgba(0, 0, 0, 0.08);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #4a4a4e;
+  --color-text-tertiary: #6e6e73;
+  --color-text-placeholder: #aeaeb2;
+  --color-text-inverse: #f5f5f7;
+
+  --color-border-primary: rgba(0, 0, 0, 0.1);
+  --color-border-secondary: rgba(0, 0, 0, 0.14);
+  --color-border-focus: #6d94c5;
+
+  --color-accent: #6d94c5;
+  --color-accent-hover: #5e85b6;
+  --color-accent-active: #5076a7;
+  --color-accent-subtle: rgba(109, 148, 197, 0.15);
+
+  --color-primary: #6d94c5;
+  --color-on-primary: #1d1d1f;
+
+  --color-success: #34c759;
+  --color-success-subtle: rgba(52, 199, 89, 0.12);
+  --color-warning: #ff9f0a;
+  --color-warning-subtle: rgba(255, 159, 10, 0.12);
+  --color-error: #ff3b30;
+  --color-error-subtle: rgba(255, 59, 48, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
+  --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(109, 148, 197, 0.35);
+
+  /* --- Terminal (slate blue) --- */
+  --terminal-bg: #181c22;
+  --terminal-fg: #ccd4dc;
+  --terminal-cursor-accent: #181c22;
+  --terminal-selection-bg: rgba(109, 148, 197, 0.25);
+  --terminal-selection-fg: #f0f0f4;
+}
+
+/* ==========================================================================
+   Palette: copper-tide
+   Source: #D97D55 #F4E9D7 #B8C4A9 #6FA4AF
+   ========================================================================== */
+
+[data-theme='copper-tide'] {
+  --color-bg-primary: #f4e9d7;
+  --color-bg-secondary: #e8ddcb;
+  --color-bg-tertiary: #dcd1c0;
+  --color-bg-sidebar: #d8ccbc;
+  --color-bg-hover: rgba(0, 0, 0, 0.05);
+  --color-bg-active: rgba(0, 0, 0, 0.09);
+  --color-bg-input: #faf2e2;
+  --color-bg-overlay: rgba(0, 0, 0, 0.08);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #4a4a4e;
+  --color-text-tertiary: #6e6e73;
+  --color-text-placeholder: #aeaeb2;
+  --color-text-inverse: #f5f5f7;
+
+  --color-border-primary: rgba(0, 0, 0, 0.1);
+  --color-border-secondary: rgba(0, 0, 0, 0.14);
+  --color-border-focus: #6fa4af;
+
+  --color-accent: #d97d55;
+  --color-accent-hover: #c86f48;
+  --color-accent-active: #b6613c;
+  --color-accent-subtle: rgba(217, 125, 85, 0.15);
+
+  --color-primary: #6fa4af;
+  --color-on-primary: #1d1d1f;
+
+  --color-success: #34c759;
+  --color-success-subtle: rgba(52, 199, 89, 0.12);
+  --color-warning: #ff9f0a;
+  --color-warning-subtle: rgba(255, 159, 10, 0.12);
+  --color-error: #ff3b30;
+  --color-error-subtle: rgba(255, 59, 48, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
+  --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(217, 125, 85, 0.35);
+
+  /* --- Terminal (warm teal) --- */
+  --terminal-bg: #1a1e20;
+  --terminal-fg: #ccd4d0;
+  --terminal-cursor-accent: #1a1e20;
+  --terminal-selection-bg: rgba(217, 125, 85, 0.22);
+  --terminal-selection-fg: #f0f0f4;
+}
+
 /* --------------------------------------------------------------------------
    Reset
    -------------------------------------------------------------------------- */

@@ -13,6 +13,7 @@ import type {
   CommandCompletionEvent,
   NativeNotifyRequest,
   ClaudeActivityMap,
+  CommandPreset,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -65,6 +66,10 @@ export interface ElectronAPI {
   }
   shell: {
     openExternal: (url: string) => Promise<void>
+  }
+  presets: {
+    getAll: () => Promise<CommandPreset[]>
+    setAll: (presets: CommandPreset[]) => Promise<void>
   }
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => () => void
@@ -160,6 +165,11 @@ const electronAPI: ElectronAPI = {
   },
   shell: {
     openExternal: (url: string) => safeInvoke(IPC_CHANNELS.OPEN_EXTERNAL_URL, url) as Promise<void>,
+  },
+  presets: {
+    getAll: () => safeInvoke(IPC_CHANNELS.GET_PRESETS) as Promise<CommandPreset[]>,
+    setAll: (presets: CommandPreset[]) =>
+      safeInvoke(IPC_CHANNELS.SET_PRESETS, { presets }) as Promise<void>,
   },
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => {

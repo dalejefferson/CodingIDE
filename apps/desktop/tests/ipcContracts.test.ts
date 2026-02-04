@@ -21,6 +21,8 @@ describe('IPC Contracts', () => {
     expect(IPC_CHANNELS.GET_GLOBAL_THEME).toBe('ipc:get-global-theme')
     expect(IPC_CHANNELS.SET_GLOBAL_THEME).toBe('ipc:set-global-theme')
     expect(IPC_CHANNELS.SET_PROJECT_THEME).toBe('ipc:set-project-theme')
+    expect(IPC_CHANNELS.GET_PRESETS).toBe('ipc:get-presets')
+    expect(IPC_CHANNELS.SET_PRESETS).toBe('ipc:set-presets')
   })
 
   it('has unique channel identifiers', () => {

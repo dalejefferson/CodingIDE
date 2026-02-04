@@ -120,6 +120,18 @@ export interface ClaudeActivityMap {
   [projectId: string]: number
 }
 
+// ── Command Presets ─────────────────────────────────────────
+
+export interface CommandPreset {
+  id: string
+  name: string
+  command: string
+}
+
+export interface SetPresetsRequest {
+  presets: CommandPreset[]
+}
+
 // ── Native Notifications ────────────────────────────────────
 
 export interface NativeNotifyRequest {

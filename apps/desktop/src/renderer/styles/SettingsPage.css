@@ -33,6 +33,40 @@
   margin-bottom: var(--space-lg);
 }
 
+/* ── Section toggle ─────────────────────────────────────────────────────── */
+
+.settings-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.settings-section-toggle:hover .settings-section-title {
+  color: var(--color-accent);
+}
+
+.settings-section-toggle .settings-section-title {
+  margin-bottom: 0;
+}
+
+.settings-toggle-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform var(--transition-fast);
+}
+
+.settings-toggle-chevron--open {
+  transform: rotate(90deg);
+}
+
 /* ── Palette grid ────────────────────────────────────────────────────────── */
 
 .settings-palette-grid {

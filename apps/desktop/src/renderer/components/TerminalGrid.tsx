@@ -9,7 +9,7 @@
  *   - Layout persisted per project
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react'
 import type { LayoutNode } from '@shared/terminalLayout'
 import {
   createLeaf,
@@ -24,15 +24,23 @@ import {
 import { TerminalPane } from './TerminalPane'
 import '../styles/TerminalGrid.css'
 
+export interface TerminalGridHandle {
+  runCommand: (command: string) => void
+}
+
 interface TerminalGridProps {
   projectId: string
   cwd: string
   palette: string
 }
 
-export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
+export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(function TerminalGrid(
+  { projectId, cwd, palette },
+  ref,
+) {
   const [layout, setLayout] = useState<LayoutNode | null>(null)
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null)
+  const [pendingCommands, setPendingCommands] = useState<Record<string, string>>({})
   const layoutRef = useRef<LayoutNode | null>(null)
   const activeLeafRef = useRef<string | null>(null)
 
@@ -41,6 +49,52 @@ export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
     layoutRef.current = layout
     activeLeafRef.current = activeLeafId
   }, [layout, activeLeafId])
+
+  // Expose imperative API for running commands in a new pane
+  useImperativeHandle(
+    ref,
+    () => ({
+      runCommand(command: string) {
+        const current = layoutRef.current
+        if (!current) return
+
+        const targetId = activeLeafRef.current ?? getAllLeafIds(current)[0]
+        if (!targetId) return
+        const newLayout = splitRight(current, targetId)
+        if (newLayout === current) {
+          // Split failed — single leaf, split it
+          const firstId = getAllLeafIds(current)[0]
+          if (!firstId) return
+          const freshLayout = splitRight(current, firstId)
+          const newIds = getAllLeafIds(freshLayout)
+          const oldIds = getAllLeafIds(current)
+          const newId = newIds.find((id) => !oldIds.includes(id))
+          if (newId) {
+            const newLeaf = findLeaf(freshLayout, newId)
+            if (newLeaf) {
+              setPendingCommands((prev) => ({ ...prev, [newLeaf.terminalId]: command }))
+            }
+            setActiveLeafId(newId)
+          }
+          setLayout(freshLayout)
+          return
+        }
+
+        const newLeafIds = getAllLeafIds(newLayout)
+        const oldLeafIds = getAllLeafIds(current)
+        const newId = newLeafIds.find((id) => !oldLeafIds.includes(id))
+        if (newId) {
+          const newLeaf = findLeaf(newLayout, newId)
+          if (newLeaf) {
+            setPendingCommands((prev) => ({ ...prev, [newLeaf.terminalId]: command }))
+          }
+          setActiveLeafId(newId)
+        }
+        setLayout(newLayout)
+      },
+    }),
+    [],
+  )
 
   // Load persisted layout or create initial leaf
   useEffect(() => {
@@ -196,6 +250,15 @@ export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSplitRight, handleSplitDown, handleClosePane])
 
+  const handleCommandSent = useCallback((terminalId: string) => {
+    setPendingCommands((prev) => {
+      if (!(terminalId in prev)) return prev
+      const next = { ...prev }
+      delete next[terminalId]
+      return next
+    })
+  }, [])
+
   if (!layout) return null
 
   return (
@@ -206,12 +269,14 @@ export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
         projectId={projectId}
         cwd={cwd}
         palette={palette}
+        pendingCommands={pendingCommands}
         onFocusLeaf={setActiveLeafId}
         onRatioChange={handleRatioChange}
+        onCommandSent={handleCommandSent}
       />
     </div>
   )
-}
+})
 
 interface LayoutRendererProps {
   node: LayoutNode
@@ -219,8 +284,10 @@ interface LayoutRendererProps {
   projectId: string
   cwd: string
   palette: string
+  pendingCommands: Record<string, string>
   onFocusLeaf: (id: string) => void
   onRatioChange: (branchId: string, newRatio: number) => void
+  onCommandSent: (terminalId: string) => void
 }
 
 function LayoutRenderer({
@@ -229,8 +296,10 @@ function LayoutRenderer({
   projectId,
   cwd,
   palette,
+  pendingCommands,
   onFocusLeaf,
   onRatioChange,
+  onCommandSent,
 }: LayoutRendererProps) {
   if (node.type === 'leaf') {
     return (
@@ -240,7 +309,9 @@ function LayoutRenderer({
         cwd={cwd}
         isActive={node.id === activeLeafId}
         palette={palette}
+        pendingCommand={pendingCommands[node.terminalId]}
         onFocus={() => onFocusLeaf(node.id)}
+        onCommandSent={() => onCommandSent(node.terminalId)}
       />
     )
   }
@@ -263,8 +334,10 @@ function LayoutRenderer({
           projectId={projectId}
           cwd={cwd}
           palette={palette}
+          pendingCommands={pendingCommands}
           onFocusLeaf={onFocusLeaf}
           onRatioChange={onRatioChange}
+          onCommandSent={onCommandSent}
         />
       </div>
       <SplitDivider branchId={node.id} direction={node.direction} onRatioChange={onRatioChange} />
@@ -275,8 +348,10 @@ function LayoutRenderer({
           projectId={projectId}
           cwd={cwd}
           palette={palette}
+          pendingCommands={pendingCommands}
           onFocusLeaf={onFocusLeaf}
           onRatioChange={onRatioChange}
+          onCommandSent={onCommandSent}
         />
       </div>
     </div>

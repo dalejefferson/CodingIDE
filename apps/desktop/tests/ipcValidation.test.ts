@@ -7,6 +7,7 @@ import {
   isThemeId,
   isSetProjectThemeRequest,
   isNativeNotifyRequest,
+  isSetPresetsRequest,
   isAllowedChannel,
   validatePayload,
   IPC_CHANNELS,
@@ -220,6 +221,57 @@ describe('isNativeNotifyRequest', () => {
   })
 })
 
+// ── SetPresetsRequest Validator ──────────────────────────────
+
+describe('isSetPresetsRequest', () => {
+  it('accepts valid request with presets', () => {
+    expect(
+      isSetPresetsRequest({
+        presets: [{ id: 'p1', name: 'Dev', command: 'npm run dev' }],
+      }),
+    ).toBe(true)
+  })
+
+  it('accepts valid request with empty presets array', () => {
+    expect(isSetPresetsRequest({ presets: [] })).toBe(true)
+  })
+
+  it('accepts request with multiple presets', () => {
+    expect(
+      isSetPresetsRequest({
+        presets: [
+          { id: 'p1', name: 'Dev', command: 'npm run dev' },
+          { id: 'p2', name: 'Build', command: 'npm run build' },
+        ],
+      }),
+    ).toBe(true)
+  })
+
+  it('rejects missing presets', () => {
+    expect(isSetPresetsRequest({})).toBe(false)
+  })
+
+  it('rejects non-array presets', () => {
+    expect(isSetPresetsRequest({ presets: 'not-array' })).toBe(false)
+    expect(isSetPresetsRequest({ presets: {} })).toBe(false)
+  })
+
+  it('rejects presets with invalid items', () => {
+    expect(isSetPresetsRequest({ presets: [{ id: '', name: 'x', command: 'x' }] })).toBe(false)
+    expect(isSetPresetsRequest({ presets: [{ id: 'x', name: '', command: 'x' }] })).toBe(false)
+    expect(isSetPresetsRequest({ presets: [{ id: 'x', name: 'x', command: '' }] })).toBe(false)
+    expect(isSetPresetsRequest({ presets: [null] })).toBe(false)
+    expect(isSetPresetsRequest({ presets: ['string'] })).toBe(false)
+  })
+
+  it('rejects non-objects', () => {
+    expect(isSetPresetsRequest(undefined)).toBe(false)
+    expect(isSetPresetsRequest(null)).toBe(false)
+    expect(isSetPresetsRequest('string')).toBe(false)
+    expect(isSetPresetsRequest(42)).toBe(false)
+  })
+})
+
 // ── Channel Allowlist ──────────────────────────────────────────
 
 describe('isAllowedChannel', () => {
@@ -264,6 +316,7 @@ describe('validatePayload', () => {
       IPC_CHANNELS.OPEN_FOLDER_DIALOG,
       IPC_CHANNELS.GET_PROJECTS,
       IPC_CHANNELS.GET_GLOBAL_THEME,
+      IPC_CHANNELS.GET_PRESETS,
     ] as const
     for (const channel of voidChannels) {
       expect(validatePayload(channel, undefined)).toBe(true)
@@ -315,6 +368,23 @@ describe('validatePayload', () => {
     expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, { title: '' })).toBe(false)
     expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, undefined)).toBe(false)
     expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, 'string')).toBe(false)
+  })
+
+  it('validates GET_PRESETS payload', () => {
+    expect(validatePayload(IPC_CHANNELS.GET_PRESETS, undefined)).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.GET_PRESETS, { projectId: 'abc' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.GET_PRESETS, 'string')).toBe(false)
+  })
+
+  it('validates SET_PRESETS payload', () => {
+    expect(
+      validatePayload(IPC_CHANNELS.SET_PRESETS, {
+        presets: [{ id: 'p1', name: 'Dev', command: 'npm run dev' }],
+      }),
+    ).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_PRESETS, { presets: [] })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.SET_PRESETS, {})).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.SET_PRESETS, undefined)).toBe(false)
   })
 })
 

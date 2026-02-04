@@ -1,5 +1,5 @@
 /**
- * Theme / Palette Definitions — 9 color palettes + 5 font options.
+ * Theme / Palette Definitions — 15 color palettes + 10 font options.
  *
  * Each palette defines 4 source colors which are used to derive a full
  * CSS variable token set. The tokens are applied via `data-theme` attribute
@@ -20,6 +20,12 @@ export const PALETTE_IDS = [
   'cream-amber',
   'pastel-garden',
   'midnight-lavender',
+  'meadow-sage',
+  'ember-clay',
+  'blush-petal',
+  'terra-olive',
+  'linen-sky',
+  'copper-tide',
 ] as const
 
 export type PaletteId = (typeof PALETTE_IDS)[number]
@@ -91,6 +97,12 @@ export const PALETTES: Record<PaletteId, PaletteTokens> = {
   'cream-amber': buildPalette('#F5F7F8', '#F4CE14', '#495E57', '#45474B'),
   'pastel-garden': buildPalette('#F0FFDF', '#A8DF8E', '#FFD8DF', '#FFAAB8'),
   'midnight-lavender': buildPalette('#17153B', '#2E236C', '#433D8B', '#C8ACD6'),
+  'meadow-sage': buildPalette('#F1F3E0', '#D2DCB6', '#A1BC98', '#778873'),
+  'ember-clay': buildPalette('#FFEAD3', '#EA7B7B', '#D25353', '#9E3B3B'),
+  'blush-petal': buildPalette('#FCF8F8', '#FBEFEF', '#F9DFDF', '#F5AFAF'),
+  'terra-olive': buildPalette('#FCFAEE', '#ECDFCC', '#A5B68D', '#DA8359'),
+  'linen-sky': buildPalette('#F5EFE6', '#E8DFCA', '#6D94C5', '#CBDCEB'),
+  'copper-tide': buildPalette('#F4E9D7', '#B8C4A9', '#6FA4AF', '#D97D55'),
 }
 
 function buildPalette(c1: string, c2: string, c3: string, c4: string): PaletteTokens {
@@ -139,6 +151,12 @@ export const PALETTE_LABELS: Record<PaletteId, string> = {
   'cream-amber': 'Cream Amber',
   'pastel-garden': 'Pastel Garden',
   'midnight-lavender': 'Midnight Lavender',
+  'meadow-sage': 'Meadow Sage',
+  'ember-clay': 'Ember Clay',
+  'blush-petal': 'Blush Petal',
+  'terra-olive': 'Terra Olive',
+  'linen-sky': 'Linen Sky',
+  'copper-tide': 'Copper Tide',
 }
 
 // ── Font Options ─────────────────────────────────────────────
@@ -149,6 +167,11 @@ export const FONT_IDS = [
   'jetbrains-mono',
   'ibm-plex-sans',
   'source-sans',
+  'space-grotesk',
+  'syne',
+  'crimson-pro',
+  'rubik',
+  'bricolage-grotesque',
 ] as const
 
 export type FontId = (typeof FONT_IDS)[number]
@@ -160,6 +183,11 @@ export const FONT_STACKS: Record<FontId, string> = {
   'jetbrains-mono': "'JetBrains Mono', 'SF Mono', 'Menlo', monospace",
   'ibm-plex-sans': "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif",
   'source-sans': "'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif",
+  'space-grotesk': "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
+  syne: "'Syne', -apple-system, BlinkMacSystemFont, sans-serif",
+  'crimson-pro': "'Crimson Pro', 'Georgia', 'Times New Roman', serif",
+  rubik: "'Rubik', -apple-system, BlinkMacSystemFont, sans-serif",
+  'bricolage-grotesque': "'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, sans-serif",
 }
 
 export const FONT_LABELS: Record<FontId, string> = {
@@ -168,4 +196,9 @@ export const FONT_LABELS: Record<FontId, string> = {
   'jetbrains-mono': 'JetBrains Mono',
   'ibm-plex-sans': 'IBM Plex Sans',
   'source-sans': 'Source Sans 3',
+  'space-grotesk': 'Space Grotesk',
+  syne: 'Syne',
+  'crimson-pro': 'Crimson Pro',
+  rubik: 'Rubik',
+  'bricolage-grotesque': 'Bricolage Grotesque',
 }

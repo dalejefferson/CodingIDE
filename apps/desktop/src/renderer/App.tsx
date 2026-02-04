@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import EmptyState from './components/EmptyState'
@@ -6,6 +6,7 @@ import ProjectWorkspace from './components/ProjectWorkspace'
 import { SettingsPage } from './components/SettingsPage'
 import { ToastContainer } from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
+import type { TerminalGridHandle } from './components/TerminalGrid'
 import type { Project, ClaudeActivityMap } from '@shared/types'
 import './styles/App.css'
 
@@ -17,8 +18,9 @@ export function App() {
   const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
+  const gridRef = useRef<TerminalGridHandle>(null)
 
-  const { palette, setPalette, font, setFont, cyclePalette } = useTheme()
+  const { palette, setPalette, font, setFont, cyclePalette, cycleFont } = useTheme()
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), [])
   const toggleSettings = useCallback(() => setSettingsOpen((prev) => !prev), [])
@@ -55,6 +57,10 @@ export function App() {
 
   const totalActiveClaudes = Object.values(claudeActivity).reduce((sum, n) => sum + n, 0)
 
+  const handleRunCommand = useCallback((command: string) => {
+    gridRef.current?.runCommand(command)
+  }, [])
+
   /**
    * Global keyboard handler.
    *
@@ -71,6 +77,12 @@ export function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault()
         handleOpenFolder()
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+        e.preventDefault()
+        window.dispatchEvent(new Event('command-launcher:play'))
         return
       }
 
@@ -99,11 +111,16 @@ export function App() {
         e.preventDefault()
         cyclePalette()
       }
+
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        cycleFont()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeProjectId, projects, cyclePalette, toggleSidebar, handleOpenFolder])
+  }, [activeProjectId, projects, cyclePalette, cycleFont, toggleSidebar, handleOpenFolder])
 
   const handleRemoveProject = useCallback(
     async (id: string) => {
@@ -126,7 +143,7 @@ export function App() {
       onSelectFont={setFont}
     />
   ) : activeProject ? (
-    <ProjectWorkspace project={activeProject} palette={palette} />
+    <ProjectWorkspace project={activeProject} palette={palette} gridRef={gridRef} />
   ) : (
     <EmptyState onOpenFolder={handleOpenFolder} />
   )
@@ -164,6 +181,7 @@ export function App() {
           }}
           onRemoveProject={handleRemoveProject}
           onOpenFolder={handleOpenFolder}
+          onRunCommand={handleRunCommand}
         />
         <div className="main-content">{mainContent}</div>
       </div>

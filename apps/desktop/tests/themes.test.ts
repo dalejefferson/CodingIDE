@@ -13,8 +13,8 @@ import {
 // ── Palette definitions ─────────────────────────────────────────
 
 describe('PALETTE_IDS', () => {
-  it('contains exactly 9 palettes', () => {
-    expect(PALETTE_IDS).toHaveLength(9)
+  it('contains exactly 15 palettes', () => {
+    expect(PALETTE_IDS).toHaveLength(15)
   })
 
   it('has unique entries', () => {
@@ -32,6 +32,12 @@ describe('PALETTE_IDS', () => {
     expect(PALETTE_IDS).toContain('cream-amber')
     expect(PALETTE_IDS).toContain('pastel-garden')
     expect(PALETTE_IDS).toContain('midnight-lavender')
+    expect(PALETTE_IDS).toContain('meadow-sage')
+    expect(PALETTE_IDS).toContain('ember-clay')
+    expect(PALETTE_IDS).toContain('blush-petal')
+    expect(PALETTE_IDS).toContain('terra-olive')
+    expect(PALETTE_IDS).toContain('linen-sky')
+    expect(PALETTE_IDS).toContain('copper-tide')
   })
 })
 
@@ -95,8 +101,8 @@ describe('PALETTE_LABELS', () => {
 // ── Font definitions ─────────────────────────────────────────────
 
 describe('FONT_IDS', () => {
-  it('contains exactly 5 fonts', () => {
-    expect(FONT_IDS).toHaveLength(5)
+  it('contains exactly 10 fonts', () => {
+    expect(FONT_IDS).toHaveLength(10)
   })
 
   it('has unique entries', () => {

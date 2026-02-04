@@ -1,0 +1,223 @@
+.command-launcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+.command-launcher-play {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  padding-right: 6px;
+}
+
+.command-launcher-play--has-preset {
+  color: var(--color-accent);
+}
+
+.command-launcher-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border: 1px solid var(--color-border-primary);
+  border-left: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.command-launcher-toggle:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.command-launcher-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 340px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  padding: 10px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.command-launcher-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.command-launcher-label {
+  font-size: var(--font-size-xs, 11px);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.command-launcher-row {
+  display: flex;
+  gap: 4px;
+}
+
+.command-launcher-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.command-launcher-input:focus {
+  border-color: var(--color-accent);
+}
+
+.command-launcher-input--name {
+  flex: 0.5;
+  font-family: var(--font-sans);
+}
+
+.command-launcher-btn {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.command-launcher-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border-secondary);
+}
+
+.command-launcher-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.command-launcher-btn--run {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.command-launcher-btn--run:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+}
+
+.command-launcher-presets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.command-launcher-preset {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.command-launcher-preset--selected {
+  background: var(--color-bg-hover);
+}
+
+.command-launcher-preset-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.command-launcher-preset-select:hover {
+  background: var(--color-bg-hover);
+}
+
+.command-launcher-preset-name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-launcher-preset-cmd {
+  font-size: var(--font-size-xs, 11px);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-launcher-preset-run,
+.command-launcher-preset-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.command-launcher-preset-run:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-accent);
+}
+
+.command-launcher-preset-delete:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-error);
+}
