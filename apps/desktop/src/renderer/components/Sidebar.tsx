@@ -1,4 +1,4 @@
-import type { Project } from '@shared/types'
+import type { Project, ClaudeActivityMap } from '@shared/types'
 import '../styles/Sidebar.css'
 
 interface SidebarProps {
@@ -6,6 +6,8 @@ interface SidebarProps {
   activeProjectId: string | null
   collapsed: boolean
   settingsOpen: boolean
+  claudeActivity: ClaudeActivityMap
+  totalActiveClaudes: number
   onToggle: () => void
   onSelectProject: (id: string) => void
   onOpenFolder: () => void
@@ -136,6 +138,8 @@ export function Sidebar({
   activeProjectId,
   collapsed,
   settingsOpen,
+  claudeActivity,
+  totalActiveClaudes,
   onToggle,
   onSelectProject,
   onOpenFolder,
@@ -158,10 +162,6 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-actions">
-        <button className="sidebar-action-btn" type="button" onClick={onOpenFolder}>
-          <PlusIcon />
-          <span>Open folder</span>
-        </button>
         <button className="sidebar-action-btn" type="button">
           <BoltIcon />
           <span>Automations</span>
@@ -172,58 +172,89 @@ export function Sidebar({
         </button>
       </div>
 
-      <div className="sidebar-section-label">Projects</div>
+      <div className="sidebar-section-label">
+        <span>Projects</span>
+        {totalActiveClaudes > 0 && (
+          <span
+            className="sidebar-claude-counter"
+            title={`${totalActiveClaudes} Claude instance${totalActiveClaudes !== 1 ? 's' : ''} active`}
+          >
+            {totalActiveClaudes}
+          </span>
+        )}
+        <button
+          className="sidebar-section-add-btn"
+          type="button"
+          onClick={onOpenFolder}
+          aria-label="Open folder"
+          title="Open folder"
+        >
+          <PlusIcon />
+        </button>
+      </div>
 
       <nav className="sidebar-thread-list">
         {projects.length === 0 && <span className="sidebar-empty-hint">No projects yet</span>}
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}`}
-            onClick={() => onSelectProject(project.id)}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              onRemoveProject(project.id)
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+        {projects.map((project) => {
+          const claudeCount = claudeActivity[project.id] ?? 0
+          return (
+            <div
+              key={project.id}
+              className={`sidebar-thread-item${activeProjectId === project.id ? ' sidebar-thread-item--active' : ''}${claudeCount > 0 ? ' sidebar-thread-item--claude' : ''}`}
+              onClick={() => onSelectProject(project.id)}
+              onContextMenu={(e) => {
                 e.preventDefault()
-                onSelectProject(project.id)
-              }
-            }}
-          >
-            <FolderIcon open={activeProjectId === project.id} />
-            <span className="sidebar-project-name">{project.name}</span>
-            <span className={`sidebar-status sidebar-status--${project.status}`}>
-              {STATUS_LABELS[project.status]}
-            </span>
-            <button
-              type="button"
-              className="sidebar-delete-btn"
-              onClick={(e) => {
-                e.stopPropagation()
                 onRemoveProject(project.id)
               }}
-              aria-label={`Delete ${project.name}`}
-              title={`Remove ${project.name}`}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSelectProject(project.id)
+                }
+              }}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <FolderIcon open={activeProjectId === project.id} />
+              <span className="sidebar-project-name">{project.name}</span>
+              {claudeCount > 0 ? (
+                <span className="sidebar-claude-badge" title={`${claudeCount} Claude active`}>
+                  {claudeCount}
+                </span>
+              ) : project.status === 'running' ? (
+                <span className="sidebar-spinner" title="Running" />
+              ) : (
+                <span className={`sidebar-status sidebar-status--${project.status}`}>
+                  {STATUS_LABELS[project.status]}
+                </span>
+              )}
+              <button
+                type="button"
+                className="sidebar-delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRemoveProject(project.id)
+                }}
+                aria-label={`Delete ${project.name}`}
+                title={`Remove ${project.name}`}
               >
-                <path d="M3 3l6 6M9 3l-6 6" />
-              </svg>
-            </button>
-          </div>
-        ))}
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 3l6 6M9 3l-6 6" />
+                </svg>
+              </button>
+              {claudeCount > 0 && <div className="sidebar-claude-bar" />}
+            </div>
+          )
+        })}
       </nav>
 
       <div className="sidebar-bottom">

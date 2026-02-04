@@ -88,6 +88,45 @@ export interface TerminalSetLayoutRequest {
   layout: unknown
 }
 
+// ── Terminal Command Completion ──────────────────────────────
+
+/**
+ * Emitted when a terminal command completes (best-effort detection).
+ *
+ * Detection method: shell prompt heuristics. The service tracks a "busy"
+ * flag per terminal (set when user writes a newline, cleared when a
+ * shell prompt pattern is detected in PTY output). When the flag
+ * transitions from busy→idle, a completion event fires.
+ *
+ * Known limitations:
+ *   - Prompt detection relies on common patterns ($ % > #); custom PS1
+ *     values with no trailing marker may be missed.
+ *   - Multi-line commands or commands that print a prompt-like string
+ *     in their output may trigger false positives.
+ *   - Very fast commands (<100 ms) are debounced to avoid noise.
+ */
+export interface CommandCompletionEvent {
+  terminalId: string
+  projectId: string
+  /** Approximate wall-clock duration in milliseconds */
+  elapsedMs: number
+}
+
+// ── Claude Activity ─────────────────────────────────────────
+
+/** Per-project Claude activity counts broadcast from the main process. */
+export interface ClaudeActivityMap {
+  /** projectId → number of active Claude processes */
+  [projectId: string]: number
+}
+
+// ── Native Notifications ────────────────────────────────────
+
+export interface NativeNotifyRequest {
+  title: string
+  body?: string
+}
+
 // ── Git ─────────────────────────────────────────────────────
 
 export interface GitBranchRequest {

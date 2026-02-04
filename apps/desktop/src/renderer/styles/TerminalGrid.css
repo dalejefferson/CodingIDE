@@ -21,7 +21,7 @@
 .terminal-split-child {
   display: flex;
   flex-shrink: 1;
-  flex-grow: 0;
+  flex-grow: 1;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -51,10 +51,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: #000000;
+  background: var(--terminal-bg, #1c2128);
   border: none;
   border-radius: 0;
-  transition: border-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
   overflow: hidden;
 }
 
@@ -69,7 +71,7 @@
   min-height: 0;
   padding: var(--space-xs);
   overflow: hidden;
-  background: #000000;
+  background: var(--terminal-bg, #1c2128);
 }
 
 /* Ensure xterm.js fills the xterm container */
@@ -78,7 +80,7 @@
 }
 
 .terminal-pane-xterm .xterm-viewport {
-  overflow-y: auto !important;
+  overflow-y: auto;
 }
 
 .terminal-pane-xterm .xterm-screen {

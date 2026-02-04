@@ -6,6 +6,7 @@ import {
   isAddProjectRequest,
   isThemeId,
   isSetProjectThemeRequest,
+  isNativeNotifyRequest,
   isAllowedChannel,
   validatePayload,
   IPC_CHANNELS,
@@ -176,6 +177,49 @@ describe('isSetProjectThemeRequest', () => {
   })
 })
 
+// ── NativeNotifyRequest Validator ────────────────────────────
+
+describe('isNativeNotifyRequest', () => {
+  it('accepts valid request with title only', () => {
+    expect(isNativeNotifyRequest({ title: 'Command completed' })).toBe(true)
+  })
+
+  it('accepts valid request with title and body', () => {
+    expect(isNativeNotifyRequest({ title: 'Done', body: 'Took 3.2s' })).toBe(true)
+  })
+
+  it('accepts request with extra fields', () => {
+    expect(isNativeNotifyRequest({ title: 'Done', extra: true })).toBe(true)
+  })
+
+  it('rejects empty title', () => {
+    expect(isNativeNotifyRequest({ title: '' })).toBe(false)
+  })
+
+  it('rejects missing title', () => {
+    expect(isNativeNotifyRequest({})).toBe(false)
+    expect(isNativeNotifyRequest({ body: 'hello' })).toBe(false)
+  })
+
+  it('rejects non-string title', () => {
+    expect(isNativeNotifyRequest({ title: 42 })).toBe(false)
+    expect(isNativeNotifyRequest({ title: null })).toBe(false)
+  })
+
+  it('rejects non-string body', () => {
+    expect(isNativeNotifyRequest({ title: 'ok', body: 42 })).toBe(false)
+    expect(isNativeNotifyRequest({ title: 'ok', body: true })).toBe(false)
+  })
+
+  it('rejects non-objects', () => {
+    expect(isNativeNotifyRequest(undefined)).toBe(false)
+    expect(isNativeNotifyRequest(null)).toBe(false)
+    expect(isNativeNotifyRequest('string')).toBe(false)
+    expect(isNativeNotifyRequest(42)).toBe(false)
+    expect(isNativeNotifyRequest([])).toBe(false)
+  })
+})
+
 // ── Channel Allowlist ──────────────────────────────────────────
 
 describe('isAllowedChannel', () => {
@@ -263,6 +307,14 @@ describe('validatePayload', () => {
     expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, { id: '', theme: 'dark' })).toBe(false)
     expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, undefined)).toBe(false)
     expect(validatePayload(IPC_CHANNELS.SET_PROJECT_THEME, 'string')).toBe(false)
+  })
+
+  it('validates NATIVE_NOTIFY payload', () => {
+    expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, { title: 'Done' })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, { title: 'Done', body: '3s' })).toBe(true)
+    expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, { title: '' })).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, undefined)).toBe(false)
+    expect(validatePayload(IPC_CHANNELS.NATIVE_NOTIFY, 'string')).toBe(false)
   })
 })
 

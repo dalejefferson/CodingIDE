@@ -9,6 +9,8 @@ interface SettingsPageProps {
   onSelectFont: (id: FontId) => void
 }
 
+const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC')
+
 export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: SettingsPageProps) {
   return (
     <div className="settings-page">
@@ -58,6 +60,56 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
             </option>
           ))}
         </select>
+      </section>
+
+      <section className="settings-section">
+        <h3 className="settings-section-title">Keyboard Shortcuts</h3>
+        <p className="settings-section-hint">Available throughout the application.</p>
+
+        <div className="settings-shortcuts-list">
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">N</kbd>
+            <span className="settings-shortcut-label">New project (open folder)</span>
+          </div>
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">Shift</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">Tab</kbd>
+            <span className="settings-shortcut-label">Cycle through projects</span>
+          </div>
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">B</kbd>
+            <span className="settings-shortcut-label">Toggle sidebar</span>
+          </div>
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">T</kbd>
+            <span className="settings-shortcut-label">Cycle color palette</span>
+          </div>
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">D</kbd>
+            <span className="settings-shortcut-label">Split terminal right</span>
+          </div>
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">Shift</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">D</kbd>
+            <span className="settings-shortcut-label">Split terminal down</span>
+          </div>
+          <div className="settings-shortcut-row">
+            <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+            <span className="settings-kbd-plus">+</span>
+            <kbd className="settings-kbd">W</kbd>
+            <span className="settings-shortcut-label">Close terminal pane</span>
+          </div>
+        </div>
       </section>
     </div>
   )

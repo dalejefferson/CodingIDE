@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { extractOsc7Cwd } from '@shared/osc7Parser'
 import { PaneHeader } from './PaneHeader'
@@ -27,17 +28,17 @@ interface TerminalPaneProps {
   onFocus: () => void
 }
 
-/** Fixed terminal theme: black background, bold white text across all palettes. */
+/** Palette-aware terminal theme — reads CSS custom properties from the active palette. */
 function getXtermTheme(): Record<string, string> {
   const style = getComputedStyle(document.documentElement)
-  const accent = style.getPropertyValue('--color-accent').trim()
+  const v = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback
   return {
-    background: '#000000',
-    foreground: '#ffffff',
-    cursor: accent || '#ff9b51',
-    cursorAccent: '#000000',
-    selectionBackground: 'rgba(255, 255, 255, 0.25)',
-    selectionForeground: '#ffffff',
+    background: v('--terminal-bg', '#1c2128'),
+    foreground: v('--terminal-fg', '#d4dae0'),
+    cursor: v('--color-accent', '#ff9b51'),
+    cursorAccent: v('--terminal-cursor-accent', '#1c2128'),
+    selectionBackground: v('--terminal-selection-bg', 'rgba(255, 155, 81, 0.22)'),
+    selectionForeground: v('--terminal-selection-fg', '#f0f0f4'),
   }
 }
 
@@ -78,10 +79,7 @@ export function TerminalPane({
       fontWeightBold: '600',
       letterSpacing: 0,
       lineHeight: 1.2,
-      theme: {
-        background: '#000000',
-        foreground: '#ffffff',
-      },
+      theme: getXtermTheme(),
     })
 
     const fitAddon = new FitAddon()
@@ -101,8 +99,63 @@ export function TerminalPane({
       console.warn('WebGL addon failed to load, using canvas renderer')
     }
 
+    // Clickable links — opens in default browser
+    term.loadAddon(
+      new WebLinksAddon(
+        (_event, url) => {
+          window.electronAPI.shell.openExternal(url)
+        },
+        {
+          hover: (_event, text, location) => {
+            // xterm renders underline decoration automatically via the link provider
+            void text
+            void location
+          },
+        },
+      ),
+    )
+
+    // Also register via the terminal's link provider for Cmd+Click support
+    term.registerLinkProvider({
+      provideLinks(bufferLineNumber, callback) {
+        const line = term.buffer.active.getLine(bufferLineNumber)
+        if (!line) return callback(undefined)
+        const text = line.translateToString()
+        const urlRe = /https?:\/\/[^\s'"\]>)]+/g
+        const links: {
+          range: { start: { x: number; y: number }; end: { x: number; y: number } }
+          text: string
+          activate: (_event: MouseEvent, linkText: string) => void
+        }[] = []
+        let match: RegExpExecArray | null
+        while ((match = urlRe.exec(text)) !== null) {
+          links.push({
+            range: {
+              start: { x: match.index + 1, y: bufferLineNumber + 1 },
+              end: { x: match.index + match[0].length + 1, y: bufferLineNumber + 1 },
+            },
+            text: match[0],
+            activate: (_event, linkText) => {
+              window.electronAPI.shell.openExternal(linkText)
+            },
+          })
+        }
+        callback(links.length > 0 ? links : undefined)
+      },
+    })
+
+    // Let Shift+Tab bubble to the global handler (project cycling)
+    // instead of being consumed by xterm as terminal input.
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.shiftKey && e.key === 'Tab') return false
+      return true
+    })
+
     termRef.current = term
     fitRef.current = fitAddon
+
+    // Guard against writes after disposal
+    let disposed = false
 
     // Queue live data until buffer replay finishes to avoid duplicates
     let replayDone = false
@@ -115,7 +168,7 @@ export function TerminalPane({
 
     // Receive PTY output — queue until replay finishes, then write live
     const removeDataListener = window.electronAPI.terminal.onData((id, data) => {
-      if (id !== terminalId) return
+      if (id !== terminalId || disposed) return
       if (replayDone) {
         term.write(data)
         const newCwd = extractOsc7Cwd(data)
@@ -125,55 +178,66 @@ export function TerminalPane({
       }
     })
 
-    // Fit to container after mount, then create/reconnect PTY
+    // Wait two frames so the container has a layout-computed size before fitting
     requestAnimationFrame(() => {
-      fitAddon.fit()
+      requestAnimationFrame(() => {
+        if (disposed) return
+        fitAddon.fit()
 
-      const { cols, rows } = term
-      window.electronAPI.terminal
-        .create({
-          projectId,
-          terminalId,
-          cwd,
-          cols: cols > 0 ? cols : 80,
-          rows: rows > 0 ? rows : 24,
-        })
-        .then(() => window.electronAPI.terminal.getBuffer(terminalId))
-        .then((buffer) => {
-          // Replay scrollback buffer (restores output from before project switch)
-          if (buffer) {
-            term.write(buffer)
-            const cwdFromBuffer = extractOsc7Cwd(buffer)
-            if (cwdFromBuffer) setCurrentCwd(cwdFromBuffer)
-          }
-          // Flush any data that arrived during replay
-          replayDone = true
-          for (const data of pendingData) {
-            term.write(data)
-            const newCwd = extractOsc7Cwd(data)
-            if (newCwd) setCurrentCwd(newCwd)
-          }
-          pendingData.length = 0
-        })
-        .catch((err: unknown) => {
-          console.error('Failed to create/reconnect PTY:', err)
-          replayDone = true
-        })
+        const { cols, rows } = term
+        window.electronAPI.terminal
+          .create({
+            projectId,
+            terminalId,
+            cwd,
+            cols: cols > 0 ? cols : 80,
+            rows: rows > 0 ? rows : 24,
+          })
+          .then(() => window.electronAPI.terminal.getBuffer(terminalId))
+          .then((buffer) => {
+            if (disposed) return
+            // Replay scrollback buffer (restores output from before project switch)
+            if (buffer) {
+              term.write(buffer)
+              const cwdFromBuffer = extractOsc7Cwd(buffer)
+              if (cwdFromBuffer) setCurrentCwd(cwdFromBuffer)
+            }
+            // Flush any data that arrived during replay
+            replayDone = true
+            for (const data of pendingData) {
+              term.write(data)
+              const newCwd = extractOsc7Cwd(data)
+              if (newCwd) setCurrentCwd(newCwd)
+            }
+            pendingData.length = 0
+          })
+          .catch((err: unknown) => {
+            console.error('Failed to create/reconnect PTY:', err)
+            replayDone = true
+          })
+      })
     })
 
-    // Handle resize
+    // Handle resize — debounce via rAF and guard against disposed state
+    let resizeRaf = 0
     const resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
+      cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(() => {
+        if (disposed) return
         fitAddon.fit()
         const { cols, rows } = term
-        window.electronAPI.terminal.resize({ terminalId, cols, rows })
+        if (cols > 0 && rows > 0) {
+          window.electronAPI.terminal.resize({ terminalId, cols, rows })
+        }
       })
     })
     resizeObserver.observe(container)
 
     return () => {
+      disposed = true
       onDataDispose.dispose()
       removeDataListener()
+      cancelAnimationFrame(resizeRaf)
       resizeObserver.disconnect()
       term.dispose()
       termRef.current = null

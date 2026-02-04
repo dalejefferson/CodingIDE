@@ -25,6 +25,7 @@ import type {
   TerminalKillRequest,
   TerminalLayoutRequest,
   TerminalSetLayoutRequest,
+  NativeNotifyRequest,
 } from './types'
 import { THEME_IDS } from './types'
 import { isValidLayout } from './terminalLayout'
@@ -53,6 +54,8 @@ export const IPC_CHANNELS = {
   TERMINAL_GET_LAYOUT: 'ipc:terminal-get-layout',
   TERMINAL_SET_LAYOUT: 'ipc:terminal-set-layout',
   GIT_BRANCH: 'ipc:git-branch',
+  NATIVE_NOTIFY: 'ipc:native-notify',
+  OPEN_EXTERNAL_URL: 'ipc:open-external-url',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -146,6 +149,14 @@ export interface IPCContracts {
   [IPC_CHANNELS.GIT_BRANCH]: {
     request: GitBranchRequest
     response: GitBranchResponse
+  }
+  [IPC_CHANNELS.NATIVE_NOTIFY]: {
+    request: NativeNotifyRequest
+    response: void
+  }
+  [IPC_CHANNELS.OPEN_EXTERNAL_URL]: {
+    request: string
+    response: void
   }
 }
 
@@ -259,6 +270,15 @@ export function isGitBranchRequest(payload: unknown): boolean {
   return typeof obj['cwd'] === 'string' && obj['cwd'].length > 0
 }
 
+/** Payload must be a valid NativeNotifyRequest */
+export function isNativeNotifyRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  if (typeof obj['title'] !== 'string' || obj['title'].length === 0) return false
+  if (obj['body'] !== undefined && typeof obj['body'] !== 'string') return false
+  return true
+}
+
 /**
  * Validator registry — exactly one validator per channel.
  * Adding a channel without a validator is a compile error.
@@ -285,6 +305,8 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.TERMINAL_GET_LAYOUT]: isTerminalLayoutRequest,
   [IPC_CHANNELS.TERMINAL_SET_LAYOUT]: isTerminalSetLayoutRequest,
   [IPC_CHANNELS.GIT_BRANCH]: isGitBranchRequest,
+  [IPC_CHANNELS.NATIVE_NOTIFY]: isNativeNotifyRequest,
+  [IPC_CHANNELS.OPEN_EXTERNAL_URL]: isNonEmptyString,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

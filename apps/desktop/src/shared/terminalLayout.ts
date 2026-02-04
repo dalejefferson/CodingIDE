@@ -124,6 +124,18 @@ export function findLeaf(root: LayoutNode, targetId: string): LeafNode | null {
   return findLeaf(root.children[0], targetId) ?? findLeaf(root.children[1], targetId)
 }
 
+/** Find a leaf node's ID by its terminalId */
+export function findLeafIdByTerminalId(root: LayoutNode, terminalId: string): string | null {
+  if (root.type === 'leaf') {
+    return root.terminalId === terminalId ? root.id : null
+  }
+
+  return (
+    findLeafIdByTerminalId(root.children[0], terminalId) ??
+    findLeafIdByTerminalId(root.children[1], terminalId)
+  )
+}
+
 /** Collect all terminal IDs from the layout tree */
 export function getAllTerminalIds(root: LayoutNode): string[] {
   if (root.type === 'leaf') return [root.terminalId]

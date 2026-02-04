@@ -4,8 +4,9 @@ import { Toolbar } from './components/Toolbar'
 import EmptyState from './components/EmptyState'
 import ProjectWorkspace from './components/ProjectWorkspace'
 import { SettingsPage } from './components/SettingsPage'
+import { ToastContainer } from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
-import type { Project } from '@shared/types'
+import type { Project, ClaudeActivityMap } from '@shared/types'
 import './styles/App.css'
 
 export function App() {
@@ -13,6 +14,7 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
 
@@ -30,14 +32,35 @@ export function App() {
     }
   }, [])
 
+  const handleOpenFolder = useCallback(async () => {
+    try {
+      const folderPath = await window.electronAPI.projects.openFolderDialog()
+      if (!folderPath) return
+
+      const project = await window.electronAPI.projects.add({ path: folderPath })
+      await loadProjects()
+      setActiveProjectId(project.id)
+    } catch (err) {
+      console.error('Failed to open folder:', err)
+    }
+  }, [loadProjects])
+
   useEffect(() => {
     loadProjects()
   }, [loadProjects])
 
+  useEffect(() => {
+    return window.electronAPI.claude.onActivity(setClaudeActivity)
+  }, [])
+
+  const totalActiveClaudes = Object.values(claudeActivity).reduce((sum, n) => sum + n, 0)
+
   /**
    * Global keyboard handler.
    *
+   * Cmd/Ctrl+N — open folder dialog (new project)
    * Cmd/Ctrl+B — toggle sidebar
+   * Shift+Tab — cycle projects forward
    * T key — cycle through all 9 palettes in order.
    *
    * T is ignored when the user is typing in an input, textarea, or
@@ -45,9 +68,25 @@ export function App() {
    */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault()
+        handleOpenFolder()
+        return
+      }
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault()
         toggleSidebar()
+        return
+      }
+
+      if (e.shiftKey && e.key === 'Tab') {
+        e.preventDefault()
+        if (projects.length < 2) return
+        const currentIdx = projects.findIndex((p) => p.id === activeProjectId)
+        const nextIdx = (currentIdx + 1) % projects.length
+        setActiveProjectId(projects[nextIdx].id)
+        setSettingsOpen(false)
         return
       }
 
@@ -64,20 +103,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cyclePalette, toggleSidebar])
-
-  const handleOpenFolder = useCallback(async () => {
-    try {
-      const folderPath = await window.electronAPI.projects.openFolderDialog()
-      if (!folderPath) return
-
-      const project = await window.electronAPI.projects.add({ path: folderPath })
-      await loadProjects()
-      setActiveProjectId(project.id)
-    } catch (err) {
-      console.error('Failed to open folder:', err)
-    }
-  }, [loadProjects])
+  }, [activeProjectId, projects, cyclePalette, toggleSidebar, handleOpenFolder])
 
   const handleRemoveProject = useCallback(
     async (id: string) => {
@@ -113,6 +139,8 @@ export function App() {
           activeProjectId={activeProjectId}
           collapsed={sidebarCollapsed}
           settingsOpen={settingsOpen}
+          claudeActivity={claudeActivity}
+          totalActiveClaudes={totalActiveClaudes}
           onToggle={toggleSidebar}
           onSelectProject={(id) => {
             setActiveProjectId(id)
@@ -159,6 +187,13 @@ export function App() {
         />
         <div className="main-content">{mainContent}</div>
       </div>
+      <ToastContainer
+        activeProjectId={activeProjectId}
+        onFocusProject={(projectId) => {
+          setActiveProjectId(projectId)
+          setSettingsOpen(false)
+        }}
+      />
     </div>
   )
 }

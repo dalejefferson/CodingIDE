@@ -10,6 +10,9 @@ import type {
   TerminalCreateRequest,
   TerminalWriteRequest,
   TerminalResizeRequest,
+  CommandCompletionEvent,
+  NativeNotifyRequest,
+  ClaudeActivityMap,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -52,9 +55,19 @@ export interface ElectronAPI {
     setLayout: (projectId: string, layout: LayoutNode) => Promise<void>
     onData: (callback: (terminalId: string, data: string) => void) => () => void
     onExit: (callback: (terminalId: string, exitCode: number) => void) => () => void
+    onCommandDone: (callback: (event: CommandCompletionEvent) => void) => () => void
+  }
+  notify: {
+    native: (request: NativeNotifyRequest) => Promise<void>
   }
   git: {
     getBranch: (request: GitBranchRequest) => Promise<GitBranchResponse>
+  }
+  shell: {
+    openExternal: (url: string) => Promise<void>
+  }
+  claude: {
+    onActivity: (callback: (activity: ClaudeActivityMap) => void) => () => void
   }
 }
 
@@ -127,10 +140,37 @@ const electronAPI: ElectronAPI = {
         ipcRenderer.removeListener('terminal:exit', listener)
       }
     },
+    onCommandDone: (callback: (event: CommandCompletionEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, event: CommandCompletionEvent) => {
+        callback(event)
+      }
+      ipcRenderer.on('terminal:command-done', listener)
+      return () => {
+        ipcRenderer.removeListener('terminal:command-done', listener)
+      }
+    },
+  },
+  notify: {
+    native: (request: NativeNotifyRequest) =>
+      safeInvoke(IPC_CHANNELS.NATIVE_NOTIFY, request) as Promise<void>,
   },
   git: {
     getBranch: (request: GitBranchRequest) =>
       safeInvoke(IPC_CHANNELS.GIT_BRANCH, request) as Promise<GitBranchResponse>,
+  },
+  shell: {
+    openExternal: (url: string) => safeInvoke(IPC_CHANNELS.OPEN_EXTERNAL_URL, url) as Promise<void>,
+  },
+  claude: {
+    onActivity: (callback: (activity: ClaudeActivityMap) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, activity: ClaudeActivityMap) => {
+        callback(activity)
+      }
+      ipcRenderer.on('claude:activity', listener)
+      return () => {
+        ipcRenderer.removeListener('claude:activity', listener)
+      }
+    },
   },
 }
 

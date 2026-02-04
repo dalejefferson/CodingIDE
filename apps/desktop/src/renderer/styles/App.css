@@ -39,7 +39,7 @@
 
 .sidebar-expand-btn {
   position: absolute;
-  top: 36px;
+  top: 50px;
   left: 4px;
   z-index: 10;
   display: flex;

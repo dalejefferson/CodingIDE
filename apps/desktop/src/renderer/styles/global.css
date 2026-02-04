@@ -94,6 +94,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-focus: 0 0 0 3px rgba(255, 155, 81, 0.4);
+
+  /* --- Terminal (cool slate dark) --- */
+  --terminal-bg: #1c2128;
+  --terminal-fg: #d4dae0;
+  --terminal-cursor-accent: #1c2128;
+  --terminal-selection-bg: rgba(255, 155, 81, 0.22);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -142,6 +149,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.2);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-focus: 0 0 0 3px rgba(255, 116, 68, 0.4);
+
+  /* --- Terminal (deep navy) --- */
+  --terminal-bg: #1a2030;
+  --terminal-fg: #d0d6e0;
+  --terminal-cursor-accent: #1a2030;
+  --terminal-selection-bg: rgba(255, 116, 68, 0.22);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -190,6 +204,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-focus: 0 0 0 3px rgba(9, 99, 126, 0.35);
+
+  /* --- Terminal (dark teal) --- */
+  --terminal-bg: #142028;
+  --terminal-fg: #c8dce0;
+  --terminal-cursor-accent: #142028;
+  --terminal-selection-bg: rgba(9, 99, 126, 0.28);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -238,6 +259,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.08);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.08);
   --shadow-focus: 0 0 0 3px rgba(27, 60, 83, 0.35);
+
+  /* --- Terminal (deep denim) --- */
+  --terminal-bg: #141c26;
+  --terminal-fg: #c8d0d8;
+  --terminal-cursor-accent: #141c26;
+  --terminal-selection-bg: rgba(27, 60, 83, 0.3);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -286,6 +314,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.06);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-focus: 0 0 0 3px rgba(242, 166, 90, 0.35);
+
+  /* --- Terminal (mossy dark) --- */
+  --terminal-bg: #1a1e18;
+  --terminal-fg: #d0d4cc;
+  --terminal-cursor-accent: #1a1e18;
+  --terminal-selection-bg: rgba(242, 166, 90, 0.22);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -334,6 +369,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-focus: 0 0 0 3px rgba(220, 160, 109, 0.4);
+
+  /* --- Terminal (deep plum) --- */
+  --terminal-bg: #1c1224;
+  --terminal-fg: #d8cce0;
+  --terminal-cursor-accent: #1c1224;
+  --terminal-selection-bg: rgba(220, 160, 109, 0.25);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -382,6 +424,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.04);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-focus: 0 0 0 3px rgba(244, 206, 20, 0.35);
+
+  /* --- Terminal (neutral dark) --- */
+  --terminal-bg: #1e1e20;
+  --terminal-fg: #d4d4d8;
+  --terminal-cursor-accent: #1e1e20;
+  --terminal-selection-bg: rgba(244, 206, 20, 0.2);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -430,6 +479,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.04);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-focus: 0 0 0 3px rgba(255, 170, 184, 0.35);
+
+  /* --- Terminal (soft green dark) --- */
+  --terminal-bg: #181e18;
+  --terminal-fg: #d4dcd0;
+  --terminal-cursor-accent: #181e18;
+  --terminal-selection-bg: rgba(255, 170, 184, 0.22);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* ==========================================================================
@@ -478,6 +534,13 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-input: inset 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-focus: 0 0 0 3px rgba(200, 172, 214, 0.4);
+
+  /* --- Terminal (deep indigo) --- */
+  --terminal-bg: #141228;
+  --terminal-fg: #ccc8e0;
+  --terminal-cursor-accent: #141228;
+  --terminal-selection-bg: rgba(200, 172, 214, 0.25);
+  --terminal-selection-fg: #f0f0f4;
 }
 
 /* --------------------------------------------------------------------------

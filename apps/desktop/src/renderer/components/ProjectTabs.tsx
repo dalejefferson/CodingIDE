@@ -50,6 +50,7 @@ export function ProjectTabs({
             }
           }}
         >
+          {project.status === 'running' && <span className="project-tab-spinner" title="Running" />}
           <span className="project-tab-name">{project.name}</span>
           <button
             type="button"

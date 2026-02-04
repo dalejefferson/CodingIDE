@@ -22,7 +22,7 @@ export function Toolbar({
   onOpenFolder,
 }: ToolbarProps) {
   return (
-    <div className="toolbar">
+    <div className={`toolbar${sidebarCollapsed ? ' toolbar--no-sidebar' : ''}`}>
       {/* Left: tabs when collapsed, title when expanded */}
       <div className="toolbar-left">
         {sidebarCollapsed && projects.length > 0 ? (

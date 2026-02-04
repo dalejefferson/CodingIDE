@@ -18,6 +18,7 @@ import {
   removeTerminal,
   getAllLeafIds,
   findLeaf,
+  findLeafIdByTerminalId,
 } from '@shared/terminalLayout'
 import { TerminalPane } from './TerminalPane'
 import '../styles/TerminalGrid.css'
@@ -83,13 +84,25 @@ export function TerminalGrid({ projectId, cwd, palette }: TerminalGridProps) {
     const removeExitListener = window.electronAPI.terminal.onExit((terminalId) => {
       setLayout((prev) => {
         if (!prev) return prev
-        const updated = removeTerminal(prev, terminalId)
+        // Find the leaf node whose terminalId matches
+        const leafId = findLeafIdByTerminalId(prev, terminalId)
+        if (!leafId) return prev
+
+        const updated = removeTerminal(prev, leafId)
         if (!updated) {
           // Last terminal exited — create a fresh one
           const leaf = createLeaf()
           setActiveLeafId(leaf.id)
           return leaf
         }
+        // If the active pane was removed, focus the first remaining leaf
+        const remaining = getAllLeafIds(updated)
+        setActiveLeafId((currentActive) => {
+          if (!currentActive || !remaining.includes(currentActive)) {
+            return remaining[0] ?? null
+          }
+          return currentActive
+        })
         return updated
       })
     })

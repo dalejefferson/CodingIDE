@@ -115,3 +115,44 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
+
+/* ── Keyboard shortcuts ─────────────────────────────────────────────────── */
+
+.settings-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.settings-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.settings-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px var(--space-xs);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-sm);
+  line-height: 1.6;
+}
+
+.settings-kbd-plus {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.settings-shortcut-label {
+  margin-left: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}

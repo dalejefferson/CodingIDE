@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, Notification, shell } from 'electron'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipcContracts'
 import { IPCRouter } from './ipcRouter'
@@ -14,6 +14,7 @@ let projectStore: ProjectStore | null = null
 let themeStore: ThemeStore | null = null
 let terminalService: TerminalService | null = null
 let terminalLayoutStore: TerminalLayoutStore | null = null
+let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 
 export function setupIPC(): void {
   router = new IPCRouter()
@@ -69,6 +70,7 @@ export function setupIPC(): void {
   })
 
   router.handle(IPC_CHANNELS.REMOVE_PROJECT, (_event, payload) => {
+    terminalService!.killAllForProject(payload)
     projectStore!.remove(payload)
   })
 
@@ -99,6 +101,14 @@ export function setupIPC(): void {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.webContents.send('terminal:exit', terminalId, exitCode)
+      }
+    }
+  })
+
+  terminalService!.onCommandDone((event) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('terminal:command-done', event)
       }
     }
   })
@@ -141,13 +151,48 @@ export function setupIPC(): void {
     terminalLayoutStore!.set(payload.projectId, payload.layout as LayoutNode)
   })
 
+  // ── Notifications IPC ────────────────────────────────────────
+  router.handle(IPC_CHANNELS.NATIVE_NOTIFY, (_event, payload) => {
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title: payload.title,
+        body: payload.body,
+        silent: true,
+      })
+      notification.show()
+    }
+  })
+
+  // ── Shell IPC ────────────────────────────────────────────────
+  router.handle(IPC_CHANNELS.OPEN_EXTERNAL_URL, async (_event, payload) => {
+    const url = typeof payload === 'string' ? payload : ''
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      await shell.openExternal(url)
+    }
+  })
+
   // ── Git IPC ──────────────────────────────────────────────────
   router.handle(IPC_CHANNELS.GIT_BRANCH, async (_event, payload) => {
     return { branch: await getGitBranch(payload.cwd) }
   })
+
+  // ── Claude Activity Polling ─────────────────────────────────
+  claudeActivityInterval = setInterval(async () => {
+    if (!terminalService) return
+    const activity = await terminalService.getClaudeActivity()
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('claude:activity', activity)
+      }
+    }
+  }, 3000)
 }
 
 export function disposeIPC(): void {
+  if (claudeActivityInterval) {
+    clearInterval(claudeActivityInterval)
+    claudeActivityInterval = null
+  }
   terminalService?.killAll()
   router?.dispose()
   router = null
