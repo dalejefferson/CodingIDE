@@ -1,7 +1,13 @@
 import { readFileSync, writeFileSync, mkdirSync, renameSync, existsSync } from 'node:fs'
 import { dirname, basename, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { Project, AddProjectRequest, ThemeId, ProjectStatus } from '@shared/types'
+import type {
+  Project,
+  AddProjectRequest,
+  ThemeId,
+  ProjectStatus,
+  BrowserViewMode,
+} from '@shared/types'
 
 /**
  * JSON file-based project store.
@@ -122,6 +128,39 @@ export class ProjectStore {
 
     if (project.status === status) return true
     project.status = status
+    this.persist()
+    return true
+  }
+
+  /**
+   * Update a project's browser state (URL and/or view mode).
+   * Pass `null` for a field to clear it. Pass `undefined` to leave it unchanged.
+   */
+  setBrowser(
+    id: string,
+    browserUrl?: string | null,
+    browserViewMode?: BrowserViewMode | null,
+  ): boolean {
+    const projects = this.load()
+    const project = projects.find((p) => p.id === id)
+    if (!project) return false
+
+    if (browserUrl !== undefined) {
+      if (browserUrl === null) {
+        delete project.browserUrl
+      } else {
+        project.browserUrl = browserUrl
+      }
+    }
+
+    if (browserViewMode !== undefined) {
+      if (browserViewMode === null) {
+        delete project.browserViewMode
+      } else {
+        project.browserViewMode = browserViewMode
+      }
+    }
+
     this.persist()
     return true
   }

@@ -15,14 +15,38 @@ interface ProjectWorkspaceProps {
   project: Project
   palette: string
   gridRef?: Ref<TerminalGridHandle>
+  isVisible?: boolean
+  /** Check if a port is already in use by another project. Returns the owning project ID or null. */
+  getPortOwner?: (port: number) => string | null
+  /** Register that this project is using a port. */
+  registerPort?: (projectId: string, port: number) => void
+  /** Unregister a port when no longer in use. */
+  unregisterPort?: (projectId: string, port: number) => void
 }
 
-export default function ProjectWorkspace({ project, palette, gridRef }: ProjectWorkspaceProps) {
-  const [viewMode, setViewMode] = useState<BrowserViewMode>('closed')
-  const [browserUrl, setBrowserUrl] = useState<string | undefined>(undefined)
+/** Extract the port number from a localhost URL, or null if not a localhost URL */
+function extractLocalhostPort(url: string | undefined): number | null {
+  if (!url) return null
+  const match = url.match(/^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)/i)
+  return match ? parseInt(match[1], 10) : null
+}
+
+export default function ProjectWorkspace({
+  project,
+  palette,
+  gridRef,
+  isVisible = true,
+  getPortOwner,
+  registerPort,
+  unregisterPort,
+}: ProjectWorkspaceProps) {
+  // Restore persisted browser state from the project, or default to closed/undefined
+  const [viewMode, setViewMode] = useState<BrowserViewMode>(project.browserViewMode ?? 'closed')
+  const [browserUrl, setBrowserUrl] = useState<string | undefined>(project.browserUrl ?? undefined)
   const [splitRatio, setSplitRatio] = useState(0.35)
   const [isDragging, setIsDragging] = useState(false)
   const [pipPos, setPipPos] = useState<{ x: number; y: number } | null>(null)
+  const [pipSize, setPipSize] = useState<{ w: number; h: number }>({ w: 400, h: 300 })
   const panelsRef = useRef<HTMLDivElement>(null)
   const previousModeRef = useRef<BrowserViewMode>('split')
 
@@ -32,8 +56,55 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
   const [changeInput, setChangeInput] = useState('')
   const changeInputRef = useRef<HTMLInputElement>(null)
 
+  // Track which port this project is using and register/deregister on change
+  const lastPortRef = useRef<number | null>(extractLocalhostPort(browserUrl))
+  useEffect(() => {
+    const newPort = extractLocalhostPort(browserUrl)
+    const oldPort = lastPortRef.current
+
+    if (oldPort !== newPort) {
+      if (oldPort !== null) unregisterPort?.(project.id, oldPort)
+      if (newPort !== null) registerPort?.(project.id, newPort)
+      lastPortRef.current = newPort
+    }
+
+    return () => {
+      // Cleanup on unmount
+      const port = lastPortRef.current
+      if (port !== null) unregisterPort?.(project.id, port)
+    }
+  }, [browserUrl, project.id, registerPort, unregisterPort])
+
+  // Persist browser URL to disk when it changes (debounced to avoid write spam)
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+    persistTimerRef.current = setTimeout(() => {
+      window.electronAPI.browser
+        .setProjectBrowser({
+          id: project.id,
+          browserUrl: browserUrl ?? null,
+          browserViewMode: viewMode,
+        })
+        .catch(() => {})
+    }, 500)
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+    }
+  }, [browserUrl, viewMode, project.id])
+
   const browserVisible = viewMode !== 'closed'
   const showSplitBrowser = viewMode === 'split' || viewMode === 'focused'
+  // Track whether the browser has ever been opened so we can keep the webview
+  // mounted after the first open (avoids expensive re-init on every toggle).
+  const [browserEverOpened, setBrowserEverOpened] = useState(browserVisible)
+  useEffect(() => {
+    if (browserVisible && !browserEverOpened) setBrowserEverOpened(true)
+  }, [browserVisible, browserEverOpened])
+
+  const handleBrowserUrlChange = useCallback((url: string) => {
+    setBrowserUrl(url)
+  }, [])
 
   const handlePickElement = useCallback((formatted: string) => {
     setPendingPick(formatted)
@@ -78,11 +149,23 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
     setChangeInput('')
   }, [])
 
-  const handleLocalhostDetected = useCallback((url: string) => {
-    setBrowserUrl(url)
-    setViewMode('focused')
-    window.dispatchEvent(new Event('sidebar:collapse'))
-  }, [])
+  const handleLocalhostDetected = useCallback(
+    (url: string) => {
+      // Check if another project already owns this port
+      const port = extractLocalhostPort(url)
+      if (port !== null && getPortOwner) {
+        const owner = getPortOwner(port)
+        if (owner !== null && owner !== project.id) {
+          // Port is used by another project — skip auto-opening
+          return
+        }
+      }
+      setBrowserUrl(url)
+      setViewMode('focused')
+      window.dispatchEvent(new Event('sidebar:collapse'))
+    },
+    [getPortOwner, project.id],
+  )
 
   const handleChangeViewMode = useCallback((mode: BrowserViewMode) => {
     setViewMode((prev) => {
@@ -168,9 +251,17 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
 
   useEffect(() => {
     if (viewMode === 'pip') {
-      setPipPos({ x: window.innerWidth - 416, y: window.innerHeight - 316 })
+      setPipPos({ x: window.innerWidth - pipSize.w - 16, y: window.innerHeight - pipSize.h - 16 })
     }
-  }, [viewMode])
+  }, [viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fire resize when becoming visible so terminals + browser recalculate dimensions
+  useEffect(() => {
+    if (isVisible) {
+      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 50)
+      return () => clearTimeout(t)
+    }
+  }, [isVisible])
 
   const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -214,24 +305,78 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
     [pipPos],
   )
 
+  const PIP_MIN_W = 280
+  const PIP_MIN_H = 200
+  const PIP_MAX_W = 1200
+  const PIP_MAX_H = 900
+
+  const handlePipResizeStart = useCallback(
+    (e: React.MouseEvent, edge: string) => {
+      if (!pipPos) return
+      e.preventDefault()
+      e.stopPropagation()
+      const startX = e.clientX
+      const startY = e.clientY
+      const startW = pipSize.w
+      const startH = pipSize.h
+      const startPosX = pipPos.x
+      const startPosY = pipPos.y
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX
+        const dy = ev.clientY - startY
+        let newW = startW
+        let newH = startH
+        let newX = startPosX
+        let newY = startPosY
+
+        if (edge.includes('e')) newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, startW + dx))
+        if (edge.includes('s')) newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, startH + dy))
+        if (edge.includes('w')) {
+          const proposedW = startW - dx
+          newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, proposedW))
+          newX = startPosX + (startW - newW)
+        }
+        if (edge.includes('n')) {
+          const proposedH = startH - dy
+          newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, proposedH))
+          newY = startPosY + (startH - newH)
+        }
+
+        setPipSize({ w: newW, h: newH })
+        setPipPos({ x: newX, y: newY })
+      }
+
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove)
+        window.removeEventListener('mouseup', onMouseUp)
+      }
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('mouseup', onMouseUp)
+    },
+    [pipPos, pipSize],
+  )
+
   const terminalStyle =
     viewMode === 'split'
       ? { flexBasis: `${splitRatio * 100}%`, flex: 'none' as const }
       : viewMode === 'focused'
         ? { flexBasis: '28px', flex: 'none' as const, overflow: 'hidden' as const }
-        : undefined
+        : { flexBasis: '100%', flex: 'none' as const }
 
   const browserPane = (
     <BrowserPane
       initialUrl={browserUrl}
+      projectId={project.id}
       onPickElement={handlePickElement}
+      onUrlChange={handleBrowserUrlChange}
       viewMode={viewMode}
       onChangeViewMode={handleChangeViewMode}
     />
   )
 
   return (
-    <div className="workspace">
+    <div className={`workspace${isVisible ? '' : ' workspace--hidden'}`}>
       <div className="workspace-toggle-bar">
         <button
           type="button"
@@ -257,7 +402,7 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
 
       <div
         ref={panelsRef}
-        className={`workspace-panels${showSplitBrowser ? ' workspace-panels--split' : ''}`}
+        className={`workspace-panels${browserEverOpened ? ' workspace-panels--split' : ''}`}
       >
         <div
           className={`workspace-terminal${viewMode === 'focused' ? ' workspace-terminal--collapsed' : ''}`}
@@ -301,10 +446,15 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
           </div>
         </div>
 
-        {showSplitBrowser && (
+        {browserEverOpened && (
           <>
-            <div className="workspace-divider" onMouseDown={handleDividerMouseDown} />
-            <div className="workspace-browser">
+            <div
+              className={`workspace-divider${showSplitBrowser ? '' : ' workspace-divider--hidden'}`}
+              onMouseDown={handleDividerMouseDown}
+            />
+            <div
+              className={`workspace-browser${showSplitBrowser ? '' : ' workspace-browser--hidden'}`}
+            >
               {browserPane}
               {isDragging && <div className="workspace-drag-overlay" />}
             </div>
@@ -317,10 +467,32 @@ export default function ProjectWorkspace({ project, palette, gridRef }: ProjectW
       {viewMode === 'pip' && pipPos && (
         <div
           className="browser-pip-container"
-          style={{ left: pipPos.x, top: pipPos.y }}
+          style={{ left: pipPos.x, top: pipPos.y, width: pipSize.w, height: pipSize.h }}
           onMouseDown={handlePipDragStart}
         >
           {browserPane}
+          {/* Resize handles — edges */}
+          <div className="pip-resize pip-resize--n" onMouseDown={(e) => handlePipResizeStart(e, 'n')} />
+          <div className="pip-resize pip-resize--s" onMouseDown={(e) => handlePipResizeStart(e, 's')} />
+          <div className="pip-resize pip-resize--e" onMouseDown={(e) => handlePipResizeStart(e, 'e')} />
+          <div className="pip-resize pip-resize--w" onMouseDown={(e) => handlePipResizeStart(e, 'w')} />
+          {/* Resize handles — corners */}
+          <div
+            className="pip-resize pip-resize--ne"
+            onMouseDown={(e) => handlePipResizeStart(e, 'ne')}
+          />
+          <div
+            className="pip-resize pip-resize--nw"
+            onMouseDown={(e) => handlePipResizeStart(e, 'nw')}
+          />
+          <div
+            className="pip-resize pip-resize--se"
+            onMouseDown={(e) => handlePipResizeStart(e, 'se')}
+          />
+          <div
+            className="pip-resize pip-resize--sw"
+            onMouseDown={(e) => handlePipResizeStart(e, 'sw')}
+          />
         </div>
       )}
 

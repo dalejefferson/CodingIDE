@@ -211,3 +211,31 @@ export const FONT_LABELS: Record<FontId, string> = {
   caveat: 'Caveat',
   orbitron: 'Orbitron',
 }
+
+// ── Gradient Options ──────────────────────────────────────────
+
+export const GRADIENT_IDS = [
+  'none',
+  'mint-sky',
+  'crimson-gold',
+  'amber-blaze',
+  'ocean-indigo',
+] as const
+
+export type GradientId = (typeof GRADIENT_IDS)[number]
+
+export const GRADIENT_DEFS: Record<GradientId, string> = {
+  none: 'none',
+  'mint-sky': 'linear-gradient(135deg, #e3ffe7 0%, #d9e7ff 50%, #c3f0ff 100%)',
+  'crimson-gold': 'linear-gradient(135deg, #d53369 0%, #cb5e3c 50%, #daae51 100%)',
+  'amber-blaze': 'linear-gradient(135deg, #fcff9e 0%, #f0a830 50%, #c67700 100%)',
+  'ocean-indigo': 'linear-gradient(135deg, #00d2ff 0%, #1a7adb 50%, #3a47d5 100%)',
+}
+
+export const GRADIENT_LABELS: Record<GradientId, string> = {
+  none: 'None',
+  'mint-sky': 'Mint Sky',
+  'crimson-gold': 'Crimson Gold',
+  'amber-blaze': 'Amber Blaze',
+  'ocean-indigo': 'Ocean Indigo',
+}

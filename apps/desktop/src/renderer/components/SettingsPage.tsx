@@ -1,19 +1,38 @@
 import { useState } from 'react'
-import { PALETTE_IDS, PALETTES, PALETTE_LABELS, FONT_IDS, FONT_LABELS } from '@shared/themes'
-import type { PaletteId, FontId } from '@shared/themes'
+import {
+  PALETTE_IDS,
+  PALETTES,
+  PALETTE_LABELS,
+  FONT_IDS,
+  FONT_LABELS,
+  GRADIENT_IDS,
+  GRADIENT_DEFS,
+  GRADIENT_LABELS,
+} from '@shared/themes'
+import type { PaletteId, FontId, GradientId } from '@shared/themes'
 import '../styles/SettingsPage.css'
 
 interface SettingsPageProps {
   palette: PaletteId
   font: FontId
+  gradient: GradientId
   onSelectPalette: (id: PaletteId) => void
   onSelectFont: (id: FontId) => void
+  onSelectGradient: (id: GradientId) => void
 }
 
 const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC')
 
-export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: SettingsPageProps) {
+export function SettingsPage({
+  palette,
+  font,
+  gradient,
+  onSelectPalette,
+  onSelectFont,
+  onSelectGradient,
+}: SettingsPageProps) {
   const [showPalettes, setShowPalettes] = useState(false)
+  const [showGradients, setShowGradients] = useState(false)
   const [showFonts, setShowFonts] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
 
@@ -70,6 +89,59 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
                       ))}
                     </span>
                     <span className="settings-palette-name">{PALETTE_LABELS[id]}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="settings-section">
+        <button
+          type="button"
+          className="settings-section-toggle"
+          onClick={() => setShowGradients((v) => !v)}
+        >
+          <svg
+            className={`settings-toggle-chevron${showGradients ? ' settings-toggle-chevron--open' : ''}`}
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 2L8 6L4 10" />
+          </svg>
+          <h3 className="settings-section-title">Gradient Overlay</h3>
+        </button>
+        {showGradients && (
+          <>
+            <p className="settings-section-hint">
+              Add a subtle gradient overlay to the workspace background.
+            </p>
+
+            <div className="settings-gradient-grid">
+              {GRADIENT_IDS.map((id) => {
+                const isActive = id === gradient
+                return (
+                  <button
+                    key={id}
+                    className={`settings-gradient-card${isActive ? ' settings-gradient-card--active' : ''}`}
+                    type="button"
+                    onClick={() => onSelectGradient(id)}
+                    aria-pressed={isActive}
+                  >
+                    <span
+                      className={`settings-gradient-preview${id === 'none' ? ' settings-gradient-preview--none' : ''}`}
+                      style={id !== 'none' ? { background: GRADIENT_DEFS[id] } : undefined}
+                    >
+                      {id === 'none' && 'Off'}
+                    </span>
+                    <span className="settings-gradient-name">{GRADIENT_LABELS[id]}</span>
                   </button>
                 )
               })}
@@ -200,6 +272,18 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">W</kbd>
                 <span className="settings-shortcut-label">Close terminal pane</span>
+              </div>
+              <div className="settings-shortcut-row">
+                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <span className="settings-kbd-plus">+</span>
+                <kbd className="settings-kbd">[</kbd>
+                <span className="settings-shortcut-label">Previous terminal pane</span>
+              </div>
+              <div className="settings-shortcut-row">
+                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <span className="settings-kbd-plus">+</span>
+                <kbd className="settings-kbd">]</kbd>
+                <span className="settings-shortcut-label">Next terminal pane</span>
               </div>
               <div className="settings-shortcut-row">
                 <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>

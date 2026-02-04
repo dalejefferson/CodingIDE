@@ -45,6 +45,9 @@
   --transition-fast: 120ms ease;
   --transition-base: 200ms ease;
   --transition-slow: 300ms ease;
+
+  /* --- Gradient overlay --- */
+  --color-bg-gradient: none;
 }
 
 /* ==========================================================================
@@ -966,4 +969,27 @@ button:focus-visible {
 ::selection {
   background-color: var(--color-accent-subtle);
   color: var(--color-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Gradient overlay (applied via --color-bg-gradient custom property)
+   -------------------------------------------------------------------------- */
+
+.gradient-overlay {
+  position: relative;
+}
+
+.gradient-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg-gradient);
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity var(--transition-base);
+}
+
+.gradient-overlay--none::before {
+  display: none;
 }

@@ -146,6 +146,7 @@ export function TerminalPane({
   const seenUrlsRef = useRef<Set<string>>(new Set())
   const [currentCwd, setCurrentCwd] = useState(cwd)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
+  const [aiProcessing, setAiProcessing] = useState(false)
 
   // Keep refs in sync
   pendingCommandRef.current = pendingCommand
@@ -253,6 +254,7 @@ export function TerminalPane({
     // instead of being consumed by xterm as terminal input.
     term.attachCustomKeyEventHandler((e) => {
       if (e.ctrlKey && e.key === 'Tab') return false
+      if (e.metaKey && (e.key === '[' || e.key === ']')) return false
       if ((e.metaKey || e.ctrlKey) && ['p', 'n', 'b', 't', 'f'].includes(e.key)) return false
       return true
     })
@@ -425,6 +427,7 @@ export function TerminalPane({
             // after a brief delay so the shell prompt is ready.
             if (pendingCommandRef.current) {
               const cmd = pendingCommandRef.current
+              setAiProcessing(true)
               setTimeout(() => {
                 if (!disposed) {
                   window.electronAPI.terminal.write({ terminalId, data: cmd + '\n' })
@@ -495,6 +498,17 @@ export function TerminalPane({
     termRef.current?.focus()
   }, [onFocus])
 
+  // Listen for command completion to dismiss AI processing overlay
+  useEffect(() => {
+    if (!aiProcessing) return
+    const removeListener = window.electronAPI.terminal.onCommandDone((event) => {
+      if (event.terminalId === terminalId) {
+        setAiProcessing(false)
+      }
+    })
+    return removeListener
+  }, [aiProcessing, terminalId])
+
   // Poll git branch every 5 seconds
   useEffect(() => {
     let cancelled = false
@@ -522,6 +536,18 @@ export function TerminalPane({
   return (
     <div className={`terminal-pane${isActive ? ' terminal-pane--active' : ''}`} onClick={onFocus}>
       <div ref={containerRef} className="terminal-pane-xterm" onClick={handleXtermClick} />
+      {aiProcessing && (
+        <div className="terminal-ai-overlay">
+          <div className="terminal-ai-overlay-content">
+            <div className="terminal-ai-spinner">
+              <span className="terminal-ai-dot" />
+              <span className="terminal-ai-dot" />
+              <span className="terminal-ai-dot" />
+            </div>
+            <span className="terminal-ai-label">Claude is working&hellip;</span>
+          </div>
+        </div>
+      )}
       <PaneInputBar cwd={currentCwd} gitBranch={gitBranch} onSendCommand={handleSendCommand} />
     </div>
   )

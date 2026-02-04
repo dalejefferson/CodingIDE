@@ -27,6 +27,18 @@ export type ThemeId = 'light' | 'dark'
 
 export const THEME_IDS: readonly ThemeId[] = ['light', 'dark'] as const
 
+// ── Browser View Modes ─────────────────────────────────────
+
+export type BrowserViewMode = 'closed' | 'split' | 'focused' | 'fullscreen' | 'pip'
+
+export const BROWSER_VIEW_MODES: readonly BrowserViewMode[] = [
+  'closed',
+  'split',
+  'focused',
+  'fullscreen',
+  'pip',
+] as const
+
 // ── Project Management ───────────────────────────────────────
 
 export type ProjectStatus = 'idle' | 'running' | 'done' | 'needs_input'
@@ -39,10 +51,19 @@ export interface Project {
   addedAt: number
   /** Optional per-project theme override. When set, overrides the global theme. */
   theme?: ThemeId
+  /** Last browser URL for this project. Restored when switching back. */
+  browserUrl?: string
+  /** Last browser view mode for this project. Restored when switching back. */
+  browserViewMode?: BrowserViewMode
 }
 
 export interface AddProjectRequest {
   path: string
+}
+
+/** Request to create a new project folder inside a user-chosen parent directory. */
+export interface CreateProjectFolderRequest {
+  name: string
 }
 
 /**
@@ -171,10 +192,6 @@ export interface NativeNotifyRequest {
   body?: string
 }
 
-// ── Browser View Modes ─────────────────────────────────────
-
-export type BrowserViewMode = 'closed' | 'split' | 'focused' | 'fullscreen' | 'pip'
-
 // ── Browser / Element Picker ────────────────────────────────
 
 /** Payload produced by the element picker when user clicks an element in the browser pane. */
@@ -196,6 +213,13 @@ export interface ElementPickerPayload {
 /** Request to navigate the embedded browser to a URL. */
 export interface BrowserNavigateRequest {
   url: string
+}
+
+/** Request to persist a project's browser state (URL and/or view mode). */
+export interface SetProjectBrowserRequest {
+  id: string
+  browserUrl?: string | null
+  browserViewMode?: BrowserViewMode | null
 }
 
 // ── Git ─────────────────────────────────────────────────────

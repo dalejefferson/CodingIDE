@@ -20,7 +20,9 @@ import '../styles/BrowserPane.css'
 
 interface BrowserPaneProps {
   initialUrl?: string
+  projectId?: string
   onPickElement: (formatted: string) => void
+  onUrlChange?: (url: string) => void
   viewMode?: BrowserViewMode
   onChangeViewMode?: (mode: BrowserViewMode) => void
 }
@@ -105,10 +107,13 @@ const VIRTUAL_WIDTH = 1280
 
 export function BrowserPane({
   initialUrl,
+  projectId,
   onPickElement,
+  onUrlChange,
   viewMode = 'split',
   onChangeViewMode,
 }: BrowserPaneProps) {
+  const partition = projectId ? `persist:browser-${projectId}` : 'persist:browser'
   const startUrl = initialUrl || DEFAULT_URL
   const [addressBarValue, setAddressBarValue] = useState(startUrl)
   const [pickerActive, setPickerActive] = useState(false)
@@ -220,9 +225,11 @@ export function BrowserPane({
     }
 
     const handleNavUpdate = () => {
-      setAddressBarValue(wv.getURL())
+      const currentUrl = wv.getURL()
+      setAddressBarValue(currentUrl)
       setCanGoBack(wv.canGoBack())
       setCanGoForward(wv.canGoForward())
+      onUrlChange?.(currentUrl)
     }
 
     const handleConsoleMessage = (e: Electron.ConsoleMessageEvent) => {
@@ -278,7 +285,7 @@ export function BrowserPane({
       wv.removeEventListener('did-navigate-in-page', handleNavUpdate)
       wv.removeEventListener('console-message', handleConsoleMessage)
     }
-  }, [onPickElement])
+  }, [onPickElement, onUrlChange])
 
   return (
     <div className={`browser-pane${viewMode === 'pip' ? ' browser-pane--pip' : ''}`}>
@@ -465,7 +472,7 @@ export function BrowserPane({
           ref={webviewRef as React.LegacyRef<Electron.WebviewTag>}
           className="browser-webview"
           src={startUrl}
-          partition="persist:browser"
+          partition={partition}
           style={viewportStyle}
         />
       </div>

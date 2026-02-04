@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { PALETTE_IDS, FONT_IDS, FONT_STACKS } from '@shared/themes'
-import type { PaletteId, FontId } from '@shared/themes'
+import { PALETTE_IDS, FONT_IDS, FONT_STACKS, GRADIENT_IDS, GRADIENT_DEFS } from '@shared/themes'
+import type { PaletteId, FontId, GradientId } from '@shared/themes'
 
 const PALETTE_KEY = 'codingide-palette'
 const FONT_KEY = 'codingide-font'
+const GRADIENT_KEY = 'codingide-gradient'
 const DEFAULT_PALETTE: PaletteId = 'ink-citrus'
 const DEFAULT_FONT: FontId = 'system'
+const DEFAULT_GRADIENT: GradientId = 'none'
 
 /**
  * Theme hook — manages palette + font selection.
@@ -36,6 +38,14 @@ export function useTheme() {
     return DEFAULT_FONT
   })
 
+  const [gradient, setGradient] = useState<GradientId>(() => {
+    const stored = localStorage.getItem(GRADIENT_KEY)
+    if (stored && (GRADIENT_IDS as readonly string[]).includes(stored)) {
+      return stored as GradientId
+    }
+    return DEFAULT_GRADIENT
+  })
+
   // Apply palette via data-theme attribute on <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', palette)
@@ -47,6 +57,16 @@ export function useTheme() {
     document.documentElement.style.setProperty('--font-sans', FONT_STACKS[font])
     localStorage.setItem(FONT_KEY, font)
   }, [font])
+
+  // Apply gradient via CSS variable on <html>
+  useEffect(() => {
+    if (gradient === 'none') {
+      document.documentElement.style.removeProperty('--color-bg-gradient')
+    } else {
+      document.documentElement.style.setProperty('--color-bg-gradient', GRADIENT_DEFS[gradient])
+    }
+    localStorage.setItem(GRADIENT_KEY, gradient)
+  }, [gradient])
 
   /**
    * Cycle to the next palette. Called by the T-key handler.
@@ -66,5 +86,5 @@ export function useTheme() {
     })
   }, [])
 
-  return { palette, setPalette, font, setFont, cyclePalette, cycleFont }
+  return { palette, setPalette, font, setFont, gradient, setGradient, cyclePalette, cycleFont }
 }

@@ -3,11 +3,13 @@ import { IPC_CHANNELS, ALLOWED_CHANNELS } from '../shared/ipcContracts'
 import type {
   Project,
   AddProjectRequest,
+  CreateProjectFolderRequest,
   GitBranchRequest,
   GitBranchResponse,
   ThemeId,
   SetProjectThemeRequest,
   SetProjectStatusRequest,
+  SetProjectBrowserRequest,
   ProjectStatusChange,
   TerminalCreateRequest,
   TerminalWriteRequest,
@@ -41,6 +43,7 @@ export interface ElectronAPI {
   }
   projects: {
     openFolderDialog: () => Promise<string | null>
+    createFolder: (request: CreateProjectFolderRequest) => Promise<string | null>
     getAll: () => Promise<Project[]>
     add: (request: AddProjectRequest) => Promise<Project>
     remove: (id: string) => Promise<void>
@@ -80,6 +83,7 @@ export interface ElectronAPI {
   }
   browser: {
     navigate: (request: BrowserNavigateRequest) => Promise<void>
+    setProjectBrowser: (request: SetProjectBrowserRequest) => Promise<void>
   }
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => () => void
@@ -122,6 +126,8 @@ const electronAPI: ElectronAPI = {
   },
   projects: {
     openFolderDialog: () => safeInvoke(IPC_CHANNELS.OPEN_FOLDER_DIALOG) as Promise<string | null>,
+    createFolder: (request: CreateProjectFolderRequest) =>
+      safeInvoke(IPC_CHANNELS.CREATE_PROJECT_FOLDER, request) as Promise<string | null>,
     getAll: () => safeInvoke(IPC_CHANNELS.GET_PROJECTS) as Promise<Project[]>,
     add: (request: AddProjectRequest) =>
       safeInvoke(IPC_CHANNELS.ADD_PROJECT, request) as Promise<Project>,
@@ -219,6 +225,8 @@ const electronAPI: ElectronAPI = {
   browser: {
     navigate: (request: BrowserNavigateRequest) =>
       safeInvoke(IPC_CHANNELS.BROWSER_NAVIGATE, request) as Promise<void>,
+    setProjectBrowser: (request: SetProjectBrowserRequest) =>
+      safeInvoke(IPC_CHANNELS.SET_PROJECT_BROWSER, request) as Promise<void>,
   },
   claude: {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => {

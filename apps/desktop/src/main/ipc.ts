@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, Notification, shell } from 'electron'
+import { mkdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipcContracts'
 import { IPCRouter } from './ipcRouter'
@@ -82,6 +83,27 @@ export function setupIPC(): void {
 
   router.handle(IPC_CHANNELS.ADD_PROJECT, (_event, payload) => {
     return projectStore!.add(payload)
+  })
+
+  router.handle(IPC_CHANNELS.CREATE_PROJECT_FOLDER, async (event, payload) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return null
+
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Choose where to create your project',
+      buttonLabel: 'Create Here',
+    })
+
+    if (result.canceled || result.filePaths.length === 0) return null
+    const parentDir = result.filePaths[0]
+    if (!parentDir) return null
+
+    const projectDir = join(parentDir, payload.name)
+    if (!existsSync(projectDir)) {
+      mkdirSync(projectDir, { recursive: true })
+    }
+    return projectDir
   })
 
   router.handle(IPC_CHANNELS.REMOVE_PROJECT, (_event, payload) => {
@@ -204,6 +226,10 @@ export function setupIPC(): void {
   // webview navigation directly. The channel exists so the contract
   // and validator pipeline remain consistent.
   router.handle(IPC_CHANNELS.BROWSER_NAVIGATE, () => {})
+
+  router.handle(IPC_CHANNELS.SET_PROJECT_BROWSER, (_event, payload) => {
+    projectStore!.setBrowser(payload.id, payload.browserUrl, payload.browserViewMode)
+  })
 
   // ── Auto-status: terminal busy → running, command done → idle ──
   terminalService!.onCommandDone((event) => {

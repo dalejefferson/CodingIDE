@@ -148,6 +148,23 @@ export function getAllLeafIds(root: LayoutNode): string[] {
   return [...getAllLeafIds(root.children[0]), ...getAllLeafIds(root.children[1])]
 }
 
+/**
+ * Get the adjacent leaf ID in the layout tree.
+ * Direction: -1 for previous (left), +1 for next (right).
+ * Wraps around at the edges.
+ */
+export function getAdjacentLeafId(
+  root: LayoutNode,
+  currentLeafId: string,
+  direction: -1 | 1,
+): string | null {
+  const ids = getAllLeafIds(root)
+  if (ids.length === 0) return null
+  const idx = ids.indexOf(currentLeafId)
+  if (idx === -1) return ids[0]
+  return ids[(idx + direction + ids.length) % ids.length]
+}
+
 /** Count total leaf nodes */
 export function countLeaves(root: LayoutNode): number {
   if (root.type === 'leaf') return 1

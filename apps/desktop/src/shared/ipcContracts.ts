@@ -15,11 +15,13 @@
 import type {
   Project,
   AddProjectRequest,
+  CreateProjectFolderRequest,
   GitBranchRequest,
   GitBranchResponse,
   ThemeId,
   SetProjectThemeRequest,
   SetProjectStatusRequest,
+  SetProjectBrowserRequest,
   TerminalCreateRequest,
   TerminalWriteRequest,
   TerminalResizeRequest,
@@ -31,7 +33,7 @@ import type {
   SetPresetsRequest,
   BrowserNavigateRequest,
 } from './types'
-import { THEME_IDS, PROJECT_STATUSES } from './types'
+import { THEME_IDS, PROJECT_STATUSES, BROWSER_VIEW_MODES } from './types'
 import { isValidLayout } from './terminalLayout'
 
 // ── Channel Constants ──────────────────────────────────────────
@@ -45,6 +47,7 @@ export const IPC_CHANNELS = {
   OPEN_FOLDER_DIALOG: 'ipc:open-folder-dialog',
   GET_PROJECTS: 'ipc:get-projects',
   ADD_PROJECT: 'ipc:add-project',
+  CREATE_PROJECT_FOLDER: 'ipc:create-project-folder',
   REMOVE_PROJECT: 'ipc:remove-project',
   GET_GLOBAL_THEME: 'ipc:get-global-theme',
   SET_GLOBAL_THEME: 'ipc:set-global-theme',
@@ -64,6 +67,7 @@ export const IPC_CHANNELS = {
   SET_PRESETS: 'ipc:set-presets',
   SET_PROJECT_STATUS: 'ipc:set-project-status',
   BROWSER_NAVIGATE: 'ipc:browser-navigate',
+  SET_PROJECT_BROWSER: 'ipc:set-project-browser',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -105,6 +109,10 @@ export interface IPCContracts {
   [IPC_CHANNELS.ADD_PROJECT]: {
     request: AddProjectRequest
     response: Project
+  }
+  [IPC_CHANNELS.CREATE_PROJECT_FOLDER]: {
+    request: CreateProjectFolderRequest
+    response: string | null
   }
   [IPC_CHANNELS.REMOVE_PROJECT]: {
     request: string
@@ -182,6 +190,10 @@ export interface IPCContracts {
     request: BrowserNavigateRequest
     response: void
   }
+  [IPC_CHANNELS.SET_PROJECT_BROWSER]: {
+    request: SetProjectBrowserRequest
+    response: void
+  }
 }
 
 // ── Runtime Validators ─────────────────────────────────────────
@@ -208,6 +220,13 @@ export function isAddProjectRequest(payload: unknown): boolean {
   if (typeof payload !== 'object' || payload === null) return false
   const obj = payload as Record<string, unknown>
   return typeof obj['path'] === 'string' && obj['path'].length > 0
+}
+
+/** Payload must be a valid CreateProjectFolderRequest */
+export function isCreateProjectFolderRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  return typeof obj['name'] === 'string' && obj['name'].length > 0
 }
 
 /** Payload must be a valid ThemeId ('light' | 'dark') */
@@ -322,6 +341,27 @@ export function isBrowserNavigateRequest(payload: unknown): boolean {
   return obj['url'].startsWith('https://') || obj['url'].startsWith('http://')
 }
 
+/** Payload must be a valid BrowserViewMode */
+export function isBrowserViewMode(payload: unknown): boolean {
+  return typeof payload === 'string' && (BROWSER_VIEW_MODES as readonly string[]).includes(payload)
+}
+
+/** Payload must be a valid SetProjectBrowserRequest */
+export function isSetProjectBrowserRequest(payload: unknown): boolean {
+  if (typeof payload !== 'object' || payload === null) return false
+  const obj = payload as Record<string, unknown>
+  if (typeof obj['id'] !== 'string' || obj['id'].length === 0) return false
+  // browserUrl: optional string or null
+  if (obj['browserUrl'] !== undefined && obj['browserUrl'] !== null) {
+    if (typeof obj['browserUrl'] !== 'string') return false
+  }
+  // browserViewMode: optional valid mode or null
+  if (obj['browserViewMode'] !== undefined && obj['browserViewMode'] !== null) {
+    if (!isBrowserViewMode(obj['browserViewMode'])) return false
+  }
+  return true
+}
+
 /** Payload must be a valid SetPresetsRequest */
 export function isSetPresetsRequest(payload: unknown): boolean {
   if (typeof payload !== 'object' || payload === null) return false
@@ -354,6 +394,7 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.OPEN_FOLDER_DIALOG]: isVoid,
   [IPC_CHANNELS.GET_PROJECTS]: isVoid,
   [IPC_CHANNELS.ADD_PROJECT]: isAddProjectRequest,
+  [IPC_CHANNELS.CREATE_PROJECT_FOLDER]: isCreateProjectFolderRequest,
   [IPC_CHANNELS.REMOVE_PROJECT]: isNonEmptyString,
   [IPC_CHANNELS.GET_GLOBAL_THEME]: isVoid,
   [IPC_CHANNELS.SET_GLOBAL_THEME]: isThemeId,
@@ -373,6 +414,7 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.SET_PRESETS]: isSetPresetsRequest,
   [IPC_CHANNELS.SET_PROJECT_STATUS]: isSetProjectStatusRequest,
   [IPC_CHANNELS.BROWSER_NAVIGATE]: isBrowserNavigateRequest,
+  [IPC_CHANNELS.SET_PROJECT_BROWSER]: isSetProjectBrowserRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

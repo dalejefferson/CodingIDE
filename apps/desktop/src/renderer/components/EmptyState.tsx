@@ -1,8 +1,12 @@
-import type { ReactNode } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import type { Project } from '@shared/types'
 import '../styles/EmptyState.css'
 
 interface EmptyStateProps {
   onOpenFolder: () => void
+  onCreateProject: (name: string) => void
+  projects?: Project[]
+  onSelectProject?: (id: string) => void
 }
 
 interface SuggestionCard {
@@ -45,7 +49,7 @@ const ChevronDownIcon = () => (
   </svg>
 )
 
-const RocketIcon = () => (
+const FolderOpenIcon = () => (
   <svg
     width="24"
     height="24"
@@ -56,10 +60,24 @@ const RocketIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 3 0 3 0" />
-    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-3 0-3" />
+    <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v1" />
+    <path d="M20.27 10.73A2 2 0 0 0 18.64 10H5.36a2 2 0 0 0-1.95 2.45l1.2 6A2 2 0 0 0 6.56 20h10.88a2 2 0 0 0 1.95-1.55l1.2-6a2 2 0 0 0-.32-1.72z" />
+  </svg>
+)
+
+const PlusIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 5v14" />
+    <path d="M5 12h14" />
   </svg>
 )
 
@@ -81,29 +99,97 @@ const LoopIcon = () => (
   </svg>
 )
 
-const BookIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    <line x1="9" y1="7" x2="15" y2="7" />
-    <line x1="9" y1="11" x2="13" y2="11" />
-  </svg>
-)
+export default function EmptyState({
+  onOpenFolder,
+  onCreateProject,
+  projects = [],
+  onSelectProject,
+}: EmptyStateProps) {
+  const [showNameInput, setShowNameInput] = useState(false)
+  const [projectName, setProjectName] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
 
-export default function EmptyState({ onOpenFolder }: EmptyStateProps) {
+  useEffect(() => {
+    if (showNameInput) {
+      inputRef.current?.focus()
+    }
+  }, [showNameInput])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!pickerOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false)
+      }
+    }
+    // Use a rAF so the opening click doesn't immediately close it
+    const id = requestAnimationFrame(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    })
+    return () => {
+      cancelAnimationFrame(id)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [pickerOpen])
+
+  // Close on Escape
+  useEffect(() => {
+    if (!pickerOpen) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setPickerOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKey, true)
+    return () => window.removeEventListener('keydown', handleKey, true)
+  }, [pickerOpen])
+
+  const handlePickerToggle = useCallback(() => {
+    setPickerOpen((prev) => !prev)
+  }, [])
+
+  const handleSelectProject = useCallback(
+    (id: string) => {
+      setPickerOpen(false)
+      onSelectProject?.(id)
+    },
+    [onSelectProject],
+  )
+
+  // Sort projects by most recently added (newest first)
+  const sortedProjects = [...projects].sort((a, b) => b.addedAt - a.addedAt)
+
+  const handleCreateClick = () => {
+    setShowNameInput(true)
+    setProjectName('')
+  }
+
+  const handleNameSubmit = () => {
+    const trimmed = projectName.trim()
+    if (!trimmed) return
+    setShowNameInput(false)
+    setProjectName('')
+    onCreateProject(trimmed)
+  }
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleNameSubmit()
+    } else if (e.key === 'Escape') {
+      setShowNameInput(false)
+      setProjectName('')
+    }
+  }
+
   const suggestions: SuggestionCard[] = [
-    { icon: <RocketIcon />, label: 'Start a new project', onClick: onOpenFolder },
+    { icon: <FolderOpenIcon />, label: 'Open Existing Project', onClick: onOpenFolder },
+    { icon: <PlusIcon />, label: 'Create a New Project', onClick: handleCreateClick },
     { icon: <LoopIcon />, label: 'Ralph Loop' },
-    { icon: <BookIcon />, label: 'Browse templates' },
   ]
 
   return (
@@ -114,11 +200,67 @@ export default function EmptyState({ onOpenFolder }: EmptyStateProps) {
 
       <p className="empty-state__subtitle">
         in{' '}
-        <span className="empty-state__project-picker">
-          CodingIDE
-          <ChevronDownIcon />
+        <span ref={pickerRef} className="empty-state__project-picker-wrap">
+          <span
+            className={`empty-state__project-picker${pickerOpen ? ' empty-state__project-picker--open' : ''}`}
+            onClick={handlePickerToggle}
+          >
+            CodingIDE
+            <ChevronDownIcon />
+          </span>
+          {pickerOpen && (
+            <div className="empty-state__dropdown">
+              {sortedProjects.length > 0 ? (
+                sortedProjects.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="empty-state__dropdown-item"
+                    onClick={() => handleSelectProject(p.id)}
+                  >
+                    <span className="empty-state__dropdown-name">{p.name}</span>
+                    <span className="empty-state__dropdown-path">{p.path}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="empty-state__dropdown-empty">No recent projects</div>
+              )}
+            </div>
+          )}
         </span>
       </p>
+
+      {showNameInput && (
+        <div className="empty-state__name-input-row">
+          <input
+            ref={inputRef}
+            className="empty-state__name-input"
+            type="text"
+            placeholder="Project name..."
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            onKeyDown={handleNameKeyDown}
+          />
+          <button
+            className="empty-state__name-submit"
+            type="button"
+            onClick={handleNameSubmit}
+            disabled={!projectName.trim()}
+          >
+            Create
+          </button>
+          <button
+            className="empty-state__name-cancel"
+            type="button"
+            onClick={() => {
+              setShowNameInput(false)
+              setProjectName('')
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <div className="empty-state__cards">
         {suggestions.map((card) => (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import EmptyState from './components/EmptyState'
@@ -19,9 +19,37 @@ export function App() {
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatusMap>({})
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
-  const gridRef = useRef<TerminalGridHandle>(null)
+  const gridRefsRef = useRef(new Map<string, React.RefObject<TerminalGridHandle>>())
 
-  const { palette, setPalette, font, setFont, cyclePalette, cycleFont } = useTheme()
+  // Port registry: port → projectId. Prevents browser pane port collisions across projects.
+  const portRegistryRef = useRef(new Map<number, string>())
+
+  const getPortOwner = useCallback((port: number): string | null => {
+    return portRegistryRef.current.get(port) ?? null
+  }, [])
+
+  const registerPort = useCallback((projectId: string, port: number) => {
+    portRegistryRef.current.set(port, projectId)
+  }, [])
+
+  const unregisterPort = useCallback((projectId: string, port: number) => {
+    // Only remove if this project actually owns the port
+    if (portRegistryRef.current.get(port) === projectId) {
+      portRegistryRef.current.delete(port)
+    }
+  }, [])
+
+  const getGridRef = useCallback((projectId: string) => {
+    let ref = gridRefsRef.current.get(projectId)
+    if (!ref) {
+      ref = React.createRef<TerminalGridHandle>()
+      gridRefsRef.current.set(projectId, ref)
+    }
+    return ref
+  }, [])
+
+  const { palette, setPalette, font, setFont, gradient, setGradient, cyclePalette, cycleFont } =
+    useTheme()
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), [])
   const toggleSettings = useCallback(() => setSettingsOpen((prev) => !prev), [])
@@ -47,6 +75,22 @@ export function App() {
       console.error('Failed to open folder:', err)
     }
   }, [loadProjects])
+
+  const handleCreateProject = useCallback(
+    async (name: string) => {
+      try {
+        const folderPath = await window.electronAPI.projects.createFolder({ name })
+        if (!folderPath) return
+
+        const project = await window.electronAPI.projects.add({ path: folderPath })
+        await loadProjects()
+        setActiveProjectId(project.id)
+      } catch (err) {
+        console.error('Failed to create project:', err)
+      }
+    },
+    [loadProjects],
+  )
 
   useEffect(() => {
     loadProjects()
@@ -79,17 +123,22 @@ export function App() {
   useEffect(() => {
     const handler = (e: Event) => {
       const command = (e as CustomEvent).detail as string
-      gridRef.current?.runCommand(command)
+      if (!activeProjectId) return
+      gridRefsRef.current.get(activeProjectId)?.current?.runCommand(command)
     }
     window.addEventListener('terminal:run-command', handler)
     return () => window.removeEventListener('terminal:run-command', handler)
-  }, [])
+  }, [activeProjectId])
 
   const totalActiveClaudes = Object.values(claudeActivity).reduce((sum, n) => sum + n, 0)
 
-  const handleRunCommand = useCallback((command: string) => {
-    gridRef.current?.runCommand(command)
-  }, [])
+  const handleRunCommand = useCallback(
+    (command: string) => {
+      if (!activeProjectId) return
+      gridRefsRef.current.get(activeProjectId)?.current?.runCommand(command)
+    },
+    [activeProjectId],
+  )
 
   /**
    * Global keyboard handler.
@@ -152,6 +201,7 @@ export function App() {
     async (id: string) => {
       try {
         await window.electronAPI.projects.remove(id)
+        gridRefsRef.current.delete(id)
         if (activeProjectId === id) setActiveProjectId(null)
         await loadProjects()
       } catch (err) {
@@ -161,26 +211,57 @@ export function App() {
     [activeProjectId, loadProjects],
   )
 
-  const mainContent = settingsOpen ? (
-    <SettingsPage
-      palette={palette}
-      font={font}
-      onSelectPalette={setPalette}
-      onSelectFont={setFont}
-    />
-  ) : activeProject ? (
-    <ProjectWorkspace
-      key={activeProject.id}
-      project={activeProject}
-      palette={palette}
-      gridRef={gridRef}
-    />
-  ) : (
-    <EmptyState onOpenFolder={handleOpenFolder} />
+  const mainContent = (
+    <>
+      {settingsOpen && (
+        <SettingsPage
+          palette={palette}
+          font={font}
+          gradient={gradient}
+          onSelectPalette={setPalette}
+          onSelectFont={setFont}
+          onSelectGradient={setGradient}
+        />
+      )}
+      {!settingsOpen && projects.length === 0 && (
+        <EmptyState
+          onOpenFolder={handleOpenFolder}
+          onCreateProject={handleCreateProject}
+          projects={projects}
+          onSelectProject={(id) => {
+            setActiveProjectId(id)
+            setSettingsOpen(false)
+          }}
+        />
+      )}
+      {!settingsOpen && projects.length > 0 && !activeProject && (
+        <EmptyState
+          onOpenFolder={handleOpenFolder}
+          onCreateProject={handleCreateProject}
+          projects={projects}
+          onSelectProject={(id) => {
+            setActiveProjectId(id)
+            setSettingsOpen(false)
+          }}
+        />
+      )}
+      {projects.map((p) => (
+        <ProjectWorkspace
+          key={p.id}
+          project={p}
+          palette={palette}
+          gridRef={getGridRef(p.id)}
+          isVisible={p.id === activeProjectId && !settingsOpen}
+          getPortOwner={getPortOwner}
+          registerPort={registerPort}
+          unregisterPort={unregisterPort}
+        />
+      ))}
+    </>
   )
 
   return (
-    <div className="app">
+    <div className={`app gradient-overlay${gradient === 'none' ? ' gradient-overlay--none' : ''}`}>
       <div className={`sidebar-wrapper${sidebarCollapsed ? ' sidebar-wrapper--collapsed' : ''}`}>
         <Sidebar
           projects={projects}

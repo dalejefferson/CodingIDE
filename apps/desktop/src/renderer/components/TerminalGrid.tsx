@@ -20,6 +20,7 @@ import {
   findLeaf,
   findLeafIdByTerminalId,
   updateRatio,
+  getAdjacentLeafId,
 } from '@shared/terminalLayout'
 import { TerminalPane } from './TerminalPane'
 import '../styles/TerminalGrid.css'
@@ -46,6 +47,8 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
   const layoutRef = useRef<LayoutNode | null>(null)
   const activeLeafRef = useRef<string | null>(null)
   const closeConfirmRef = useRef<HTMLButtonElement>(null)
+  /** Leaf ID of the terminal spawned by the last Cmd+P runCommand */
+  const cmdPLeafRef = useRef<string | null>(null)
 
   // Keep refs in sync for keyboard handler
   useEffect(() => {
@@ -58,8 +61,27 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
     ref,
     () => ({
       runCommand(command: string) {
-        const current = layoutRef.current
+        let current = layoutRef.current
         if (!current) return
+
+        // If a previous Cmd+P terminal exists, kill and remove it first
+        const prevLeafId = cmdPLeafRef.current
+        if (prevLeafId) {
+          const prevLeaf = findLeaf(current, prevLeafId)
+          if (prevLeaf) {
+            window.electronAPI.terminal.kill(prevLeaf.terminalId)
+            const shrunk = removeTerminal(current, prevLeafId)
+            if (shrunk) {
+              current = shrunk
+            } else {
+              // That was the only terminal — start fresh from a new leaf
+              current = createLeaf()
+            }
+            // Sync refs so the split below uses the updated tree
+            layoutRef.current = current
+          }
+          cmdPLeafRef.current = null
+        }
 
         const targetId = activeLeafRef.current ?? getAllLeafIds(current)[0]
         if (!targetId) return
@@ -77,6 +99,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
             if (newLeaf) {
               setPendingCommands((prev) => ({ ...prev, [newLeaf.terminalId]: command }))
             }
+            cmdPLeafRef.current = newId
             setActiveLeafId(newId)
           }
           setLayout(freshLayout)
@@ -91,6 +114,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
           if (newLeaf) {
             setPendingCommands((prev) => ({ ...prev, [newLeaf.terminalId]: command }))
           }
+          cmdPLeafRef.current = newId
           setActiveLeafId(newId)
         }
         setLayout(newLayout)
@@ -102,6 +126,8 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
   // Load persisted layout or create initial leaf
   useEffect(() => {
     let cancelled = false
+    // Reset Cmd+P tracking when switching projects
+    cmdPLeafRef.current = null
 
     async function loadLayout() {
       try {
@@ -145,6 +171,11 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
         // Find the leaf node whose terminalId matches
         const leafId = findLeafIdByTerminalId(prev, terminalId)
         if (!leafId) return prev
+
+        // Clear Cmd+P ref if this was the command terminal
+        if (leafId === cmdPLeafRef.current) {
+          cmdPLeafRef.current = null
+        }
 
         const updated = removeTerminal(prev, leafId)
         if (!updated) {
@@ -204,6 +235,11 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
     const active = activeLeafRef.current
     if (!current || !active) return
 
+    // Clear Cmd+P ref if this pane was the command terminal
+    if (active === cmdPLeafRef.current) {
+      cmdPLeafRef.current = null
+    }
+
     const leaf = findLeaf(current, active)
     if (leaf) {
       window.electronAPI.terminal.kill(leaf.terminalId)
@@ -239,6 +275,30 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+[ : focus previous terminal pane
+      if (e.metaKey && !e.shiftKey && !e.altKey && e.key === '[') {
+        e.preventDefault()
+        const current = layoutRef.current
+        const active = activeLeafRef.current
+        if (current && active) {
+          const prev = getAdjacentLeafId(current, active, -1)
+          if (prev) setActiveLeafId(prev)
+        }
+        return
+      }
+
+      // Cmd+] : focus next terminal pane
+      if (e.metaKey && !e.shiftKey && !e.altKey && e.key === ']') {
+        e.preventDefault()
+        const current = layoutRef.current
+        const active = activeLeafRef.current
+        if (current && active) {
+          const next = getAdjacentLeafId(current, active, 1)
+          if (next) setActiveLeafId(next)
+        }
+        return
+      }
+
       // Cmd+W: show close confirmation for active pane
       if (e.metaKey && !e.shiftKey && e.key === 'w') {
         e.preventDefault()
