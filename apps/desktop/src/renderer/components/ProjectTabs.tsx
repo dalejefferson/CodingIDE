@@ -135,6 +135,7 @@ function ProjectTabs({
             <div
               key={project.id}
               data-tab-id={project.id}
+              data-drop-project-id={project.id}
               className={`project-tab${activeProjectId === project.id ? ' project-tab--active' : ''}${isWaiting ? ' project-tab--done' : ''}${isGenerating ? ' project-tab--generating' : ''}`}
               onClick={() => onSelectProject(project.id)}
               role="tab"
@@ -149,6 +150,23 @@ function ProjectTabs({
             >
               {isGenerating && <span className="project-tab-spinner" title="Generating" />}
               {isWaiting && <span className="project-tab-done-dot" title="Waiting for input" />}
+              {project.type === 'mobile' && (
+                <span className="project-tab-mobile-icon" title="Mobile App">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="1" width="6" height="10" rx="1" />
+                    <line x1="5" y1="9" x2="7" y2="9" />
+                  </svg>
+                </span>
+              )}
               <span className="project-tab-name">{project.name}</span>
               <button
                 type="button"

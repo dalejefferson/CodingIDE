@@ -12,9 +12,11 @@ import { TicketStore } from '@services/ticketStore'
 import { SettingsStore } from '@services/settingsStore'
 import { getGitBranch } from '@services/gitService'
 import * as fileOps from '@services/fileOpsService'
+import { generateWordVomitPRD } from '@services/wordVomitPrdService'
 import { setupRalphIPC } from './ipcRalph'
 import { setupExpoIPC } from './ipcExpo'
 import { MobileAppStore } from '@services/mobileAppStore'
+import { TemplateCacheService } from '@services/templateCache'
 import type { LayoutNode } from '../shared/terminalLayout'
 import type { ProjectStatus, ProjectStatusChange } from '../shared/types'
 
@@ -27,6 +29,7 @@ let presetStore: PresetStore | null = null
 let ticketStore: TicketStore | null = null
 let settingsStore: SettingsStore | null = null
 let mobileAppStore: MobileAppStore | null = null
+let templateCacheService: TemplateCacheService | null = null
 let expoServiceRef: { expoService: import('@services/expoService').ExpoService } | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
@@ -79,6 +82,15 @@ export function setupIPC(): void {
   ticketStore = new TicketStore(ticketStorePath)
   settingsStore = new SettingsStore(settingsStorePath)
   mobileAppStore = new MobileAppStore(join(app.getPath('userData'), 'mobile-apps.json'))
+
+  // ── Template Cache ──────────────────────────────────────────
+  const resourcesDir = join(__dirname, '../../resources/expo-templates')
+  const cacheDir = join(app.getPath('userData'), 'expo-templates')
+  templateCacheService = new TemplateCacheService(resourcesDir, cacheDir)
+  // Start template extraction in background (non-blocking)
+  templateCacheService.ensureExtracted().catch((err) => {
+    console.error('Template extraction failed:', err)
+  })
 
   router.handle(IPC_CHANNELS.PING, () => 'pong')
 
@@ -365,11 +377,26 @@ export function setupIPC(): void {
     }
   })
 
+  // ── Word Vomit PRD IPC ────────────────────────────────────────
+  router.handle(IPC_CHANNELS.WORD_VOMIT_GENERATE_PRD, async (_event, payload) => {
+    const claudeKey = settingsStore!.getClaudeKey()
+    const openaiKey = settingsStore!.getOpenAIKey()
+    const content = await generateWordVomitPRD(claudeKey, openaiKey, payload.rawIdea)
+    return { content }
+  })
+
   // ── Ralph / PRD IPC ─────────────────────────────────────────
   setupRalphIPC(router, ticketStore!, settingsStore!, projectStore!, getMainWindow)
 
   // ── App Builder / Expo IPC ─────────────────────────────────
-  expoServiceRef = setupExpoIPC(router, mobileAppStore!, projectStore!, getMainWindow)
+  expoServiceRef = setupExpoIPC(
+    router,
+    mobileAppStore!,
+    projectStore!,
+    settingsStore!,
+    templateCacheService!,
+    getMainWindow,
+  )
 
   // ── Auto-status: terminal busy → running, command done → idle ──
   terminalService!.onCommandDone((event) => {
@@ -465,5 +492,6 @@ export async function disposeIPC(): Promise<void> {
   ticketStore = null
   settingsStore = null
   mobileAppStore = null
+  templateCacheService = null
   lastClaudeActivity = {}
 }

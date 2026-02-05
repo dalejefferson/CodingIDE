@@ -1,12 +1,29 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useExpoApps } from '../../hooks/useExpoApps'
 import { AppCard } from './AppCard'
 import { AppDetailPanel } from './AppDetailPanel'
 import { CreateAppModal } from './CreateAppModal'
 import type { ExpoTemplate } from '@shared/types'
+import type { MobilePrdGen } from '../../hooks/usePrdGeneration'
 import '../../styles/AppBuilderPage.css'
 
-export function AppBuilderPage() {
+interface AppBuilderPageProps {
+  onEditAndPreview?: (appId: string) => void
+  initialPrdContent?: string | null
+  onConsumeInitialPrd?: () => void
+  mobilePrdGen?: MobilePrdGen | null
+  onStartMobilePrdGen?: (description: string, template: ExpoTemplate, paletteId?: string) => void
+  onClearMobilePrdGen?: () => void
+}
+
+export function AppBuilderPage({
+  onEditAndPreview,
+  initialPrdContent,
+  onConsumeInitialPrd,
+  mobilePrdGen,
+  onStartMobilePrdGen,
+  onClearMobilePrdGen,
+}: AppBuilderPageProps) {
   const {
     mobileApps,
     loading,
@@ -19,9 +36,18 @@ export function AppBuilderPage() {
     startApp,
     stopApp,
     openAsProject,
+    apiKeyStatus,
+    generatePRD,
   } = useExpoApps()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // Auto-open create modal when Word Vomit passes PRD content
+  useEffect(() => {
+    if (initialPrdContent) {
+      setShowCreateModal(true)
+    }
+  }, [initialPrdContent])
 
   const handleOpenExisting = useCallback(async () => {
     try {
@@ -34,8 +60,15 @@ export function AppBuilderPage() {
   }, [addApp])
 
   const handleCreate = useCallback(
-    async (name: string, template: ExpoTemplate, parentDir: string) => {
-      await createApp(name, template, parentDir)
+    async (
+      name: string,
+      template: ExpoTemplate,
+      parentDir: string,
+      prdContent?: string,
+      paletteId?: string,
+      imagePaths?: string[],
+    ) => {
+      await createApp(name, template, parentDir, prdContent, paletteId, imagePaths)
       setShowCreateModal(false)
     },
     [createApp],
@@ -99,13 +132,27 @@ export function AppBuilderPage() {
               onStart={startApp}
               onStop={stopApp}
               onOpenAsProject={openAsProject}
+              onEditAndPreview={onEditAndPreview}
             />
           </div>
         )}
       </div>
 
       {showCreateModal && (
-        <CreateAppModal onClose={() => setShowCreateModal(false)} onCreate={handleCreate} />
+        <CreateAppModal
+          onClose={() => {
+            setShowCreateModal(false)
+            onConsumeInitialPrd?.()
+            onClearMobilePrdGen?.()
+          }}
+          onCreate={handleCreate}
+          hasApiKey={apiKeyStatus?.hasAny ?? false}
+          onGeneratePRD={generatePRD}
+          initialPrdContent={initialPrdContent ?? undefined}
+          mobilePrdGen={mobilePrdGen}
+          onStartMobilePrdGen={onStartMobilePrdGen}
+          onClearMobilePrdGen={onClearMobilePrdGen}
+        />
       )}
     </div>
   )

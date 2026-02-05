@@ -70,6 +70,11 @@
   color: #f59e0b;
 }
 
+.toast-icon--prd {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
 .toast-content {
   display: flex;
   flex-direction: column;

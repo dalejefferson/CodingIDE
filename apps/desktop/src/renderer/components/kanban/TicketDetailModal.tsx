@@ -16,9 +16,15 @@ interface TicketDetailModalProps {
   onClose: () => void
   onUpdate: (request: UpdateTicketRequest) => Promise<void>
   onTransition: (id: string, status: TicketStatus) => Promise<void>
-  onGeneratePRD: (ticketId: string) => Promise<void>
+  onGeneratePRD: (ticketId: string) => void
   onApprovePRD: (ticketId: string) => Promise<void>
   onOpenAsProject: (ticketId: string) => Promise<void>
+  /** True when PRD generation is running for this ticket (from parent state). */
+  prdGenerating?: boolean
+  /** Error message from a completed-with-error generation (from parent state). */
+  prdGenError?: string | null
+  /** Clear the parent-level PRD generation error. */
+  onClearPrdGenError?: () => void
 }
 
 const STATUS_LABELS: Record<TicketStatus, string> = {
@@ -41,10 +47,18 @@ export function TicketDetailModal({
   onGeneratePRD,
   onApprovePRD,
   onOpenAsProject,
+  prdGenerating = false,
+  prdGenError = null,
+  onClearPrdGenError,
 }: TicketDetailModalProps) {
   const [mode, setMode] = useState<'view' | 'edit'>('view')
-  const [generatingPRD, setGeneratingPRD] = useState(false)
   const [prdError, setPrdError] = useState<string | null>(null)
+
+  // Use parent-provided generating state; fall back to local for legacy usage
+  const generatingPRD = prdGenerating
+
+  // Sync parent error into local display
+  const displayPrdError = prdGenError ?? prdError
 
   // ── Edit-mode form state ──────────────────────────────────────────────
   const [title, setTitle] = useState(ticket.title)
@@ -304,17 +318,10 @@ export function TicketDetailModal({
                 className="ticket-detail-btn ticket-detail-btn--accent"
                 style={fi}
                 disabled={generatingPRD}
-                onClick={async () => {
-                  setGeneratingPRD(true)
+                onClick={() => {
                   setPrdError(null)
-                  try {
-                    await onGeneratePRD(ticket.id)
-                  } catch (err) {
-                    const msg = err instanceof Error ? err.message : 'PRD generation failed'
-                    setPrdError(msg)
-                  } finally {
-                    setGeneratingPRD(false)
-                  }
+                  onClearPrdGenError?.()
+                  onGeneratePRD(ticket.id)
                 }}
               >
                 {generatingPRD ? (
@@ -326,9 +333,9 @@ export function TicketDetailModal({
                   'Generate PRD'
                 )}
               </button>
-              {prdError && (
+              {displayPrdError && (
                 <p className="ticket-detail-prd-error" style={fi}>
-                  {prdError}
+                  {displayPrdError}
                 </p>
               )}
             </>

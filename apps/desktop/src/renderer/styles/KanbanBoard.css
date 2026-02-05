@@ -243,6 +243,43 @@
   pointer-events: none;
 }
 
+/* Ghost "add" card — placeholder at bottom of each column */
+.ticket-card--ghost-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  border: 2px dashed var(--color-border-primary);
+  background: transparent;
+  color: var(--color-text-placeholder);
+  cursor: pointer;
+  user-select: none;
+  box-shadow: none;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.ticket-card--ghost-add:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  box-shadow: none;
+}
+
+.ghost-card-icon {
+  font-size: var(--font-size-xl);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.ghost-card-label {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
 /* ── Card Title ───────────────────────────────────────────────────────────── */
 
 .ticket-card-title {

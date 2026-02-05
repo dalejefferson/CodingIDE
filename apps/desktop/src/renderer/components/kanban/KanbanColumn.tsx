@@ -1,6 +1,7 @@
 import React from 'react'
 import { Droppable } from '@hello-pangea/dnd'
 import { TicketCard } from './TicketCard'
+import { GhostCard } from './GhostCard'
 import type { Ticket, TicketStatus } from '@shared/types'
 
 interface KanbanColumnProps {
@@ -8,9 +9,16 @@ interface KanbanColumnProps {
   label: string
   tickets: Ticket[]
   onTicketClick: (ticket: Ticket) => void
+  onAddTicket?: () => void
 }
 
-function KanbanColumnInner({ status, label, tickets, onTicketClick }: KanbanColumnProps) {
+function KanbanColumnInner({
+  status,
+  label,
+  tickets,
+  onTicketClick,
+  onAddTicket,
+}: KanbanColumnProps) {
   return (
     <div className={`kanban-column kanban-column--${status}`}>
       <div className="kanban-column-header">
@@ -41,6 +49,7 @@ function KanbanColumnInner({ status, label, tickets, onTicketClick }: KanbanColu
               ))
             )}
             {provided.placeholder}
+            {onAddTicket && <GhostCard onClick={onAddTicket} />}
           </div>
         )}
       </Droppable>

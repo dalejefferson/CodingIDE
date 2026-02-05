@@ -6,7 +6,9 @@ import { VALID_TRANSITIONS } from '@shared/types'
 interface KanbanBoardProps {
   ticketsByStatus: Record<TicketStatus, Ticket[]>
   onDragEnd: (result: DropResult) => void
+  onBeforeDragStart?: () => void
   onTicketClick: (ticket: Ticket) => void
+  onAddTicket?: () => void
 }
 
 const COLUMN_ORDER: TicketStatus[] = [
@@ -27,9 +29,15 @@ const COLUMN_LABELS: Record<TicketStatus, string> = {
   completed: 'Completed',
 }
 
-export function KanbanBoard({ ticketsByStatus, onDragEnd, onTicketClick }: KanbanBoardProps) {
+export function KanbanBoard({
+  ticketsByStatus,
+  onDragEnd,
+  onBeforeDragStart,
+  onTicketClick,
+  onAddTicket,
+}: KanbanBoardProps) {
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
+    <DragDropContext onDragEnd={onDragEnd} onBeforeDragStart={onBeforeDragStart}>
       <div className="kanban-board">
         {COLUMN_ORDER.map((status) => (
           <KanbanColumn
@@ -38,6 +46,7 @@ export function KanbanBoard({ ticketsByStatus, onDragEnd, onTicketClick }: Kanba
             label={COLUMN_LABELS[status]}
             tickets={ticketsByStatus[status] ?? []}
             onTicketClick={onTicketClick}
+            onAddTicket={onAddTicket}
           />
         ))}
       </div>

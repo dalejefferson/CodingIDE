@@ -4,16 +4,27 @@ import { NewTicketModal } from './NewTicketModal'
 import { TicketDetailModal } from './TicketDetailModal'
 import { useTickets } from '../../hooks/useTickets'
 import { useRalph } from '../../hooks/useRalph'
+import { useDragToProjectTab } from '../../hooks/useDragToProjectTab'
 import type { Ticket, CreateTicketRequest, TicketStatus } from '@shared/types'
 import type { Project } from '@shared/types'
+import type { TicketPrdGen } from '../../hooks/usePrdGeneration'
 import '../../styles/KanbanBoard.css'
 
 interface KanbanPageProps {
   projects: Project[]
   onOpenTicketAsProject: (ticketId: string) => Promise<void>
+  ticketPrdGen?: TicketPrdGen | null
+  onStartTicketPrdGen?: (ticketId: string) => void
+  onClearTicketPrdGen?: () => void
 }
 
-export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps) {
+export function KanbanPage({
+  projects,
+  onOpenTicketAsProject,
+  ticketPrdGen,
+  onStartTicketPrdGen,
+  onClearTicketPrdGen,
+}: KanbanPageProps) {
   const [showNewTicket, setShowNewTicket] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [filterProjectId, setFilterProjectId] = useState<string | null>(null)
@@ -29,6 +40,7 @@ export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps)
   } = useTickets(filterProjectId)
 
   const { executeRalph } = useRalph()
+  const { startTracking, stopTracking } = useDragToProjectTab()
 
   // Wrap transitionTicket to handle in_progress worktree picker flow.
   // Returns true if transition succeeded, false if aborted (e.g. user cancelled picker).
@@ -57,7 +69,14 @@ export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps)
 
   const handleDragEnd = useCallback(
     async (result: import('@hello-pangea/dnd').DropResult) => {
+      const droppedProjectId = stopTracking()
       const { destination, source, draggableId } = result
+
+      // Dropped on a project tab — assign ticket to that project
+      if (!destination && droppedProjectId) {
+        await updateTicket({ id: draggableId, projectId: droppedProjectId })
+        return
+      }
 
       if (!destination) return
       if (destination.droppableId === source.droppableId && destination.index === source.index) {
@@ -73,7 +92,7 @@ export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps)
 
       reorderTicket(draggableId, newStatus, destination.index)
     },
-    [handleTransition, reorderTicket],
+    [handleTransition, reorderTicket, updateTicket, stopTracking],
   )
 
   const handleTicketClick = useCallback((ticket: Ticket) => {
@@ -87,6 +106,8 @@ export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps)
     },
     [createTicket],
   )
+
+  const handleAddTicket = useCallback(() => setShowNewTicket(true), [])
 
   const handleCloseDetail = useCallback(() => {
     setSelectedTicket(null)
@@ -132,7 +153,9 @@ export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps)
       <KanbanBoard
         ticketsByStatus={ticketsByStatus}
         onDragEnd={handleDragEnd}
+        onBeforeDragStart={startTracking}
         onTicketClick={handleTicketClick}
+        onAddTicket={handleAddTicket}
       />
 
       {showNewTicket && (
@@ -150,9 +173,18 @@ export function KanbanPage({ projects, onOpenTicketAsProject }: KanbanPageProps)
           onClose={handleCloseDetail}
           onUpdate={updateTicket}
           onTransition={handleTransition}
-          onGeneratePRD={generatePRD}
+          onGeneratePRD={onStartTicketPrdGen ?? generatePRD}
           onApprovePRD={approvePRD}
           onOpenAsProject={onOpenTicketAsProject}
+          prdGenerating={
+            ticketPrdGen?.status === 'generating' && ticketPrdGen.ticketId === selectedTicket.id
+          }
+          prdGenError={
+            ticketPrdGen?.status === 'error' && ticketPrdGen.ticketId === selectedTicket.id
+              ? ticketPrdGen.error
+              : null
+          }
+          onClearPrdGenError={onClearTicketPrdGen}
         />
       )}
     </div>

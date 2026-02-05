@@ -110,6 +110,13 @@
   background: var(--color-bg-active);
 }
 
+/* Drop target highlight when a ticket card is dragged over this tab */
+.project-tab--drop-target {
+  background: var(--color-accent-subtle);
+  border-bottom-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .project-tab-name {
   max-width: 140px;
   overflow: hidden;
@@ -203,4 +210,20 @@
   background: var(--color-accent);
   border-radius: 1px;
   animation: tab-claude-bar-slide 1.5s ease-in-out infinite;
+}
+
+/* ── Mobile project icon ────────────────────────────────────────────────── */
+
+.project-tab-mobile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  opacity: 0.7;
+}
+
+.project-tab--active .project-tab-mobile-icon {
+  color: var(--color-accent);
+  opacity: 1;
 }

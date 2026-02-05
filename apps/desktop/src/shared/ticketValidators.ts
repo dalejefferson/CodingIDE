@@ -30,6 +30,14 @@ export function isCreateTicketRequest(payload: unknown): boolean {
     return false
   }
   if (obj['projectId'] !== null && typeof obj['projectId'] !== 'string') return false
+  // Optional pre-attached PRD
+  if (obj['prd'] !== undefined) {
+    if (typeof obj['prd'] !== 'object' || obj['prd'] === null) return false
+    const prd = obj['prd'] as Record<string, unknown>
+    if (typeof prd['content'] !== 'string') return false
+    if (typeof prd['generatedAt'] !== 'number') return false
+    if (typeof prd['approved'] !== 'boolean') return false
+  }
   return true
 }
 

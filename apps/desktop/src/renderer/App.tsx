@@ -12,8 +12,14 @@ const KanbanPage = React.lazy(() =>
 const AppBuilderPage = React.lazy(() =>
   import('./components/appbuilder/AppBuilderPage').then((m) => ({ default: m.AppBuilderPage })),
 )
+const MobileWorkspace = React.lazy(() =>
+  import('./components/appbuilder/MobileWorkspace').then((m) => ({ default: m.MobileWorkspace })),
+)
 import { ToastContainer } from './components/ToastContainer'
+import { PrdGenerationIndicator } from './components/PrdGenerationIndicator'
 import { useTheme } from './hooks/useTheme'
+import { useExpoApps } from './hooks/useExpoApps'
+import { usePrdGeneration } from './hooks/usePrdGeneration'
 import type { TerminalGridHandle } from './components/TerminalGrid'
 import type { Project, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 import './styles/App.css'
@@ -27,6 +33,7 @@ export function App() {
   const [appBuilderOpen, setAppBuilderOpen] = useState(false)
   const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatusMap>({})
+  const [wordVomitPrdForApp, setWordVomitPrdForApp] = useState<string | null>(null)
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null
   const gridRefsRef = useRef(new Map<string, React.RefObject<TerminalGridHandle>>())
@@ -64,6 +71,8 @@ export function App() {
   }, [])
 
   const { palette, setPalette, font, setFont, cyclePalette, cycleFont } = useTheme()
+  const { mobileApps, startApp, stopApp } = useExpoApps()
+  const prdGen = usePrdGeneration()
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), [])
   const toggleSettings = useCallback(() => setSettingsOpen((prev) => !prev), [])
@@ -121,6 +130,22 @@ export function App() {
     [loadProjects],
   )
 
+  const handleEditAndPreview = useCallback(
+    async (appId: string) => {
+      try {
+        const project = await window.electronAPI.expo.openAsProject({ appId })
+        await loadProjects()
+        setActiveProjectId(project.id)
+        setAppBuilderOpen(false)
+        setSettingsOpen(false)
+        setKanbanOpen(false)
+      } catch (err) {
+        console.error('Failed to open mobile app as project:', err)
+      }
+    },
+    [loadProjects],
+  )
+
   const handleOpenFolder = useCallback(async () => {
     try {
       const folderPath = await window.electronAPI.projects.openFolderDialog()
@@ -146,6 +171,61 @@ export function App() {
       } catch (err) {
         console.error('Failed to create project:', err)
       }
+    },
+    [loadProjects],
+  )
+
+  // ── Word Vomit handlers ──────────────────────────────────────
+  const handleWordVomitToRalph = useCallback(
+    async (rawIdea: string, prdContent: string) => {
+      const title = rawIdea.split(/[.\n]/)[0]?.trim().slice(0, 60) || 'Word Vomit Idea'
+      await window.electronAPI.tickets.create({
+        title,
+        description: rawIdea,
+        acceptanceCriteria: [],
+        type: 'feature',
+        priority: 'medium',
+        projectId: null,
+        prd: { content: prdContent, generatedAt: Date.now(), approved: true },
+      })
+      handleOpenKanban()
+    },
+    [handleOpenKanban],
+  )
+
+  const handleWordVomitToApp = useCallback((prdContent: string) => {
+    setWordVomitPrdForApp(prdContent)
+    setAppBuilderOpen(true)
+    setSettingsOpen(false)
+    setKanbanOpen(false)
+    setActiveProjectId(null)
+  }, [])
+
+  const handleWordVomitToProject = useCallback(
+    async (name: string, rawIdea: string, prdContent: string) => {
+      const folderPath = await window.electronAPI.projects.createFolder({ name })
+      if (!folderPath) return
+
+      const project = await window.electronAPI.projects.add({ path: folderPath })
+
+      // Save PRD into the project folder
+      await window.electronAPI.fileOps.createFile({
+        projectId: project.id,
+        relPath: '.prd/prd.md',
+        contents: prdContent,
+        mkdirp: true,
+      })
+
+      // Save the raw idea as context
+      await window.electronAPI.fileOps.createFile({
+        projectId: project.id,
+        relPath: '.prd/raw-idea.md',
+        contents: `# Original Idea\n\n${rawIdea}`,
+        mkdirp: true,
+      })
+
+      await loadProjects()
+      setActiveProjectId(project.id)
     },
     [loadProjects],
   )
@@ -321,12 +401,25 @@ export function App() {
       )}
       {kanbanOpen && !settingsOpen && (
         <React.Suspense fallback={null}>
-          <KanbanPage projects={projects} onOpenTicketAsProject={handleOpenTicketAsProject} />
+          <KanbanPage
+            projects={projects}
+            onOpenTicketAsProject={handleOpenTicketAsProject}
+            ticketPrdGen={prdGen.ticketPrd}
+            onStartTicketPrdGen={prdGen.startTicketPrdGen}
+            onClearTicketPrdGen={prdGen.clearTicketPrd}
+          />
         </React.Suspense>
       )}
       {appBuilderOpen && !settingsOpen && !kanbanOpen && (
         <React.Suspense fallback={null}>
-          <AppBuilderPage />
+          <AppBuilderPage
+            onEditAndPreview={handleEditAndPreview}
+            initialPrdContent={wordVomitPrdForApp}
+            onConsumeInitialPrd={() => setWordVomitPrdForApp(null)}
+            mobilePrdGen={prdGen.mobilePrd}
+            onStartMobilePrdGen={prdGen.startMobilePrdGen}
+            onClearMobilePrdGen={prdGen.clearMobilePrd}
+          />
         </React.Suspense>
       )}
       {!settingsOpen && !kanbanOpen && !appBuilderOpen && projects.length === 0 && (
@@ -337,6 +430,12 @@ export function App() {
           onSelectProject={handleSelectProject}
           onOpenKanban={handleOpenKanban}
           onOpenAppBuilder={handleOpenAppBuilder}
+          onWordVomitToRalph={handleWordVomitToRalph}
+          onWordVomitToApp={handleWordVomitToApp}
+          onWordVomitToProject={handleWordVomitToProject}
+          wordVomitGen={prdGen.wordVomit}
+          onStartWordVomitGen={prdGen.startWordVomitGen}
+          onClearWordVomitGen={prdGen.clearWordVomit}
         />
       )}
       {!settingsOpen && !kanbanOpen && !appBuilderOpen && projects.length > 0 && !activeProject && (
@@ -347,20 +446,40 @@ export function App() {
           onSelectProject={handleSelectProject}
           onOpenKanban={handleOpenKanban}
           onOpenAppBuilder={handleOpenAppBuilder}
+          onWordVomitToRalph={handleWordVomitToRalph}
+          onWordVomitToApp={handleWordVomitToApp}
+          onWordVomitToProject={handleWordVomitToProject}
+          wordVomitGen={prdGen.wordVomit}
+          onStartWordVomitGen={prdGen.startWordVomitGen}
+          onClearWordVomitGen={prdGen.clearWordVomit}
         />
       )}
-      {projects.map((p) => (
-        <ProjectWorkspace
-          key={p.id}
-          project={p}
-          palette={palette}
-          gridRef={getGridRef(p.id)}
-          isVisible={p.id === activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen}
-          getPortOwner={getPortOwner}
-          registerPort={registerPort}
-          unregisterPort={unregisterPort}
-        />
-      ))}
+      {projects.map((p) =>
+        p.type === 'mobile' ? (
+          <React.Suspense key={p.id} fallback={null}>
+            <MobileWorkspace
+              project={p}
+              app={mobileApps.find((a) => a.id === p.mobileAppId) ?? null}
+              isVisible={
+                p.id === activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen
+              }
+              onStartApp={startApp}
+              onStopApp={stopApp}
+            />
+          </React.Suspense>
+        ) : (
+          <ProjectWorkspace
+            key={p.id}
+            project={p}
+            palette={palette}
+            gridRef={getGridRef(p.id)}
+            isVisible={p.id === activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen}
+            getPortOwner={getPortOwner}
+            registerPort={registerPort}
+            unregisterPort={unregisterPort}
+          />
+        ),
+      )}
     </>
   )
 
@@ -401,6 +520,7 @@ export function App() {
         />
         <div className="main-content">{mainContent}</div>
       </div>
+      <PrdGenerationIndicator isGenerating={prdGen.isAnyGenerating} />
       <ToastContainer activeProjectId={activeProjectId} onFocusProject={handleSelectProject} />
     </div>
   )

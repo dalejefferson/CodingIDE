@@ -49,6 +49,14 @@ import type {
   ExpoStatusRequest,
   ExpoStatusResponse,
   OpenMobileAppAsProjectRequest,
+  TemplateStatusResponse,
+  GenerateMobilePRDRequest,
+  GenerateMobilePRDResponse,
+  APIKeyStatusResponse,
+  SavePRDRequest,
+  CopyPRDImagesRequest,
+  GenerateWordVomitPRDRequest,
+  GenerateWordVomitPRDResponse,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -166,6 +174,16 @@ export interface ElectronAPI {
     chooseParentDir: () => Promise<string | null>
     openAsProject: (request: OpenMobileAppAsProjectRequest) => Promise<Project>
     onStatusChanged: (callback: (app: MobileApp) => void) => () => void
+    getTemplateStatus: () => Promise<TemplateStatusResponse>
+    refreshTemplates: () => Promise<void>
+    ensureTemplates: () => Promise<void>
+    generatePRD: (request: GenerateMobilePRDRequest) => Promise<GenerateMobilePRDResponse>
+    getApiKeyStatus: () => Promise<APIKeyStatusResponse>
+    savePRD: (request: SavePRDRequest) => Promise<void>
+    copyPRDImages: (request: CopyPRDImagesRequest) => Promise<void>
+  }
+  wordVomit: {
+    generatePRD: (request: GenerateWordVomitPRDRequest) => Promise<GenerateWordVomitPRDResponse>
   }
 }
 
@@ -435,6 +453,25 @@ const electronAPI: ElectronAPI = {
         ipcRenderer.removeListener('expo:status-changed', listener)
       }
     },
+    getTemplateStatus: () =>
+      safeInvoke(IPC_CHANNELS.EXPO_TEMPLATE_STATUS) as Promise<TemplateStatusResponse>,
+    refreshTemplates: () => safeInvoke(IPC_CHANNELS.EXPO_REFRESH_TEMPLATES) as Promise<void>,
+    ensureTemplates: () => safeInvoke(IPC_CHANNELS.EXPO_ENSURE_TEMPLATES) as Promise<void>,
+    generatePRD: (request: GenerateMobilePRDRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_GENERATE_PRD, request) as Promise<GenerateMobilePRDResponse>,
+    getApiKeyStatus: () =>
+      safeInvoke(IPC_CHANNELS.EXPO_API_KEY_STATUS) as Promise<APIKeyStatusResponse>,
+    savePRD: (request: SavePRDRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_SAVE_PRD, request) as Promise<void>,
+    copyPRDImages: (request: CopyPRDImagesRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_COPY_PRD_IMAGES, request) as Promise<void>,
+  },
+  wordVomit: {
+    generatePRD: (request: GenerateWordVomitPRDRequest) =>
+      safeInvoke(
+        IPC_CHANNELS.WORD_VOMIT_GENERATE_PRD,
+        request,
+      ) as Promise<GenerateWordVomitPRDResponse>,
   },
 }
 

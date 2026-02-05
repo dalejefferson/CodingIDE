@@ -60,6 +60,14 @@ import type {
   ExpoStatusRequest,
   ExpoStatusResponse,
   OpenMobileAppAsProjectRequest,
+  TemplateStatusResponse,
+  GenerateMobilePRDRequest,
+  GenerateMobilePRDResponse,
+  APIKeyStatusResponse,
+  SavePRDRequest,
+  CopyPRDImagesRequest,
+  GenerateWordVomitPRDRequest,
+  GenerateWordVomitPRDResponse,
 } from './types'
 import { THEME_IDS, PROJECT_STATUSES, BROWSER_VIEW_MODES } from './types'
 import { isValidLayout } from './terminalLayout'
@@ -88,7 +96,11 @@ import {
   isStopExpoRequest,
   isExpoStatusRequest,
   isOpenMobileAppAsProjectRequest,
+  isGenerateMobilePRDRequest,
+  isSavePRDRequest,
+  isCopyPRDImagesRequest,
 } from './expoValidators'
+import { isGenerateWordVomitPRDRequest } from './wordVomitValidators'
 
 // ── Channel Constants ──────────────────────────────────────────
 
@@ -158,6 +170,16 @@ export const IPC_CHANNELS = {
   EXPO_OPEN_FOLDER_DIALOG: 'ipc:expo-open-folder-dialog',
   EXPO_CHOOSE_PARENT_DIR: 'ipc:expo-choose-parent-dir',
   EXPO_OPEN_AS_PROJECT: 'ipc:expo-open-as-project',
+  // ── App Builder Enhancement ─────────────────────────────
+  EXPO_TEMPLATE_STATUS: 'ipc:expo-template-status',
+  EXPO_REFRESH_TEMPLATES: 'ipc:expo-refresh-templates',
+  EXPO_ENSURE_TEMPLATES: 'ipc:expo-ensure-templates',
+  EXPO_GENERATE_PRD: 'ipc:expo-generate-prd',
+  EXPO_API_KEY_STATUS: 'ipc:expo-api-key-status',
+  EXPO_SAVE_PRD: 'ipc:expo-save-prd',
+  EXPO_COPY_PRD_IMAGES: 'ipc:expo-copy-prd-images',
+  // ── Word Vomit ────────────────────────────────────────────
+  WORD_VOMIT_GENERATE_PRD: 'ipc:word-vomit-generate-prd',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -415,6 +437,40 @@ export interface IPCContracts {
   [IPC_CHANNELS.EXPO_OPEN_AS_PROJECT]: {
     request: OpenMobileAppAsProjectRequest
     response: Project
+  }
+  // ── App Builder Enhancement ─────────────────────────────
+  [IPC_CHANNELS.EXPO_TEMPLATE_STATUS]: {
+    request: void
+    response: TemplateStatusResponse
+  }
+  [IPC_CHANNELS.EXPO_REFRESH_TEMPLATES]: {
+    request: void
+    response: void
+  }
+  [IPC_CHANNELS.EXPO_ENSURE_TEMPLATES]: {
+    request: void
+    response: void
+  }
+  [IPC_CHANNELS.EXPO_GENERATE_PRD]: {
+    request: GenerateMobilePRDRequest
+    response: GenerateMobilePRDResponse
+  }
+  [IPC_CHANNELS.EXPO_API_KEY_STATUS]: {
+    request: void
+    response: APIKeyStatusResponse
+  }
+  [IPC_CHANNELS.EXPO_SAVE_PRD]: {
+    request: SavePRDRequest
+    response: void
+  }
+  [IPC_CHANNELS.EXPO_COPY_PRD_IMAGES]: {
+    request: CopyPRDImagesRequest
+    response: void
+  }
+  // ── Word Vomit ────────────────────────────────────────────
+  [IPC_CHANNELS.WORD_VOMIT_GENERATE_PRD]: {
+    request: GenerateWordVomitPRDRequest
+    response: GenerateWordVomitPRDResponse
   }
 }
 
@@ -681,6 +737,16 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.EXPO_OPEN_FOLDER_DIALOG]: isVoid,
   [IPC_CHANNELS.EXPO_CHOOSE_PARENT_DIR]: isVoid,
   [IPC_CHANNELS.EXPO_OPEN_AS_PROJECT]: isOpenMobileAppAsProjectRequest,
+  // ── App Builder Enhancement ─────────────────────────────
+  [IPC_CHANNELS.EXPO_TEMPLATE_STATUS]: isVoid,
+  [IPC_CHANNELS.EXPO_REFRESH_TEMPLATES]: isVoid,
+  [IPC_CHANNELS.EXPO_ENSURE_TEMPLATES]: isVoid,
+  [IPC_CHANNELS.EXPO_GENERATE_PRD]: isGenerateMobilePRDRequest,
+  [IPC_CHANNELS.EXPO_API_KEY_STATUS]: isVoid,
+  [IPC_CHANNELS.EXPO_SAVE_PRD]: isSavePRDRequest,
+  [IPC_CHANNELS.EXPO_COPY_PRD_IMAGES]: isCopyPRDImagesRequest,
+  // ── Word Vomit ────────────────────────────────────────────
+  [IPC_CHANNELS.WORD_VOMIT_GENERATE_PRD]: isGenerateWordVomitPRDRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────
@@ -713,7 +779,12 @@ export {
   isStopExpoRequest,
   isExpoStatusRequest,
   isOpenMobileAppAsProjectRequest,
+  isGenerateMobilePRDRequest,
+  isSavePRDRequest,
+  isCopyPRDImagesRequest,
 } from './expoValidators'
+
+export { isGenerateWordVomitPRDRequest } from './wordVomitValidators'
 
 /** Check if a channel string is in the allowlist */
 export function isAllowedChannel(channel: string): channel is IPCChannel {

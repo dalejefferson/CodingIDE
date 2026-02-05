@@ -33,6 +33,11 @@ export const AppCard = React.memo(function AppCard({
     >
       <div className="app-card__header">
         <span className="app-card__name">{app.name}</span>
+        {app.hasPRD && (
+          <span className="app-card__prd-badge" title="Has PRD">
+            PRD
+          </span>
+        )}
         <span
           className={`app-card__status-dot app-card__status-dot--${app.status}`}
           title={app.status}

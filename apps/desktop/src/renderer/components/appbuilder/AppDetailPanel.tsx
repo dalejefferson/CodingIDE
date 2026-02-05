@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { QRCodeDisplay } from './QRCodeDisplay'
+import { IPhoneFrame } from './IPhoneFrame'
 import type { MobileApp, ExpoStatusResponse } from '@shared/types'
 
 interface AppDetailPanelProps {
@@ -7,11 +8,19 @@ interface AppDetailPanelProps {
   onStart: (appId: string) => Promise<void>
   onStop: (appId: string) => Promise<void>
   onOpenAsProject: (appId: string) => Promise<void>
+  onEditAndPreview?: (appId: string) => void
 }
 
-export function AppDetailPanel({ app, onStart, onStop, onOpenAsProject }: AppDetailPanelProps) {
+export function AppDetailPanel({
+  app,
+  onStart,
+  onStop,
+  onOpenAsProject,
+  onEditAndPreview,
+}: AppDetailPanelProps) {
   const [log, setLog] = useState('')
   const [actionPending, setActionPending] = useState(false)
+  const [previewMode, setPreviewMode] = useState<'qr' | 'preview'>('qr')
   const logRef = useRef<HTMLPreElement>(null)
 
   // Poll status for log updates when running/starting
@@ -64,10 +73,14 @@ export function AppDetailPanel({ app, onStart, onStop, onOpenAsProject }: AppDet
 
   const canStart = app.status === 'idle' || app.status === 'stopped' || app.status === 'error'
   const canStop = app.status === 'running' || app.status === 'starting'
+  const isRunning = app.status === 'running'
 
   return (
     <div className="app-detail">
-      <h2 className="app-detail__name">{app.name}</h2>
+      <div className="app-detail__name-row">
+        <h2 className="app-detail__name">{app.name}</h2>
+        {app.hasPRD && <span className="app-detail__prd-badge">PRD</span>}
+      </div>
 
       <div className="app-detail__meta">
         <div className="app-detail__meta-row">
@@ -118,9 +131,44 @@ export function AppDetailPanel({ app, onStart, onStop, onOpenAsProject }: AppDet
         >
           Open in Workspace
         </button>
+        {onEditAndPreview && (
+          <button
+            type="button"
+            className="app-builder__btn app-builder__btn--primary"
+            onClick={() => onEditAndPreview(app.id)}
+          >
+            Edit &amp; Preview
+          </button>
+        )}
       </div>
 
-      {app.status === 'running' && app.expoUrl && <QRCodeDisplay expoUrl={app.expoUrl} />}
+      {/* Preview mode toggle — only when app is running */}
+      {isRunning && app.expoUrl && (
+        <>
+          <div className="app-detail__preview-toggle">
+            <button
+              type="button"
+              className={`app-detail__toggle-btn${previewMode === 'qr' ? ' app-detail__toggle-btn--active' : ''}`}
+              onClick={() => setPreviewMode('qr')}
+            >
+              QR Code
+            </button>
+            <button
+              type="button"
+              className={`app-detail__toggle-btn${previewMode === 'preview' ? ' app-detail__toggle-btn--active' : ''}`}
+              onClick={() => setPreviewMode('preview')}
+            >
+              Preview
+            </button>
+          </div>
+
+          {previewMode === 'qr' ? (
+            <QRCodeDisplay expoUrl={app.expoUrl} />
+          ) : (
+            <IPhoneFrame webUrl={app.webUrl} />
+          )}
+        </>
+      )}
 
       {app.lastError && <div className="app-detail__error">{app.lastError}</div>}
 

@@ -19,7 +19,7 @@ const AUTO_DISMISS_MS = 5000
 /** Commands longer than this also get a native macOS notification */
 const NATIVE_NOTIFY_THRESHOLD_MS = 3000
 
-export type ToastKind = 'command' | 'claude' | 'warning'
+export type ToastKind = 'command' | 'claude' | 'warning' | 'prd'
 
 export interface ToastItem {
   id: string
@@ -198,7 +198,9 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
 
   const handleClick = useCallback(
     (toast: ToastItem) => {
-      onFocusProject(toast.projectId)
+      if (toast.kind !== 'prd' && toast.projectId) {
+        onFocusProject(toast.projectId)
+      }
       dismissToast(toast.id)
     },
     [onFocusProject, dismissToast],
@@ -220,7 +222,7 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
           }}
         >
           <div
-            className={`toast-icon${toast.kind === 'claude' ? ' toast-icon--claude' : ''}${toast.kind === 'warning' ? ' toast-icon--warning' : ''}`}
+            className={`toast-icon${toast.kind === 'claude' ? ' toast-icon--claude' : ''}${toast.kind === 'warning' ? ' toast-icon--warning' : ''}${toast.kind === 'prd' ? ' toast-icon--prd' : ''}`}
           >
             {toast.kind === 'claude' ? (
               <svg
@@ -249,6 +251,21 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
                 <path d="M8 1L1 14h14L8 1z" />
                 <path d="M8 6v4M8 12h.01" />
               </svg>
+            ) : toast.kind === 'prd' ? (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5L9 1z" />
+                <polyline points="9 1 9 5 13 5" />
+                <polyline points="6 9 7.5 11 10 7" />
+              </svg>
             ) : (
               <svg
                 width="14"
@@ -270,7 +287,9 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
                 ? 'Claude finished'
                 : toast.kind === 'warning'
                   ? 'Port conflict'
-                  : 'Command completed'}
+                  : toast.kind === 'prd'
+                    ? 'PRD ready'
+                    : 'Command completed'}
             </span>
             <span className="toast-detail">
               {toast.message ?? toast.projectName}

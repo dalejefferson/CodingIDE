@@ -98,9 +98,11 @@ export class MobileAppStore {
       template: payload.template,
       status: 'idle',
       expoUrl: null,
+      webUrl: null,
       metroPort: 8081,
       addedAt: Date.now(),
       lastError: null,
+      projectId: null,
     }
 
     apps.push(app)
@@ -122,9 +124,11 @@ export class MobileAppStore {
       template: 'blank',
       status: 'idle',
       expoUrl: null,
+      webUrl: null,
       metroPort: 8081,
       addedAt: Date.now(),
       lastError: null,
+      projectId: null,
     }
 
     apps.push(app)
@@ -164,6 +168,24 @@ export class MobileAppStore {
     const app = apps.find((a) => a.id === id)
     if (app) {
       app.lastError = error
+      this.markDirty()
+    }
+  }
+
+  setWebUrl(id: string, url: string | null): void {
+    const apps = this.load()
+    const app = apps.find((a) => a.id === id)
+    if (app) {
+      app.webUrl = url
+      this.markDirty()
+    }
+  }
+
+  setProjectId(id: string, projectId: string | null): void {
+    const apps = this.load()
+    const app = apps.find((a) => a.id === id)
+    if (app) {
+      app.projectId = projectId
       this.markDirty()
     }
   }

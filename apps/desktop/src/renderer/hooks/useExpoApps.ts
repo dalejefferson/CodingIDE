@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { MobileApp, ExpoTemplate } from '@shared/types'
+import type {
+  MobileApp,
+  ExpoTemplate,
+  TemplateStatusResponse,
+  APIKeyStatusResponse,
+  GenerateMobilePRDResponse,
+} from '@shared/types'
 
 export interface UseExpoAppsReturn {
   mobileApps: MobileApp[]
@@ -7,19 +13,36 @@ export interface UseExpoAppsReturn {
   selectedApp: MobileApp | null
   selectedAppId: string | null
   selectApp: (id: string) => void
-  createApp: (name: string, template: ExpoTemplate, parentDir: string) => Promise<void>
+  createApp: (
+    name: string,
+    template: ExpoTemplate,
+    parentDir: string,
+    prdContent?: string,
+    paletteId?: string,
+    imagePaths?: string[],
+  ) => Promise<void>
   addApp: (path: string) => Promise<void>
   removeApp: (id: string) => Promise<void>
   startApp: (appId: string) => Promise<void>
   stopApp: (appId: string) => Promise<void>
   openAsProject: (appId: string) => Promise<void>
   refreshApps: () => Promise<void>
+  templateStatus: TemplateStatusResponse | null
+  apiKeyStatus: APIKeyStatusResponse | null
+  generatePRD: (
+    appDescription: string,
+    template: ExpoTemplate,
+    paletteId?: string,
+  ) => Promise<GenerateMobilePRDResponse>
+  refreshTemplates: () => Promise<void>
 }
 
 export function useExpoApps(): UseExpoAppsReturn {
   const [mobileApps, setMobileApps] = useState<MobileApp[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null)
+  const [templateStatus, setTemplateStatus] = useState<TemplateStatusResponse | null>(null)
+  const [apiKeyStatus, setApiKeyStatus] = useState<APIKeyStatusResponse | null>(null)
 
   // ── Initial load ────────────────────────────────────────────
   const refreshApps = useCallback(async () => {
@@ -49,6 +72,12 @@ export function useExpoApps(): UseExpoAppsReturn {
     }
   }, [])
 
+  // ── Template + API key status on mount ──────────────────────
+  useEffect(() => {
+    window.electronAPI.expo.getTemplateStatus().then(setTemplateStatus).catch(console.error)
+    window.electronAPI.expo.getApiKeyStatus().then(setApiKeyStatus).catch(console.error)
+  }, [])
+
   // ── Broadcast listener ──────────────────────────────────────
   useEffect(() => {
     return window.electronAPI.expo.onStatusChanged((updatedApp: MobileApp) => {
@@ -67,11 +96,28 @@ export function useExpoApps(): UseExpoAppsReturn {
     setSelectedAppId(id)
   }, [])
 
-  const createApp = useCallback(async (name: string, template: ExpoTemplate, parentDir: string) => {
-    const app = await window.electronAPI.expo.create({ name, template, parentDir })
-    setMobileApps((prev) => [...prev, app])
-    setSelectedAppId(app.id)
-  }, [])
+  const createApp = useCallback(
+    async (
+      name: string,
+      template: ExpoTemplate,
+      parentDir: string,
+      prdContent?: string,
+      paletteId?: string,
+      imagePaths?: string[],
+    ) => {
+      const app = await window.electronAPI.expo.create({
+        name,
+        template,
+        parentDir,
+        prdContent,
+        paletteId,
+        imagePaths,
+      })
+      setMobileApps((prev) => [...prev, app])
+      setSelectedAppId(app.id)
+    },
+    [],
+  )
 
   const addApp = useCallback(async (path: string) => {
     const app = await window.electronAPI.expo.add({ path })
@@ -103,6 +149,25 @@ export function useExpoApps(): UseExpoAppsReturn {
     await window.electronAPI.expo.openAsProject({ appId })
   }, [])
 
+  // ── PRD Generation ────────────────────────────────────────────
+  const generatePRD = useCallback(
+    async (
+      appDescription: string,
+      template: ExpoTemplate,
+      paletteId?: string,
+    ): Promise<GenerateMobilePRDResponse> => {
+      return window.electronAPI.expo.generatePRD({ appDescription, template, paletteId })
+    },
+    [],
+  )
+
+  // ── Template Refresh ─────────────────────────────────────────
+  const refreshTemplates = useCallback(async () => {
+    await window.electronAPI.expo.refreshTemplates()
+    const status = await window.electronAPI.expo.getTemplateStatus()
+    setTemplateStatus(status)
+  }, [])
+
   // ── Derived ─────────────────────────────────────────────────
   const selectedApp = mobileApps.find((a) => a.id === selectedAppId) ?? null
 
@@ -119,5 +184,9 @@ export function useExpoApps(): UseExpoAppsReturn {
     stopApp,
     openAsProject,
     refreshApps,
+    templateStatus,
+    apiKeyStatus,
+    generatePRD,
+    refreshTemplates,
   }
 }

@@ -413,6 +413,18 @@ function TerminalPaneInner({
             // triggers SIGWINCH which causes the shell to reprint the prompt.
             suppressResizeUntil = Date.now() + 500
 
+            // Deferred fit after the suppression window. If the container
+            // resized during the 500ms window (e.g. layout settling), this
+            // syncs xterm + PTY dimensions to prevent staircase rendering.
+            setTimeout(() => {
+              if (disposed) return
+              fitAddon.fit()
+              const { cols: c, rows: r } = term
+              if (c >= 10 && r >= 2) {
+                window.electronAPI.terminal.resize({ terminalId, cols: c, rows: r })
+              }
+            }, 550)
+
             if (created) {
               // Brand-new PTY — no buffer to replay. Flush any live data
               // that arrived during create() (e.g. the initial shell prompt).
@@ -527,8 +539,11 @@ function TerminalPaneInner({
         if (disposed) return
         // Skip fitting during ancestor CSS transitions — we'll fit once at transitionend
         if (transitionCount > 0) return
-        fitAddon.fit()
+        // Skip fitting entirely during the post-creation suppression window.
+        // Fitting without resizing the PTY creates a cols mismatch that
+        // causes staircase rendering (each line offset further right).
         if (Date.now() < suppressResizeUntil) return
+        fitAddon.fit()
         const { cols, rows } = term
         if (cols >= 10 && rows >= 2) {
           window.electronAPI.terminal.resize({ terminalId, cols, rows })

@@ -2,28 +2,35 @@
  * App Builder / Expo IPC Handlers
  *
  * Registers handlers for Expo project creation, Metro dev server
- * lifecycle, folder dialogs, and mobile-app-to-project bridging.
+ * lifecycle, folder dialogs, mobile-app-to-project bridging,
+ * template cache management, and mobile PRD generation.
  */
 
 import { BrowserWindow, dialog } from 'electron'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs'
+import { join, basename } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipcContracts'
 import { ExpoService } from '@services/expoService'
+import { generateMobilePRD } from '@services/mobilePrdService'
 import type { IPCRouter } from './ipcRouter'
 import type { MobileAppStore } from '@services/mobileAppStore'
 import type { ProjectStore } from '@services/projectStore'
+import type { TemplateCacheService } from '@services/templateCache'
+import type { SettingsStore } from '@services/settingsStore'
 
 export function setupExpoIPC(
   router: IPCRouter,
   mobileAppStore: MobileAppStore,
   projectStore: ProjectStore,
+  settingsStore: SettingsStore,
+  templateCache: TemplateCacheService,
   getMainWindow: () => BrowserWindow | null,
 ): { expoService: ExpoService } {
-  const expoService = new ExpoService((appId, status, expoUrl, error) => {
+  const expoService = new ExpoService((appId, status, expoUrl, webUrl, error) => {
     // Update store
     mobileAppStore.setStatus(appId, status)
     mobileAppStore.setExpoUrl(appId, expoUrl)
+    mobileAppStore.setWebUrl(appId, webUrl)
     if (error) mobileAppStore.setError(appId, error)
 
     // Broadcast to renderer
@@ -39,10 +46,40 @@ export function setupExpoIPC(
     return mobileAppStore.getAll()
   })
 
-  // ── Create App (scaffold with create-expo-app) ─────────────
+  // ── Create App (from cached template) ──────────────────────
   router.handle(IPC_CHANNELS.EXPO_CREATE, async (_event, payload) => {
-    const projectPath = await expoService.create(payload.name, payload.template, payload.parentDir)
-    return mobileAppStore.create(payload, projectPath)
+    const projectPath = await templateCache.createFromTemplate(
+      payload.template,
+      payload.parentDir,
+      payload.name,
+    )
+    const app = mobileAppStore.create(payload, projectPath)
+
+    // Save PRD artifacts if provided
+    if (payload.prdContent) {
+      const prdDir = join(projectPath, '.prd')
+      mkdirSync(prdDir, { recursive: true })
+      writeFileSync(join(prdDir, 'prd.md'), payload.prdContent, 'utf-8')
+      if (payload.paletteId) {
+        writeFileSync(
+          join(prdDir, 'palette.json'),
+          JSON.stringify({ paletteId: payload.paletteId }),
+          'utf-8',
+        )
+      }
+    }
+
+    // Copy reference images if provided
+    if (payload.imagePaths && payload.imagePaths.length > 0) {
+      const imagesDir = join(projectPath, '.prd', 'images')
+      mkdirSync(imagesDir, { recursive: true })
+      for (const srcPath of payload.imagePaths) {
+        const destPath = join(imagesDir, basename(srcPath))
+        copyFileSync(srcPath, destPath)
+      }
+    }
+
+    return app
   })
 
   // ── Add Existing App ───────────────────────────────────────
@@ -116,6 +153,69 @@ export function setupExpoIPC(
     if (!app) throw new Error(`Mobile app not found: ${payload.appId}`)
 
     return projectStore.add({ path: app.path })
+  })
+
+  // ── Template Status ──────────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_TEMPLATE_STATUS, () => {
+    return templateCache.getStatus()
+  })
+
+  // ── Refresh Templates ────────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_REFRESH_TEMPLATES, async () => {
+    await templateCache.refreshTemplates()
+  })
+
+  // ── Ensure Templates ─────────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_ENSURE_TEMPLATES, async () => {
+    await templateCache.ensureExtracted()
+  })
+
+  // ── Generate Mobile PRD ──────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_GENERATE_PRD, async (_event, payload) => {
+    const claudeKey = settingsStore.getClaudeKey()
+    const openaiKey = settingsStore.getOpenAIKey()
+    if (!claudeKey && !openaiKey) {
+      throw new Error('No API key configured. Add an OpenAI or Claude key in Settings.')
+    }
+    const content = await generateMobilePRD(
+      claudeKey,
+      openaiKey,
+      payload.appDescription,
+      payload.template,
+      payload.paletteId,
+    )
+    return { content }
+  })
+
+  // ── API Key Status ───────────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_API_KEY_STATUS, () => {
+    const hasOpenAI = !!settingsStore.getOpenAIKey()
+    const hasClaude = !!settingsStore.getClaudeKey()
+    return { hasOpenAI, hasClaude, hasAny: hasOpenAI || hasClaude }
+  })
+
+  // ── Save PRD ─────────────────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_SAVE_PRD, (_event, payload) => {
+    const prdDir = join(payload.appPath, '.prd')
+    mkdirSync(prdDir, { recursive: true })
+    writeFileSync(join(prdDir, 'prd.md'), payload.prdContent, 'utf-8')
+    if (payload.paletteId) {
+      writeFileSync(
+        join(prdDir, 'palette.json'),
+        JSON.stringify({ paletteId: payload.paletteId }),
+        'utf-8',
+      )
+    }
+  })
+
+  // ── Copy PRD Images ──────────────────────────────────────
+  router.handle(IPC_CHANNELS.EXPO_COPY_PRD_IMAGES, (_event, payload) => {
+    const imagesDir = join(payload.appPath, '.prd', 'images')
+    mkdirSync(imagesDir, { recursive: true })
+    for (const srcPath of payload.imagePaths) {
+      const destPath = join(imagesDir, basename(srcPath))
+      copyFileSync(srcPath, destPath)
+    }
   })
 
   return { expoService }

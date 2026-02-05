@@ -1,0 +1,221 @@
+/* ==========================================================================
+   MobileWorkspace — Three-panel layout (files | editor | iPhone preview)
+   ========================================================================== */
+
+/* ── Container ───────────────────────────────────────────────────────────── */
+
+.mobile-workspace {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.mobile-workspace--hidden {
+  display: none;
+}
+
+/* ── Left panel: File tree ───────────────────────────────────────────────── */
+
+.mobile-workspace__files {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  overflow: hidden;
+}
+
+.mobile-workspace__files-header {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mobile-workspace__files-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs) 0;
+}
+
+.mobile-workspace__file-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.mobile-workspace__file-entry:hover {
+  background: var(--color-bg-hover);
+}
+
+.mobile-workspace__file-entry--selected {
+  background: var(--color-bg-active);
+  color: var(--color-text-primary);
+}
+
+.mobile-workspace__file-entry--dir {
+  font-weight: 500;
+}
+
+.mobile-workspace__file-icon {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.mobile-workspace__file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-workspace__files-empty {
+  padding: var(--space-lg);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ── Middle panel: Code editor placeholder ───────────────────────────────── */
+
+.mobile-workspace__editor {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  background: var(--color-bg-primary);
+  border-right: 1px solid var(--color-border-primary);
+}
+
+.mobile-workspace__editor-placeholder {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-md);
+}
+
+.mobile-workspace__editor-file {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Right panel: iPhone preview ─────────────────────────────────────────── */
+
+.mobile-workspace__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 320px;
+  min-width: 250px;
+  flex-shrink: 0;
+  padding: var(--space-lg);
+  background: var(--color-bg-secondary);
+  overflow-y: auto;
+}
+
+/* ── Loading skeleton ────────────────────────────────────────────────────── */
+
+.mobile-workspace__preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.mobile-workspace__preview-skeleton {
+  width: 160px;
+  height: 340px;
+  border-radius: 24px;
+  background: linear-gradient(
+    110deg,
+    var(--color-bg-tertiary) 30%,
+    var(--color-bg-secondary) 50%,
+    var(--color-bg-tertiary) 70%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.mobile-workspace__preview-loading-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Loading overlay (Metro starting) ────────────────────────────────────── */
+
+.mobile-workspace__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  width: 100%;
+  height: 100%;
+  animation: workspace-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes workspace-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ── Alias: file-tree (for simpler component usage) ──────────────────────── */
+
+.mobile-workspace__file-tree {
+  width: 200px;
+  min-width: 150px;
+  border-right: 1px solid var(--color-border-primary);
+  overflow-y: auto;
+  background: var(--color-bg-secondary);
+  padding: var(--space-sm);
+}
+
+/* ── Simple file item (alternate flat tree) ──────────────────────────────── */
+
+.mobile-workspace__file-item {
+  padding: var(--space-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.mobile-workspace__file-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.mobile-workspace__file-item--dir {
+  font-weight: 500;
+}

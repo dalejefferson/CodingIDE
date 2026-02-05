@@ -102,7 +102,7 @@ export class TicketStore {
       type: request.type,
       priority: request.priority,
       projectId: request.projectId,
-      prd: null,
+      prd: request.prd ?? null,
       history: [{ timestamp: now, action: 'created' }],
       worktreeBasePath: null,
       worktreePath: null,

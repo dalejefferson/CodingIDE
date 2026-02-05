@@ -324,3 +324,65 @@
   border-radius: var(--radius-md);
   padding: var(--space-md);
 }
+
+/* ── Name Row with PRD Badge ─────────────────────────────────────────────── */
+
+.app-detail__name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.app-detail__prd-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* ── Preview Mode Toggle ─────────────────────────────────────────────────── */
+
+.app-detail__preview-toggle {
+  display: flex;
+  gap: 1px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border-primary);
+  align-self: flex-start;
+}
+
+.app-detail__toggle-btn {
+  padding: var(--space-xs) var(--space-md);
+  border: none;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-tertiary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.app-detail__toggle-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+
+.app-detail__toggle-btn--active {
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+}
+
+.app-detail__toggle-btn--active:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-on-primary);
+}
