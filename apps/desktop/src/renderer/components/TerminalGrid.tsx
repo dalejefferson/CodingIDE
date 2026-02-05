@@ -56,6 +56,8 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
   const closeConfirmRef = useRef<HTMLButtonElement>(null)
   /** Leaf ID of the terminal spawned by the last Cmd+P runCommand */
   const cmdPLeafRef = useRef<string | null>(null)
+  /** Terminal ID of the Cmd+P server process (survives pane removal) */
+  const cmdPTerminalIdRef = useRef<string | null>(null)
 
   // Keep refs in sync for keyboard handler
   useEffect(() => {
@@ -88,6 +90,12 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
             layoutRef.current = current
           }
           cmdPLeafRef.current = null
+          cmdPTerminalIdRef.current = null
+        } else if (cmdPTerminalIdRef.current) {
+          // Leaf was already removed (auto-closed after localhost detection),
+          // but the server process is still running — kill it now.
+          window.electronAPI.terminal.kill(cmdPTerminalIdRef.current)
+          cmdPTerminalIdRef.current = null
         }
 
         const targetId = activeLeafRef.current ?? getAllLeafIds(current)[0]
@@ -105,6 +113,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
             const newLeaf = findLeaf(freshLayout, newId)
             if (newLeaf) {
               setPendingCommands((prev) => ({ ...prev, [newLeaf.terminalId]: command }))
+              cmdPTerminalIdRef.current = newLeaf.terminalId
             }
             cmdPLeafRef.current = newId
             setActiveLeafId(newId)
@@ -120,6 +129,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
           const newLeaf = findLeaf(newLayout, newId)
           if (newLeaf) {
             setPendingCommands((prev) => ({ ...prev, [newLeaf.terminalId]: command }))
+            cmdPTerminalIdRef.current = newLeaf.terminalId
           }
           cmdPLeafRef.current = newId
           setActiveLeafId(newId)
@@ -135,6 +145,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
     let cancelled = false
     // Reset Cmd+P tracking when switching projects
     cmdPLeafRef.current = null
+    cmdPTerminalIdRef.current = null
 
     async function loadLayout() {
       try {
@@ -173,6 +184,11 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
   // Handle terminal exit — remove from layout
   useEffect(() => {
     const removeExitListener = window.electronAPI.terminal.onExit((terminalId) => {
+      // Clear Cmd+P refs if this was the server process
+      if (terminalId === cmdPTerminalIdRef.current) {
+        cmdPTerminalIdRef.current = null
+      }
+
       setLayout((prev) => {
         if (!prev) return prev
         // Find the leaf node whose terminalId matches
@@ -242,9 +258,10 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
     const active = activeLeafRef.current
     if (!current || !active) return
 
-    // Clear Cmd+P ref if this pane was the command terminal
+    // Clear Cmd+P refs if this pane was the command terminal
     if (active === cmdPLeafRef.current) {
       cmdPLeafRef.current = null
+      cmdPTerminalIdRef.current = null
     }
 
     const leaf = findLeaf(current, active)
@@ -343,6 +360,37 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSplitRight, handleSplitDown, handleClosePane, showCloseConfirm, confirmAndClose])
 
+  // Wrap onLocalhostDetected so that when the Cmd+P terminal detects a localhost
+  // URL, we remove the pane from the grid (but keep the server process running).
+  const wrappedLocalhostDetected = useCallback(
+    (terminalId: string, url: string) => {
+      if (terminalId === cmdPTerminalIdRef.current && cmdPLeafRef.current) {
+        const leafId = cmdPLeafRef.current
+        cmdPLeafRef.current = null
+
+        setLayout((prev) => {
+          if (!prev) return prev
+          const updated = removeTerminal(prev, leafId)
+          if (!updated) {
+            const leaf = createLeaf()
+            setActiveLeafId(leaf.id)
+            return leaf
+          }
+          const remaining = getAllLeafIds(updated)
+          setActiveLeafId((currentActive) => {
+            if (!currentActive || !remaining.includes(currentActive)) {
+              return remaining[0] ?? null
+            }
+            return currentActive
+          })
+          return updated
+        })
+      }
+      onLocalhostDetected?.(url)
+    },
+    [onLocalhostDetected],
+  )
+
   const handleCommandSent = useCallback((terminalId: string) => {
     setPendingCommands((prev) => {
       if (!(terminalId in prev)) return prev
@@ -366,7 +414,7 @@ export const TerminalGrid = forwardRef<TerminalGridHandle, TerminalGridProps>(fu
         onFocusLeaf={setActiveLeafId}
         onRatioChange={handleRatioChange}
         onCommandSent={handleCommandSent}
-        onLocalhostDetected={onLocalhostDetected}
+        onLocalhostDetected={wrappedLocalhostDetected}
       />
 
       {showCloseConfirm && (
@@ -407,7 +455,7 @@ interface LayoutRendererProps {
   onFocusLeaf: (id: string) => void
   onRatioChange: (branchId: string, newRatio: number) => void
   onCommandSent: (terminalId: string) => void
-  onLocalhostDetected?: (url: string) => void
+  onLocalhostDetected?: (terminalId: string, url: string) => void
 }
 
 const LayoutRenderer = React.memo(function LayoutRenderer({
@@ -434,7 +482,11 @@ const LayoutRenderer = React.memo(function LayoutRenderer({
         pendingCommand={pendingCommands[node.terminalId]}
         onFocus={() => onFocusLeaf(node.id)}
         onCommandSent={() => onCommandSent(node.terminalId)}
-        onLocalhostDetected={onLocalhostDetected}
+        onLocalhostDetected={
+          onLocalhostDetected
+            ? (url: string) => onLocalhostDetected(node.terminalId, url)
+            : undefined
+        }
       />
     )
   }

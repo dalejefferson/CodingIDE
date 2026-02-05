@@ -193,7 +193,17 @@ function ProjectWorkspace({
       if (port !== null && getPortOwner) {
         const owner = getPortOwner(port)
         if (owner !== null && owner !== project.id) {
-          // Port is used by another project — skip auto-opening
+          // Port is used by another project — notify user instead of silently ignoring
+          window.dispatchEvent(
+            new CustomEvent('app:show-toast', {
+              detail: {
+                kind: 'warning',
+                projectId: project.id,
+                projectName: project.name,
+                message: `Port ${port} is already in use by another project`,
+              },
+            }),
+          )
           return
         }
       }
@@ -201,7 +211,7 @@ function ProjectWorkspace({
       setViewMode('focused')
       window.dispatchEvent(new Event('sidebar:collapse'))
     },
-    [getPortOwner, project.id],
+    [getPortOwner, project.id, project.name],
   )
 
   const handleChangeViewMode = useCallback((mode: BrowserViewMode) => {

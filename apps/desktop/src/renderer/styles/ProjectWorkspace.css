@@ -9,7 +9,12 @@
 }
 
 .workspace--hidden {
-  display: none !important;
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* ── Toggle Bar ──────────────────────────────────────────────── */

@@ -19,7 +19,7 @@ const AUTO_DISMISS_MS = 5000
 /** Commands longer than this also get a native macOS notification */
 const NATIVE_NOTIFY_THRESHOLD_MS = 3000
 
-export type ToastKind = 'command' | 'claude'
+export type ToastKind = 'command' | 'claude' | 'warning'
 
 export interface ToastItem {
   id: string
@@ -27,6 +27,8 @@ export interface ToastItem {
   event: CommandCompletionEvent | null
   projectId: string
   projectName: string
+  /** Optional custom message for warning toasts */
+  message?: string
   /** Timestamp when toast was created */
   createdAt: number
 }
@@ -171,6 +173,29 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
     return unsubscribe
   }, [activeProjectId, addToast])
 
+  // Listen for custom toast events (e.g. port conflict warnings)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { kind, projectId, projectName, message } = (e as CustomEvent).detail as {
+        kind: ToastKind
+        projectId: string
+        projectName: string
+        message?: string
+      }
+      const id = `toast-${++nextId.current}`
+      setToasts((prev) => {
+        const next = [
+          ...prev,
+          { id, kind, event: null, projectId, projectName, message, createdAt: Date.now() },
+        ]
+        if (next.length > MAX_VISIBLE) return next.slice(next.length - MAX_VISIBLE)
+        return next
+      })
+    }
+    window.addEventListener('app:show-toast', handler)
+    return () => window.removeEventListener('app:show-toast', handler)
+  }, [])
+
   const handleClick = useCallback(
     (toast: ToastItem) => {
       onFocusProject(toast.projectId)
@@ -194,7 +219,9 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
             if (e.key === 'Enter' || e.key === ' ') handleClick(toast)
           }}
         >
-          <div className={`toast-icon${toast.kind === 'claude' ? ' toast-icon--claude' : ''}`}>
+          <div
+            className={`toast-icon${toast.kind === 'claude' ? ' toast-icon--claude' : ''}${toast.kind === 'warning' ? ' toast-icon--warning' : ''}`}
+          >
             {toast.kind === 'claude' ? (
               <svg
                 width="14"
@@ -207,6 +234,20 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
                 strokeLinejoin="round"
               >
                 <path d="M8 1v4M8 11v4M1 8h4M11 8h4M3 3l2.5 2.5M10.5 10.5L13 13M13 3l-2.5 2.5M5.5 10.5L3 13" />
+              </svg>
+            ) : toast.kind === 'warning' ? (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8 1L1 14h14L8 1z" />
+                <path d="M8 6v4M8 12h.01" />
               </svg>
             ) : (
               <svg
@@ -225,10 +266,14 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
           </div>
           <div className="toast-content">
             <span className="toast-title">
-              {toast.kind === 'claude' ? 'Claude finished' : 'Command completed'}
+              {toast.kind === 'claude'
+                ? 'Claude finished'
+                : toast.kind === 'warning'
+                  ? 'Port conflict'
+                  : 'Command completed'}
             </span>
             <span className="toast-detail">
-              {toast.projectName}
+              {toast.message ?? toast.projectName}
               {toast.event ? ` \u00B7 ${formatDuration(toast.event.elapsedMs)}` : ''}
             </span>
           </div>

@@ -208,9 +208,12 @@ function BrowserPaneInner({
     }
   }, [pickerActive])
 
-  // Navigate to new URL when initialUrl changes after mount
+  // Navigate to new URL when initialUrl changes after mount, but skip if the
+  // webview is already showing this URL (avoids reloading on project switch).
+  const lastNavigatedRef = useRef(startUrl)
   useEffect(() => {
-    if (initialUrl) {
+    if (initialUrl && initialUrl !== lastNavigatedRef.current) {
+      lastNavigatedRef.current = initialUrl
       navigateTo(initialUrl)
     }
   }, [initialUrl, navigateTo])
@@ -238,6 +241,7 @@ function BrowserPaneInner({
       setAddressBarValue(currentUrl)
       setCanGoBack(wv.canGoBack())
       setCanGoForward(wv.canGoForward())
+      lastNavigatedRef.current = currentUrl
       onUrlChange?.(currentUrl)
     }
 
