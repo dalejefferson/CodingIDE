@@ -192,8 +192,14 @@ function BrowserPaneInner({
   }, [])
 
   const handleRefresh = useCallback(() => {
-    webviewRef.current?.reload()
-  }, [])
+    const wv = webviewRef.current
+    if (!wv) return
+    let url = addressBarValue.trim()
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url
+    }
+    wv.loadURL(url)
+  }, [addressBarValue])
 
   const togglePicker = useCallback(() => {
     const wv = webviewRef.current
@@ -233,6 +239,7 @@ function BrowserPaneInner({
     }
 
     const onDidStopLoading = () => {
+      readyRef.current = true
       setLoading(false)
     }
 
