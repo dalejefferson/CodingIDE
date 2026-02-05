@@ -5,7 +5,6 @@ import { TerminalGrid } from './TerminalGrid'
 import type { TerminalGridHandle } from './TerminalGrid'
 import { BrowserPane } from './BrowserPane'
 import { InlineTerminalDrawer } from './InlineTerminalDrawer'
-import { CreateFileModal, EditFileModal } from './FileOpsModals'
 import { FileTree } from './FileTree'
 import type { FileTreeHandle } from './FileTree'
 import { CodeViewer } from './CodeViewer'
@@ -65,6 +64,8 @@ function ProjectWorkspace({
   // Inline terminal drawer state (toggled per-pane terminal)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const toggleDrawer = useCallback(() => setDrawerOpen((prev) => !prev), [])
+  const [drawerPendingCommand, setDrawerPendingCommand] = useState<string | undefined>(undefined)
+  const clearDrawerCommand = useCallback(() => setDrawerPendingCommand(undefined), [])
 
   // File explorer state
   const [explorerOpen, setExplorerOpen] = useState(false)
@@ -84,8 +85,6 @@ function ProjectWorkspace({
   }, [])
 
   // File ops modal state
-  const [showCreateFile, setShowCreateFile] = useState(false)
-  const [showEditFile, setShowEditFile] = useState(false)
 
   // Change-chaining state
   const [pickedChanges, setPickedChanges] = useState<PickedChange[]>([])
@@ -174,7 +173,12 @@ function ProjectWorkspace({
     })
     const prompt = lines.join('\n')
     const escaped = prompt.replace(/'/g, "'\\''")
-    window.dispatchEvent(new CustomEvent('terminal:run-command', { detail: `cc '${escaped}'` }))
+    // Ensure the browser is in split mode so the drawer under it is visible.
+    // If the user was in fullscreen/pip/focused, switch to split so the
+    // terminal drawer slides up underneath the browser pane.
+    setViewMode('split')
+    setDrawerOpen(true)
+    setDrawerPendingCommand(`cc '${escaped}'`)
     setPickedChanges([])
     setPendingPick(null)
     setChangeInput('')
@@ -310,9 +314,12 @@ function ProjectWorkspace({
     return () => window.removeEventListener('keydown', handler, true)
   }, [isVisible, viewMode, toggleBrowser, toggleDrawer, handleToggleExplorer])
 
+  // Fire resize after view mode transitions settle. The CSS transitions are
+  // 200ms — the transitionend listener in TerminalPane handles fitting during
+  // the transition. This timeout is a fallback to ensure a final fit happens.
   useEffect(() => {
     if (viewMode === 'split' || viewMode === 'closed') {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 250)
+      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
       return () => clearTimeout(t)
     }
   }, [viewMode])
@@ -323,10 +330,11 @@ function ProjectWorkspace({
     }
   }, [viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fire resize when becoming visible so terminals + browser recalculate dimensions
+  // Fire resize when becoming visible so terminals + browser recalculate dimensions.
+  // Use 220ms to clear any CSS transitions that may still be settling.
   useEffect(() => {
     if (isVisible) {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 50)
+      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
       return () => clearTimeout(t)
     }
   }, [isVisible])
@@ -471,46 +479,6 @@ function ProjectWorkspace({
         </button>
         <button
           type="button"
-          className="workspace-toggle-btn"
-          onClick={() => setShowCreateFile(true)}
-          title="Create file (File Ops)"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6l-4-4z" />
-            <path d="M9 2v4h4" />
-            <path d="M8 9v3M6.5 10.5h3" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="workspace-toggle-btn"
-          onClick={() => setShowEditFile(true)}
-          title="Edit file (File Ops)"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" />
-          </svg>
-        </button>
-        <button
-          type="button"
           className={`workspace-toggle-btn${drawerOpen ? ' workspace-toggle-btn--active' : ''}`}
           onClick={toggleDrawer}
           title={drawerOpen ? 'Hide terminal drawer (Cmd+`)' : 'Show terminal drawer (Cmd+`)'}
@@ -562,49 +530,6 @@ function ProjectWorkspace({
               <div className="workspace-explorer-tree-header">
                 <span className="workspace-explorer-tree-title">Explorer</span>
                 <div className="workspace-explorer-actions">
-                  {/* New File */}
-                  <button
-                    className="workspace-explorer-action"
-                    onClick={() => setShowCreateFile(true)}
-                    title="New File"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M9.5 1.5H4a1 1 0 00-1 1v11a1 1 0 001 1h8a1 1 0 001-1V5l-3.5-3.5z" />
-                      <path d="M9.5 1.5V5H13" />
-                      <path d="M8 8v4M6 10h4" />
-                    </svg>
-                  </button>
-                  {/* New Folder */}
-                  <button
-                    className="workspace-explorer-action"
-                    onClick={() => {
-                      setShowCreateFile(true)
-                    }}
-                    title="New Folder"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M1.5 4h4.5l1.5-2h5a1 1 0 011 1v8a1 1 0 01-1 1h-10a1 1 0 01-1-1V4z" />
-                      <path d="M8 6.5v4M6 8.5h4" />
-                    </svg>
-                  </button>
                   {/* Refresh */}
                   <button
                     className="workspace-explorer-action"
@@ -712,10 +637,12 @@ function ProjectWorkspace({
           )}
           <div
             style={{
-              display: viewMode === 'focused' ? 'none' : 'flex',
-              flex: 1,
+              visibility: viewMode === 'focused' ? 'hidden' : undefined,
+              flex: viewMode === 'focused' ? 0 : 1,
               minHeight: 0,
               flexDirection: 'column',
+              display: 'flex',
+              overflow: 'hidden',
             }}
           >
             <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -733,6 +660,8 @@ function ProjectWorkspace({
               palette={palette}
               isOpen={drawerOpen && !showSplitBrowser}
               onToggle={toggleDrawer}
+              pendingCommand={!showSplitBrowser ? drawerPendingCommand : undefined}
+              onCommandSent={clearDrawerCommand}
             />
           </div>
         </div>
@@ -754,6 +683,8 @@ function ProjectWorkspace({
                 palette={palette}
                 isOpen={drawerOpen && showSplitBrowser}
                 onToggle={toggleDrawer}
+                pendingCommand={showSplitBrowser ? drawerPendingCommand : undefined}
+                onCommandSent={clearDrawerCommand}
               />
             </div>
           </>
@@ -874,13 +805,6 @@ function ProjectWorkspace({
             </button>
           </div>
         </div>
-      )}
-
-      {showCreateFile && (
-        <CreateFileModal projectId={project.id} onClose={() => setShowCreateFile(false)} />
-      )}
-      {showEditFile && (
-        <EditFileModal projectId={project.id} onClose={() => setShowEditFile(false)} />
       )}
     </div>
   )

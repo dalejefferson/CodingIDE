@@ -19,6 +19,8 @@ interface InlineTerminalDrawerProps {
   palette: string
   isOpen: boolean
   onToggle: () => void
+  pendingCommand?: string
+  onCommandSent?: () => void
 }
 
 /** Generate a stable terminal ID for the drawer per project */
@@ -32,6 +34,8 @@ function InlineTerminalDrawerInner({
   palette,
   isOpen,
   onToggle,
+  pendingCommand,
+  onCommandSent,
 }: InlineTerminalDrawerProps) {
   const [drawerHeight, setDrawerHeight] = useState(250)
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -86,13 +90,15 @@ function InlineTerminalDrawerInner({
       prevHeightRef.current = drawerHeight
       setDrawerHeight(maxH)
     }
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 50)
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
   }, [drawerHeight])
 
-  // Fire resize when drawer opens so xterm can fit
+  // Fire resize after drawer open/close transition finishes (200ms CSS transition).
+  // The transitionend listener in TerminalPane handles the actual fit — this is
+  // a fallback for cases where no transition fires (e.g. first mount).
   useEffect(() => {
     if (isOpen) {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 50)
+      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
       return () => clearTimeout(t)
     }
   }, [isOpen])
@@ -138,15 +144,27 @@ function InlineTerminalDrawerInner({
         </button>
       </div>
 
-      {/* Terminal content — only mount after first open */}
+      {/* Terminal content — only mount after first open.
+          Use visibility:hidden instead of display:none so the xterm canvas
+          keeps its rendering context and doesn't fragment on reopen. */}
       {hasBeenOpened && (
-        <div className="inline-drawer-terminal" style={{ display: isOpen ? 'flex' : 'none' }}>
+        <div
+          className="inline-drawer-terminal"
+          style={{
+            visibility: isOpen ? undefined : 'hidden',
+            flex: isOpen ? 1 : 0,
+            minHeight: isOpen ? 0 : 0,
+            overflow: 'hidden',
+          }}
+        >
           <TerminalPane
             terminalId={terminalId}
             projectId={projectId}
             cwd={cwd}
             isActive={isOpen}
             palette={palette}
+            pendingCommand={pendingCommand}
+            onCommandSent={onCommandSent}
             onFocus={() => {}}
           />
         </div>

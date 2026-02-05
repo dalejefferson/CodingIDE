@@ -1,10 +1,21 @@
-/* ── Project Tabs (shown when sidebar is collapsed) ─────────────── */
+/* ── Project Tabs (always visible in toolbar) ────────────────────── */
+
+.project-tabs-wrapper {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  min-width: 0;
+  flex: 1;
+  -webkit-app-region: no-drag;
+}
 
 .project-tabs {
   display: flex;
   align-items: stretch;
   gap: 1px;
   height: 100%;
+  min-width: 0;
+  flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -14,6 +25,44 @@
 .project-tabs::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Scroll arrows ───────────────────────────────────────────────── */
+
+.project-tabs-arrow {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  border: none;
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.project-tabs-arrow:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.project-tabs-arrow--hidden {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.project-tabs-arrow--left {
+  border-right: 1px solid var(--color-border-primary);
+}
+
+.project-tabs-arrow--right {
+  border-left: 1px solid var(--color-border-primary);
+}
+
+/* ── Individual tabs ─────────────────────────────────────────────── */
 
 .project-tab {
   display: flex;
@@ -92,7 +141,7 @@
   color: var(--color-error);
 }
 
-/* ── Done tab highlight ────────────────────────────────────────────────────── */
+/* ── Done tab highlight ──────────────────────────────────────────── */
 
 .project-tab--done {
   color: var(--color-success);
@@ -111,7 +160,7 @@
   border-radius: 50%;
 }
 
-/* ── Tab spinner (shown for running projects) ──────────────────────────────── */
+/* ── Tab spinner (shown for running projects) ────────────────────── */
 
 .project-tab-spinner {
   flex-shrink: 0;
@@ -129,7 +178,7 @@
   }
 }
 
-/* ── Generating tab (Claude actively outputting) ───────────────────────────── */
+/* ── Generating tab (Claude actively outputting) ─────────────────── */
 
 .project-tab--generating {
   position: relative;

@@ -22,12 +22,31 @@ function LoopIcon() {
   )
 }
 
+function PhoneIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="1" width="8" height="14" rx="2" />
+      <line x1="7" y1="12" x2="9" y2="12" />
+    </svg>
+  )
+}
+
 interface SidebarProps {
   projects: Project[]
   activeProjectId: string | null
   collapsed: boolean
   settingsOpen: boolean
   kanbanOpen: boolean
+  appBuilderOpen: boolean
   claudeActivity: ClaudeActivityMap
   claudeStatus: ClaudeStatusMap
   totalActiveClaudes: number
@@ -38,6 +57,7 @@ interface SidebarProps {
   onOpenSettings: () => void
   onGoHome: () => void
   onOpenKanban: () => void
+  onOpenAppBuilder: () => void
 }
 
 function ChevronLeftIcon() {
@@ -241,6 +261,7 @@ function Sidebar({
   collapsed,
   settingsOpen,
   kanbanOpen,
+  appBuilderOpen,
   claudeActivity,
   claudeStatus,
   totalActiveClaudes,
@@ -251,8 +272,9 @@ function Sidebar({
   onOpenSettings,
   onGoHome,
   onOpenKanban,
+  onOpenAppBuilder,
 }: SidebarProps) {
-  const isHome = !activeProjectId && !settingsOpen && !kanbanOpen
+  const isHome = !activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen
   return (
     <aside className="sidebar" aria-label="Sidebar" aria-hidden={collapsed}>
       <div className="sidebar-drag-region">
@@ -286,6 +308,15 @@ function Sidebar({
         >
           <LoopIcon />
           <span>Ralph Loop</span>
+        </button>
+        <button
+          className={`sidebar-action-btn${appBuilderOpen ? ' sidebar-action-btn--active' : ''}`}
+          type="button"
+          onClick={onOpenAppBuilder}
+          aria-label="App Builder"
+        >
+          <PhoneIcon />
+          <span>App Builder</span>
         </button>
       </div>
 

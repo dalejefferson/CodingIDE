@@ -90,8 +90,8 @@
 /* ── Terminal Container ───────────────────────────────────── */
 
 .inline-drawer-terminal {
-  flex: 1;
   min-height: 0;
   display: flex;
   overflow: hidden;
+  /* flex and visibility controlled by inline styles to preserve xterm canvas */
 }

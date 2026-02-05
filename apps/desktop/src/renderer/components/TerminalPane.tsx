@@ -28,6 +28,26 @@ interface TerminalPaneProps {
   onLocalhostDetected?: (url: string) => void
 }
 
+/** Standard ANSI colors — fixed across all palettes so terminal text stays readable. */
+const ANSI_COLORS = {
+  black: '#1d1f21',
+  red: '#cc6666',
+  green: '#b5bd68',
+  yellow: '#f0c674',
+  blue: '#81a2be',
+  magenta: '#b294bb',
+  cyan: '#8abeb7',
+  white: '#c5c8c6',
+  brightBlack: '#666666',
+  brightRed: '#d54e53',
+  brightGreen: '#b9ca4a',
+  brightYellow: '#e7c547',
+  brightBlue: '#7aa6da',
+  brightMagenta: '#c397d8',
+  brightCyan: '#70c0b1',
+  brightWhite: '#eaeaea',
+} as const
+
 /** Palette-aware terminal theme — reads CSS custom properties from the active palette. */
 function getXtermTheme(): Record<string, string> {
   const style = getComputedStyle(document.documentElement)
@@ -39,6 +59,7 @@ function getXtermTheme(): Record<string, string> {
     cursorAccent: v('--terminal-cursor-accent', '#1c2128'),
     selectionBackground: v('--terminal-selection-bg', 'rgba(255, 155, 81, 0.22)'),
     selectionForeground: v('--terminal-selection-fg', '#f0f0f4'),
+    ...ANSI_COLORS,
   }
 }
 
@@ -142,6 +163,7 @@ function TerminalPaneInner({
   const onLocalhostDetectedRef = useRef(onLocalhostDetected)
   const localhostFiredRef = useRef(false)
   const seenUrlsRef = useRef<Set<string>>(new Set())
+  const connectedRef = useRef(false)
   const [currentCwd, setCurrentCwd] = useState(cwd)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
   const [aiProcessing, setAiProcessing] = useState(false)
@@ -185,23 +207,11 @@ function TerminalPaneInner({
     // Guard against writes after disposal
     let disposed = false
 
-    // Load WebGL renderer for crisp, GPU-accelerated text
-    import('@xterm/addon-webgl')
-      .then(({ WebglAddon }) => {
-        if (disposed) return
-        try {
-          const webglAddon = new WebglAddon()
-          webglAddon.onContextLoss(() => {
-            webglAddon.dispose()
-          })
-          term.loadAddon(webglAddon)
-        } catch {
-          console.warn('WebGL addon failed to load, using canvas renderer')
-        }
-      })
-      .catch(() => {
-        console.warn('WebGL addon import failed, using canvas renderer')
-      })
+    // NOTE: WebGL renderer intentionally disabled. On macOS P3 wide-gamut
+    // displays, the WebGL canvas renders colors in a different color space than
+    // CSS backgrounds, producing a visible vertical seam at the canvas edge.
+    // The standard canvas 2D renderer shares CSS color space and has no seam.
+    // Performance difference is negligible for terminal text rendering.
 
     // Route localhost URLs to the embedded browser pane, others to system browser
     const handleLinkClick = (url: string) => {
@@ -439,12 +449,14 @@ function TerminalPaneInner({
           })
           .then(() => {
             if (disposed) return
+            connectedRef.current = true
             // If a command was queued (e.g. from the play button), send it
             // after a brief delay so the shell prompt is ready.
             if (pendingCommandRef.current) {
               const cmd = pendingCommandRef.current
-              // Only show the AI overlay for cc-spawned terminals (element picker → Claude)
-              if (cmd.startsWith('cc ')) {
+              // Show the AI overlay for cc commands, but not in the drawer
+              // terminal — users want to watch the generation stream there.
+              if (cmd.startsWith('cc ') && !terminalId.startsWith('drawer-')) {
                 setAiProcessing(true)
               }
               setTimeout(() => {
@@ -467,12 +479,54 @@ function TerminalPaneInner({
     // the container briefly collapses during layout transitions.
     // Suppress resizes briefly after PTY creation to avoid SIGWINCH echoing
     // the shell prompt a second time.
+    //
+    // Key insight: during CSS transitions (flex-basis, height), the container
+    // size changes frame-by-frame. Fitting xterm mid-transition causes the
+    // terminal text to fragment/staircase. We suppress fitting while any
+    // ancestor is animating and do a single fit after the transition ends.
     let resizeRaf = 0
     let suppressResizeUntil = 0
+    let transitionCount = 0
+
+    // Detect when a CSS transition starts/ends on an ANCESTOR of this terminal.
+    // Only suppress fitting when an ancestor's layout property is animating —
+    // ignore transitions from unrelated elements (buttons, icons, etc.).
+    const isAncestorTransition = (e: TransitionEvent) => {
+      const prop = e.propertyName
+      if (prop !== 'flex-basis' && prop !== 'height' && prop !== 'width') return false
+      const target = e.target as Element | null
+      return target != null && target.contains(container)
+    }
+
+    const handleTransitionStart = (e: TransitionEvent) => {
+      if (isAncestorTransition(e)) transitionCount++
+    }
+    const handleTransitionEnd = (e: TransitionEvent) => {
+      if (!isAncestorTransition(e)) return
+      transitionCount = Math.max(0, transitionCount - 1)
+      if (transitionCount === 0 && !disposed) {
+        // All ancestor transitions done — do a single authoritative fit
+        requestAnimationFrame(() => {
+          if (disposed) return
+          fitAddon.fit()
+          const { cols, rows } = term
+          if (cols >= 10 && rows >= 2) {
+            window.electronAPI.terminal.resize({ terminalId, cols, rows })
+          }
+        })
+      }
+    }
+
+    document.addEventListener('transitionstart', handleTransitionStart, true)
+    document.addEventListener('transitionend', handleTransitionEnd, true)
+    document.addEventListener('transitioncancel', handleTransitionEnd, true)
+
     const resizeObserver = new ResizeObserver(() => {
       cancelAnimationFrame(resizeRaf)
       resizeRaf = requestAnimationFrame(() => {
         if (disposed) return
+        // Skip fitting during ancestor CSS transitions — we'll fit once at transitionend
+        if (transitionCount > 0) return
         fitAddon.fit()
         if (Date.now() < suppressResizeUntil) return
         const { cols, rows } = term
@@ -485,16 +539,37 @@ function TerminalPaneInner({
 
     return () => {
       disposed = true
+      connectedRef.current = false
       if (collectionTimer) clearTimeout(collectionTimer)
       onDataDispose.dispose()
       removeDataListener()
       cancelAnimationFrame(resizeRaf)
       resizeObserver.disconnect()
+      document.removeEventListener('transitionstart', handleTransitionStart, true)
+      document.removeEventListener('transitionend', handleTransitionEnd, true)
+      document.removeEventListener('transitioncancel', handleTransitionEnd, true)
       term.dispose()
       termRef.current = null
       fitRef.current = null
     }
   }, [terminalId, projectId, cwd])
+
+  // Handle late-arriving pendingCommand for an already-connected terminal.
+  // The creation chain above handles commands present at mount time; this
+  // effect catches commands that arrive *after* the PTY is ready (e.g. the
+  // element picker sending a command to the already-open drawer terminal).
+  useEffect(() => {
+    if (!pendingCommand || !connectedRef.current || !isActive) return
+    const cmd = pendingCommand
+    if (cmd.startsWith('cc ') && !terminalId.startsWith('drawer-')) {
+      setAiProcessing(true)
+    }
+    const timer = setTimeout(() => {
+      window.electronAPI.terminal.write({ terminalId, data: cmd + '\n' })
+      onCommandSentRef.current?.()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [pendingCommand, terminalId, isActive])
 
   // Update xterm colors when palette changes
   useEffect(() => {

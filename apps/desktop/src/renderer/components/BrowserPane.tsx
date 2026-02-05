@@ -102,6 +102,22 @@ const PICKER_CLEANUP_SCRIPT = `
 
 const DEFAULT_URL = 'https://www.google.com'
 
+/** Regex matching localhost/127.0.0.1/0.0.0.0 URLs */
+const LOCALHOST_URL_RE = /^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)/i
+
+/** Quick reachability check — resolves true if the URL responds, false on error. */
+async function isReachable(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 2000)
+    await fetch(url, { method: 'HEAD', mode: 'no-cors', signal: controller.signal })
+    clearTimeout(timer)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Virtual viewport width used to render pages at desktop layout */
 const VIRTUAL_WIDTH = 1280
 
@@ -115,11 +131,16 @@ function BrowserPaneInner({
 }: BrowserPaneProps) {
   const partition = projectId ? `persist:browser-${projectId}` : 'persist:browser'
   const startUrl = initialUrl || DEFAULT_URL
+  // For localhost URLs, start with about:blank and probe first to avoid
+  // Electron's ERR_CONNECTION_REFUSED stderr noise when the server is down.
+  const isLocalhost = LOCALHOST_URL_RE.test(startUrl)
+  const webviewSrc = isLocalhost ? 'about:blank' : startUrl
   const [addressBarValue, setAddressBarValue] = useState(startUrl)
   const [pickerActive, setPickerActive] = useState(false)
   const [canGoBack, setCanGoBack] = useState(false)
   const [canGoForward, setCanGoForward] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
   const readyRef = useRef(false)
   const webviewContainerRef = useRef<HTMLDivElement>(null)
@@ -169,6 +190,7 @@ function BrowserPaneInner({
       normalized = 'https://' + normalized
     }
     setAddressBarValue(normalized)
+    setLoadError(null)
     wv.loadURL(normalized)
   }, [])
 
@@ -198,6 +220,7 @@ function BrowserPaneInner({
     if (!/^https?:\/\//i.test(url)) {
       url = 'https://' + url
     }
+    setLoadError(null)
     wv.loadURL(url)
   }, [addressBarValue])
 
@@ -214,9 +237,49 @@ function BrowserPaneInner({
     }
   }, [pickerActive])
 
+  // For localhost URLs, probe the port before navigating to avoid Electron
+  // ERR_CONNECTION_REFUSED errors.  Non-localhost URLs load normally via the
+  // webview `src` attribute.
+  const lastNavigatedRef = useRef(isLocalhost ? '' : startUrl)
+  useEffect(() => {
+    if (!isLocalhost) return
+    let cancelled = false
+
+    const probe = async () => {
+      const wv = webviewRef.current
+      if (!wv) return
+
+      const reachable = await isReachable(startUrl)
+      if (cancelled) return
+
+      if (reachable) {
+        readyRef.current = true
+        lastNavigatedRef.current = startUrl
+        setLoadError(null)
+        wv.loadURL(startUrl)
+      } else {
+        setLoading(false)
+        readyRef.current = true
+        setLoadError(`Unable to connect to ${startUrl}`)
+      }
+    }
+
+    // Wait for the webview dom-ready on about:blank before probing
+    const wv = webviewRef.current
+    if (wv) {
+      const onReady = () => {
+        wv.removeEventListener('dom-ready', onReady)
+        probe()
+      }
+      wv.addEventListener('dom-ready', onReady)
+    }
+
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Navigate to new URL when initialUrl changes after mount, but skip if the
   // webview is already showing this URL (avoids reloading on project switch).
-  const lastNavigatedRef = useRef(startUrl)
   useEffect(() => {
     if (initialUrl && initialUrl !== lastNavigatedRef.current) {
       lastNavigatedRef.current = initialUrl
@@ -241,6 +304,28 @@ function BrowserPaneInner({
     const onDidStopLoading = () => {
       readyRef.current = true
       setLoading(false)
+    }
+
+    const onDidFailLoad = (e: Electron.DidFailLoadEvent) => {
+      // Ignore aborted loads (e.g. navigation interrupted by another load)
+      if (e.errorCode === -3) return
+
+      const failedUrl = e.validatedURL || wv.getURL()
+      setLoading(false)
+      readyRef.current = true
+
+      // Connection refused / host unreachable on localhost — the dev server
+      // isn't running.  Show an inline error instead of a blank white page.
+      if (e.errorCode === -102 || e.errorCode === -105 || e.errorCode === -106) {
+        setLoadError(`Unable to connect to ${failedUrl}`)
+      } else {
+        setLoadError(`Failed to load ${failedUrl} (${e.errorDescription})`)
+      }
+    }
+
+    const onDidNavigate = () => {
+      // Clear any previous load error on successful navigation
+      setLoadError(null)
     }
 
     const handleNavUpdate = () => {
@@ -293,6 +378,8 @@ function BrowserPaneInner({
     wv.addEventListener('dom-ready', onDomReady)
     wv.addEventListener('did-start-loading', onDidStartLoading)
     wv.addEventListener('did-stop-loading', onDidStopLoading)
+    wv.addEventListener('did-fail-load', onDidFailLoad)
+    wv.addEventListener('did-navigate', onDidNavigate)
     wv.addEventListener('did-navigate', handleNavUpdate)
     wv.addEventListener('did-navigate-in-page', handleNavUpdate)
     wv.addEventListener('console-message', handleConsoleMessage)
@@ -301,6 +388,8 @@ function BrowserPaneInner({
       wv.removeEventListener('dom-ready', onDomReady)
       wv.removeEventListener('did-start-loading', onDidStartLoading)
       wv.removeEventListener('did-stop-loading', onDidStopLoading)
+      wv.removeEventListener('did-fail-load', onDidFailLoad)
+      wv.removeEventListener('did-navigate', onDidNavigate)
       wv.removeEventListener('did-navigate', handleNavUpdate)
       wv.removeEventListener('did-navigate-in-page', handleNavUpdate)
       wv.removeEventListener('console-message', handleConsoleMessage)
@@ -488,10 +577,31 @@ function BrowserPaneInner({
       </div>
 
       <div ref={webviewContainerRef} className="browser-webview-container">
+        {loadError && (
+          <div className="browser-load-error">
+            <div className="browser-load-error-icon">
+              <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="8" r="7" />
+                <path d="M8 5v3M8 10.5v.5" />
+              </svg>
+            </div>
+            <p className="browser-load-error-msg">{loadError}</p>
+            <p className="browser-load-error-hint">
+              Start the dev server in the terminal, then press refresh.
+            </p>
+            <button
+              type="button"
+              className="browser-load-error-retry"
+              onClick={handleRefresh}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         <webview
           ref={webviewRef as React.LegacyRef<Electron.WebviewTag>}
           className="browser-webview"
-          src={startUrl}
+          src={webviewSrc}
           partition={partition}
           style={viewportStyle}
         />

@@ -13,6 +13,8 @@ import { SettingsStore } from '@services/settingsStore'
 import { getGitBranch } from '@services/gitService'
 import * as fileOps from '@services/fileOpsService'
 import { setupRalphIPC } from './ipcRalph'
+import { setupExpoIPC } from './ipcExpo'
+import { MobileAppStore } from '@services/mobileAppStore'
 import type { LayoutNode } from '../shared/terminalLayout'
 import type { ProjectStatus, ProjectStatusChange } from '../shared/types'
 
@@ -24,6 +26,8 @@ let terminalLayoutStore: TerminalLayoutStore | null = null
 let presetStore: PresetStore | null = null
 let ticketStore: TicketStore | null = null
 let settingsStore: SettingsStore | null = null
+let mobileAppStore: MobileAppStore | null = null
+let expoServiceRef: { expoService: import('@services/expoService').ExpoService } | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
 let lastClaudeStatus: Record<string, string> = {}
@@ -74,6 +78,7 @@ export function setupIPC(): void {
   const settingsStorePath = join(app.getPath('userData'), 'settings.json')
   ticketStore = new TicketStore(ticketStorePath)
   settingsStore = new SettingsStore(settingsStorePath)
+  mobileAppStore = new MobileAppStore(join(app.getPath('userData'), 'mobile-apps.json'))
 
   router.handle(IPC_CHANNELS.PING, () => 'pong')
 
@@ -363,6 +368,9 @@ export function setupIPC(): void {
   // ── Ralph / PRD IPC ─────────────────────────────────────────
   setupRalphIPC(router, ticketStore!, settingsStore!, projectStore!, getMainWindow)
 
+  // ── App Builder / Expo IPC ─────────────────────────────────
+  expoServiceRef = setupExpoIPC(router, mobileAppStore!, projectStore!, getMainWindow)
+
   // ── Auto-status: terminal busy → running, command done → idle ──
   terminalService!.onCommandDone((event) => {
     sendToRenderer('terminal:command-done', event)
@@ -428,11 +436,16 @@ export function setupIPC(): void {
   }, 3000)
 }
 
-export function disposeIPC(): void {
+export async function disposeIPC(): Promise<void> {
   if (claudeActivityInterval) {
     clearInterval(claudeActivityInterval)
     claudeActivityInterval = null
   }
+  if (expoServiceRef) {
+    await expoServiceRef.expoService.stopAll()
+    expoServiceRef = null
+  }
+  mobileAppStore?.flush()
   terminalService?.killAll()
   projectStore?.flush()
   themeStore?.flush()
@@ -451,5 +464,6 @@ export function disposeIPC(): void {
   presetStore = null
   ticketStore = null
   settingsStore = null
+  mobileAppStore = null
   lastClaudeActivity = {}
 }

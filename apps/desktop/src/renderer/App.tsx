@@ -9,6 +9,9 @@ const SettingsPage = React.lazy(() =>
 const KanbanPage = React.lazy(() =>
   import('./components/kanban/KanbanPage').then((m) => ({ default: m.KanbanPage })),
 )
+const AppBuilderPage = React.lazy(() =>
+  import('./components/appbuilder/AppBuilderPage').then((m) => ({ default: m.AppBuilderPage })),
+)
 import { ToastContainer } from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
 import type { TerminalGridHandle } from './components/TerminalGrid'
@@ -21,6 +24,7 @@ export function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [kanbanOpen, setKanbanOpen] = useState(false)
+  const [appBuilderOpen, setAppBuilderOpen] = useState(false)
   const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatusMap>({})
 
@@ -68,17 +72,27 @@ export function App() {
     setActiveProjectId(id)
     setSettingsOpen(false)
     setKanbanOpen(false)
+    setAppBuilderOpen(false)
   }, [])
 
   const handleGoHome = useCallback(() => {
     setActiveProjectId(null)
     setSettingsOpen(false)
     setKanbanOpen(false)
+    setAppBuilderOpen(false)
   }, [])
 
   const handleOpenKanban = useCallback(() => {
     setKanbanOpen(true)
     setSettingsOpen(false)
+    setActiveProjectId(null)
+    setAppBuilderOpen(false)
+  }, [])
+
+  const handleOpenAppBuilder = useCallback(() => {
+    setAppBuilderOpen(true)
+    setSettingsOpen(false)
+    setKanbanOpen(false)
     setActiveProjectId(null)
   }, [])
 
@@ -99,6 +113,7 @@ export function App() {
         setActiveProjectId(project.id)
         setKanbanOpen(false)
         setSettingsOpen(false)
+        setAppBuilderOpen(false)
       } catch (err) {
         console.error('Failed to open ticket as project:', err)
       }
@@ -241,6 +256,20 @@ export function App() {
           if (!prev) {
             setSettingsOpen(false)
             setActiveProjectId(null)
+            setAppBuilderOpen(false)
+          }
+          return !prev
+        })
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'm') {
+        e.preventDefault()
+        setAppBuilderOpen((prev) => {
+          if (!prev) {
+            setSettingsOpen(false)
+            setKanbanOpen(false)
+            setActiveProjectId(null)
           }
           return !prev
         })
@@ -255,6 +284,7 @@ export function App() {
         const nextIdx = (currentIdx + 1) % currentProjects.length
         setActiveProjectId(currentProjects[nextIdx].id)
         setSettingsOpen(false)
+        setAppBuilderOpen(false)
         return
       }
     }
@@ -294,22 +324,29 @@ export function App() {
           <KanbanPage projects={projects} onOpenTicketAsProject={handleOpenTicketAsProject} />
         </React.Suspense>
       )}
-      {!settingsOpen && !kanbanOpen && projects.length === 0 && (
+      {appBuilderOpen && !settingsOpen && !kanbanOpen && (
+        <React.Suspense fallback={null}>
+          <AppBuilderPage />
+        </React.Suspense>
+      )}
+      {!settingsOpen && !kanbanOpen && !appBuilderOpen && projects.length === 0 && (
         <EmptyState
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
           projects={projects}
           onSelectProject={handleSelectProject}
           onOpenKanban={handleOpenKanban}
+          onOpenAppBuilder={handleOpenAppBuilder}
         />
       )}
-      {!settingsOpen && !kanbanOpen && projects.length > 0 && !activeProject && (
+      {!settingsOpen && !kanbanOpen && !appBuilderOpen && projects.length > 0 && !activeProject && (
         <EmptyState
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
           projects={projects}
           onSelectProject={handleSelectProject}
           onOpenKanban={handleOpenKanban}
+          onOpenAppBuilder={handleOpenAppBuilder}
         />
       )}
       {projects.map((p) => (
@@ -318,7 +355,7 @@ export function App() {
           project={p}
           palette={palette}
           gridRef={getGridRef(p.id)}
-          isVisible={p.id === activeProjectId && !settingsOpen && !kanbanOpen}
+          isVisible={p.id === activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen}
           getPortOwner={getPortOwner}
           registerPort={registerPort}
           unregisterPort={unregisterPort}
@@ -336,6 +373,7 @@ export function App() {
           collapsed={sidebarCollapsed}
           settingsOpen={settingsOpen}
           kanbanOpen={kanbanOpen}
+          appBuilderOpen={appBuilderOpen}
           claudeActivity={claudeActivity}
           claudeStatus={claudeStatus}
           totalActiveClaudes={totalActiveClaudes}
@@ -346,6 +384,7 @@ export function App() {
           onOpenSettings={toggleSettings}
           onGoHome={handleGoHome}
           onOpenKanban={handleOpenKanban}
+          onOpenAppBuilder={handleOpenAppBuilder}
         />
       </div>
       <div className="main-pane">
@@ -358,7 +397,6 @@ export function App() {
           onToggleSidebar={toggleSidebar}
           onSelectProject={handleSelectProject}
           onRemoveProject={handleRemoveProject}
-          onOpenFolder={handleOpenFolder}
           onRunCommand={handleRunCommand}
         />
         <div className="main-content">{mainContent}</div>

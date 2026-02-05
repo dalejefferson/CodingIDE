@@ -91,14 +91,12 @@
 .workspace-panels--split .workspace-terminal {
   min-width: 60px;
   overflow: hidden;
-  will-change: flex-basis;
 }
 
 .workspace-panels--split .workspace-browser {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  will-change: flex-basis, opacity;
 }
 
 .workspace-panels--split .workspace-browser:not(.workspace-browser--hidden) {

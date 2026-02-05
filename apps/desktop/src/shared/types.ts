@@ -439,3 +439,62 @@ export interface FileOpsResult {
   ok: boolean
   error?: FileOpsError
 }
+
+// ── App Builder / Expo ──────────────────────────────────────
+
+export type ExpoTemplate = 'blank' | 'tabs' | 'drawer'
+export const EXPO_TEMPLATES: readonly ExpoTemplate[] = ['blank', 'tabs', 'drawer'] as const
+
+export type MobileAppStatus = 'idle' | 'starting' | 'running' | 'error' | 'stopped'
+export const MOBILE_APP_STATUSES: readonly MobileAppStatus[] = [
+  'idle',
+  'starting',
+  'running',
+  'error',
+  'stopped',
+] as const
+
+export interface MobileApp {
+  id: string
+  name: string
+  path: string
+  template: ExpoTemplate
+  status: MobileAppStatus
+  expoUrl: string | null
+  metroPort: number
+  addedAt: number
+  lastError: string | null
+}
+
+export interface CreateMobileAppRequest {
+  name: string
+  template: ExpoTemplate
+  parentDir: string
+}
+
+export interface AddMobileAppRequest {
+  path: string
+}
+
+export interface StartExpoRequest {
+  appId: string
+}
+
+export interface StopExpoRequest {
+  appId: string
+}
+
+export interface ExpoStatusRequest {
+  appId: string
+}
+
+export interface ExpoStatusResponse {
+  status: MobileAppStatus
+  expoUrl: string | null
+  log: string
+  lastError: string | null
+}
+
+export interface OpenMobileAppAsProjectRequest {
+  appId: string
+}

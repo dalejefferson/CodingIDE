@@ -8,6 +8,7 @@ interface EmptyStateProps {
   projects?: Project[]
   onSelectProject?: (id: string) => void
   onOpenKanban?: () => void
+  onOpenAppBuilder?: () => void
 }
 
 interface SuggestionCard {
@@ -100,12 +101,29 @@ const LoopIcon = () => (
   </svg>
 )
 
+const PhoneIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="6" y="1.5" width="12" height="21" rx="3" />
+    <line x1="10.5" y1="18" x2="13.5" y2="18" />
+  </svg>
+)
+
 export default function EmptyState({
   onOpenFolder,
   onCreateProject,
   projects = [],
   onSelectProject,
   onOpenKanban,
+  onOpenAppBuilder,
 }: EmptyStateProps) {
   const [showNameInput, setShowNameInput] = useState(false)
   const [projectName, setProjectName] = useState('')
@@ -192,6 +210,7 @@ export default function EmptyState({
     { icon: <FolderOpenIcon />, label: 'Open Existing Project', onClick: onOpenFolder },
     { icon: <PlusIcon />, label: 'Create a New Project', onClick: handleCreateClick },
     { icon: <LoopIcon />, label: 'Ralph Loop', onClick: onOpenKanban },
+    { icon: <PhoneIcon />, label: 'Build a Mobile App', onClick: onOpenAppBuilder },
   ]
 
   return (

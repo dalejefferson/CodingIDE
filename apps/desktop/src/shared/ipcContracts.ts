@@ -52,6 +52,14 @@ import type {
   FileOpsResult,
   FileListRequest,
   FileListResponse,
+  MobileApp,
+  CreateMobileAppRequest,
+  AddMobileAppRequest,
+  StartExpoRequest,
+  StopExpoRequest,
+  ExpoStatusRequest,
+  ExpoStatusResponse,
+  OpenMobileAppAsProjectRequest,
 } from './types'
 import { THEME_IDS, PROJECT_STATUSES, BROWSER_VIEW_MODES } from './types'
 import { isValidLayout } from './terminalLayout'
@@ -73,6 +81,14 @@ import {
   isFileWriteRequest,
   isFileListRequest,
 } from './fileOpsValidators'
+import {
+  isCreateMobileAppRequest,
+  isAddMobileAppRequest,
+  isStartExpoRequest,
+  isStopExpoRequest,
+  isExpoStatusRequest,
+  isOpenMobileAppAsProjectRequest,
+} from './expoValidators'
 
 // ── Channel Constants ──────────────────────────────────────────
 
@@ -131,6 +147,17 @@ export const IPC_CHANNELS = {
   FILE_READ: 'ipc:file-read',
   FILE_WRITE: 'ipc:file-write',
   FILE_LIST: 'ipc:file-list',
+  // ── App Builder / Expo ────────────────────────────────────
+  EXPO_GET_ALL: 'ipc:expo-get-all',
+  EXPO_CREATE: 'ipc:expo-create',
+  EXPO_ADD: 'ipc:expo-add',
+  EXPO_REMOVE: 'ipc:expo-remove',
+  EXPO_START: 'ipc:expo-start',
+  EXPO_STOP: 'ipc:expo-stop',
+  EXPO_STATUS: 'ipc:expo-status',
+  EXPO_OPEN_FOLDER_DIALOG: 'ipc:expo-open-folder-dialog',
+  EXPO_CHOOSE_PARENT_DIR: 'ipc:expo-choose-parent-dir',
+  EXPO_OPEN_AS_PROJECT: 'ipc:expo-open-as-project',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -347,6 +374,47 @@ export interface IPCContracts {
   [IPC_CHANNELS.FILE_LIST]: {
     request: FileListRequest
     response: FileListResponse
+  }
+  // ── App Builder / Expo ────────────────────────────────────
+  [IPC_CHANNELS.EXPO_GET_ALL]: {
+    request: void
+    response: MobileApp[]
+  }
+  [IPC_CHANNELS.EXPO_CREATE]: {
+    request: CreateMobileAppRequest
+    response: MobileApp
+  }
+  [IPC_CHANNELS.EXPO_ADD]: {
+    request: AddMobileAppRequest
+    response: MobileApp
+  }
+  [IPC_CHANNELS.EXPO_REMOVE]: {
+    request: string
+    response: void
+  }
+  [IPC_CHANNELS.EXPO_START]: {
+    request: StartExpoRequest
+    response: void
+  }
+  [IPC_CHANNELS.EXPO_STOP]: {
+    request: StopExpoRequest
+    response: void
+  }
+  [IPC_CHANNELS.EXPO_STATUS]: {
+    request: ExpoStatusRequest
+    response: ExpoStatusResponse
+  }
+  [IPC_CHANNELS.EXPO_OPEN_FOLDER_DIALOG]: {
+    request: void
+    response: string | null
+  }
+  [IPC_CHANNELS.EXPO_CHOOSE_PARENT_DIR]: {
+    request: void
+    response: string | null
+  }
+  [IPC_CHANNELS.EXPO_OPEN_AS_PROJECT]: {
+    request: OpenMobileAppAsProjectRequest
+    response: Project
   }
 }
 
@@ -602,6 +670,17 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.FILE_READ]: isFileReadRequest,
   [IPC_CHANNELS.FILE_WRITE]: isFileWriteRequest,
   [IPC_CHANNELS.FILE_LIST]: isFileListRequest,
+  // ── App Builder / Expo ────────────────────────────────────
+  [IPC_CHANNELS.EXPO_GET_ALL]: isVoid,
+  [IPC_CHANNELS.EXPO_CREATE]: isCreateMobileAppRequest,
+  [IPC_CHANNELS.EXPO_ADD]: isAddMobileAppRequest,
+  [IPC_CHANNELS.EXPO_REMOVE]: isNonEmptyString,
+  [IPC_CHANNELS.EXPO_START]: isStartExpoRequest,
+  [IPC_CHANNELS.EXPO_STOP]: isStopExpoRequest,
+  [IPC_CHANNELS.EXPO_STATUS]: isExpoStatusRequest,
+  [IPC_CHANNELS.EXPO_OPEN_FOLDER_DIALOG]: isVoid,
+  [IPC_CHANNELS.EXPO_CHOOSE_PARENT_DIR]: isVoid,
+  [IPC_CHANNELS.EXPO_OPEN_AS_PROJECT]: isOpenMobileAppAsProjectRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────
@@ -626,6 +705,15 @@ export {
   isFileWriteRequest,
   isFileListRequest,
 } from './fileOpsValidators'
+
+export {
+  isCreateMobileAppRequest,
+  isAddMobileAppRequest,
+  isStartExpoRequest,
+  isStopExpoRequest,
+  isExpoStatusRequest,
+  isOpenMobileAppAsProjectRequest,
+} from './expoValidators'
 
 /** Check if a channel string is in the allowlist */
 export function isAllowedChannel(channel: string): channel is IPCChannel {

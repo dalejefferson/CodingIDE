@@ -121,9 +121,12 @@ body.is-resizing-v * {
   background: var(--terminal-bg, #1c2128);
 }
 
-/* Ensure xterm.js fills the xterm container */
+/* Ensure xterm.js fills the xterm container — width prevents a gap
+   between the canvas edge and the CSS background that shows as a
+   visible seam on wide-gamut displays */
 .terminal-pane-xterm .xterm {
   height: 100%;
+  width: 100%;
 }
 
 .terminal-pane-xterm .xterm-viewport {

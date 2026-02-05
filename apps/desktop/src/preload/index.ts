@@ -41,6 +41,14 @@ import type {
   FileOpsResult,
   FileListRequest,
   FileListResponse,
+  MobileApp,
+  CreateMobileAppRequest,
+  AddMobileAppRequest,
+  StartExpoRequest,
+  StopExpoRequest,
+  ExpoStatusRequest,
+  ExpoStatusResponse,
+  OpenMobileAppAsProjectRequest,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -145,6 +153,19 @@ export interface ElectronAPI {
     onStatusChanged: (
       callback: (data: { ticketId: string; running: boolean; iteration: number }) => void,
     ) => () => void
+  }
+  expo: {
+    getAll: () => Promise<MobileApp[]>
+    create: (request: CreateMobileAppRequest) => Promise<MobileApp>
+    add: (request: AddMobileAppRequest) => Promise<MobileApp>
+    remove: (id: string) => Promise<void>
+    start: (request: StartExpoRequest) => Promise<void>
+    stop: (request: StopExpoRequest) => Promise<void>
+    getStatus: (request: ExpoStatusRequest) => Promise<ExpoStatusResponse>
+    openFolderDialog: () => Promise<string | null>
+    chooseParentDir: () => Promise<string | null>
+    openAsProject: (request: OpenMobileAppAsProjectRequest) => Promise<Project>
+    onStatusChanged: (callback: (app: MobileApp) => void) => () => void
   }
 }
 
@@ -383,6 +404,35 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.on('ralph:status-changed', listener)
       return () => {
         ipcRenderer.removeListener('ralph:status-changed', listener)
+      }
+    },
+  },
+  expo: {
+    getAll: () => safeInvoke(IPC_CHANNELS.EXPO_GET_ALL) as Promise<MobileApp[]>,
+    create: (request: CreateMobileAppRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_CREATE, request) as Promise<MobileApp>,
+    add: (request: AddMobileAppRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_ADD, request) as Promise<MobileApp>,
+    remove: (id: string) => safeInvoke(IPC_CHANNELS.EXPO_REMOVE, id) as Promise<void>,
+    start: (request: StartExpoRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_START, request) as Promise<void>,
+    stop: (request: StopExpoRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_STOP, request) as Promise<void>,
+    getStatus: (request: ExpoStatusRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_STATUS, request) as Promise<ExpoStatusResponse>,
+    openFolderDialog: () =>
+      safeInvoke(IPC_CHANNELS.EXPO_OPEN_FOLDER_DIALOG) as Promise<string | null>,
+    chooseParentDir: () =>
+      safeInvoke(IPC_CHANNELS.EXPO_CHOOSE_PARENT_DIR) as Promise<string | null>,
+    openAsProject: (request: OpenMobileAppAsProjectRequest) =>
+      safeInvoke(IPC_CHANNELS.EXPO_OPEN_AS_PROJECT, request) as Promise<Project>,
+    onStatusChanged: (callback: (app: MobileApp) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, app: MobileApp) => {
+        callback(app)
+      }
+      ipcRenderer.on('expo:status-changed', listener)
+      return () => {
+        ipcRenderer.removeListener('expo:status-changed', listener)
       }
     },
   },

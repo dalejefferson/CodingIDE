@@ -1,0 +1,200 @@
+/* ==========================================================================
+   CreateAppModal — creation modal for Expo mobile apps
+   Uses CSS custom properties from the global theme system.
+   ========================================================================== */
+
+/* ── Full-screen Overlay ─────────────────────────────────────────────────── */
+
+.create-app-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+/* ── Modal Card ──────────────────────────────────────────────────────────── */
+
+.create-app-modal {
+  max-width: 480px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-xl);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Heading ─────────────────────────────────────────────────────────────── */
+
+.create-app-heading {
+  font-family: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+}
+
+/* ── Form Layout ─────────────────────────────────────────────────────────── */
+
+.create-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.create-app-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────────── */
+
+.create-app-input {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.create-app-input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+.create-app-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.create-app-select {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  padding-right: var(--space-xl);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%236e6e73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-sm) center;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.create-app-select:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Directory Picker ────────────────────────────────────────────────────── */
+
+.create-app-dir-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.create-app-dir-path {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.create-app-dir-btn {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast);
+}
+.create-app-dir-btn:hover {
+  background: var(--color-bg-hover);
+}
+
+/* ── Validation ──────────────────────────────────────────────────────────── */
+
+.create-app-validation {
+  font-size: var(--font-size-xs);
+  color: #ef4444;
+}
+
+.create-app-error {
+  font-size: var(--font-size-sm);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.create-app-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  margin-top: var(--space-lg);
+}
+
+.create-app-btn {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.create-app-btn-submit {
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  border: none;
+}
+.create-app-btn-submit:hover {
+  background: var(--color-accent-hover);
+}
+.create-app-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create-app-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+}
+.create-app-btn-cancel:hover {
+  background: var(--color-bg-hover);
+}
