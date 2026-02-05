@@ -328,21 +328,37 @@
   /* inherits from header */
 }
 
-.workspace-explorer-tree-close {
+.workspace-explorer-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.workspace-explorer-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: none;
   background: none;
   color: var(--color-text-tertiary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0;
+  opacity: 0;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
-.workspace-explorer-tree-close:hover {
+.workspace-explorer-tree-header:hover .workspace-explorer-action {
+  opacity: 1;
+}
+
+.workspace-explorer-action:hover {
   background: var(--color-bg-tertiary);
   color: var(--color-text-primary);
 }

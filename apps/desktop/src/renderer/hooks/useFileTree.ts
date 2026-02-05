@@ -66,29 +66,31 @@ export function useFileTree(projectId: string) {
 
   const toggleDir = useCallback(
     (dirPath: string) => {
+      let needsFetch = false
+
       setState((prev) => {
+        // Already expanded → collapse
         if (prev.expandedDirs.has(dirPath)) {
           const newExpanded = new Set(prev.expandedDirs)
           newExpanded.delete(dirPath)
           return { ...prev, expandedDirs: newExpanded }
         }
+
+        // Already loaded but collapsed → expand
+        if (prev.entries.has(dirPath)) {
+          return { ...prev, expandedDirs: new Set([...prev.expandedDirs, dirPath]) }
+        }
+
+        // Not yet loaded → fetchDir will handle expanding
+        needsFetch = true
         return prev
       })
 
-      // If not yet loaded, fetch it (fetchDir will expand it)
-      if (!state.entries.has(dirPath)) {
+      if (needsFetch) {
         fetchDir(dirPath)
-      } else {
-        // Already loaded, just toggle expand
-        setState((prev) => {
-          if (!prev.expandedDirs.has(dirPath)) {
-            return { ...prev, expandedDirs: new Set([...prev.expandedDirs, dirPath]) }
-          }
-          return prev
-        })
       }
     },
-    [fetchDir, state.entries],
+    [fetchDir],
   )
 
   const refreshDir = useCallback(

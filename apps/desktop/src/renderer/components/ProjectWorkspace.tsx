@@ -7,6 +7,7 @@ import { BrowserPane } from './BrowserPane'
 import { InlineTerminalDrawer } from './InlineTerminalDrawer'
 import { CreateFileModal, EditFileModal } from './FileOpsModals'
 import { FileTree } from './FileTree'
+import type { FileTreeHandle } from './FileTree'
 import { CodeViewer } from './CodeViewer'
 import '../styles/ProjectWorkspace.css'
 
@@ -68,6 +69,7 @@ function ProjectWorkspace({
   // File explorer state
   const [explorerOpen, setExplorerOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const fileTreeRef = useRef<FileTreeHandle>(null)
 
   const handleToggleExplorer = useCallback(() => {
     setExplorerOpen((prev) => !prev)
@@ -554,25 +556,113 @@ function ProjectWorkspace({
             <div className="workspace-explorer-tree">
               <div className="workspace-explorer-tree-header">
                 <span className="workspace-explorer-tree-title">Explorer</span>
-                <button
-                  className="workspace-explorer-tree-close"
-                  onClick={handleToggleExplorer}
-                  title="Close explorer"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
+                <div className="workspace-explorer-actions">
+                  {/* New File */}
+                  <button
+                    className="workspace-explorer-action"
+                    onClick={() => setShowCreateFile(true)}
+                    title="New File"
                   >
-                    <path d="M3 3l8 8M11 3l-8 8" />
-                  </svg>
-                </button>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M9.5 1.5H4a1 1 0 00-1 1v11a1 1 0 001 1h8a1 1 0 001-1V5l-3.5-3.5z" />
+                      <path d="M9.5 1.5V5H13" />
+                      <path d="M8 8v4M6 10h4" />
+                    </svg>
+                  </button>
+                  {/* New Folder */}
+                  <button
+                    className="workspace-explorer-action"
+                    onClick={() => {
+                      setShowCreateFile(true)
+                    }}
+                    title="New Folder"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M1.5 4h4.5l1.5-2h5a1 1 0 011 1v8a1 1 0 01-1 1h-10a1 1 0 01-1-1V4z" />
+                      <path d="M8 6.5v4M6 8.5h4" />
+                    </svg>
+                  </button>
+                  {/* Refresh */}
+                  <button
+                    className="workspace-explorer-action"
+                    onClick={() => fileTreeRef.current?.refresh()}
+                    title="Refresh Explorer"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M13 8A5 5 0 113.5 5.5" />
+                      <path d="M3 2v4h4" />
+                    </svg>
+                  </button>
+                  {/* Collapse All */}
+                  <button
+                    className="workspace-explorer-action"
+                    onClick={() => fileTreeRef.current?.collapseAll()}
+                    title="Collapse Folders"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 4l3 3-3 3" />
+                      <path d="M9 4l-3 3 3 3" />
+                      <path d="M13 3v10" />
+                    </svg>
+                  </button>
+                  {/* Close */}
+                  <button
+                    className="workspace-explorer-action"
+                    onClick={handleToggleExplorer}
+                    title="Close Explorer"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    >
+                      <path d="M3 3l8 8M11 3l-8 8" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               <FileTree
+                ref={fileTreeRef}
                 projectId={project.id}
                 projectPath={project.path}
                 selectedFile={selectedFile}

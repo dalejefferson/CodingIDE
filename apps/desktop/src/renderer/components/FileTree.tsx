@@ -1,7 +1,12 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useImperativeHandle, useMemo } from 'react'
 import type { FileEntry } from '@shared/types'
 import { useFileTree } from '../hooks/useFileTree'
 import '../styles/FileTree.css'
+
+export interface FileTreeHandle {
+  refresh: () => void
+  collapseAll: () => void
+}
 
 /* ── SVG Icons ──────────────────────────────────────────────── */
 
@@ -291,14 +296,26 @@ interface FileTreeProps {
   onSelectFile: (path: string) => void
 }
 
-function FileTree({ projectId, projectPath, selectedFile, onSelectFile }: FileTreeProps) {
-  const { entries, expandedDirs, loadingDirs, errorDirs, fetchDir, toggleDir } =
+const FileTree = React.forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
+  { projectId, projectPath, selectedFile, onSelectFile },
+  ref,
+) {
+  const { entries, expandedDirs, loadingDirs, errorDirs, fetchDir, toggleDir, collapseAll } =
     useFileTree(projectId)
 
   // Load root directory on mount
   useEffect(() => {
     fetchDir('')
   }, [fetchDir])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      refresh: () => fetchDir(''),
+      collapseAll,
+    }),
+    [fetchDir, collapseAll],
+  )
 
   const rootEntries = entries.get('')
 
@@ -337,7 +354,7 @@ function FileTree({ projectId, projectPath, selectedFile, onSelectFile }: FileTr
       )}
     </div>
   )
-}
+})
 
 const MemoizedFileTree = React.memo(FileTree)
 export { MemoizedFileTree as FileTree }
