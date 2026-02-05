@@ -532,6 +532,15 @@
   transition: opacity var(--transition-fast);
 }
 
+.idea-log__card-action-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border-primary);
+  margin: 0 2px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .idea-log__card:hover .idea-log__card-actions {
   opacity: 1;
 }

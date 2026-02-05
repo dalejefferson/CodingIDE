@@ -24,7 +24,7 @@ import { useTheme } from './hooks/useTheme'
 import { useExpoApps } from './hooks/useExpoApps'
 import { usePrdGeneration } from './hooks/usePrdGeneration'
 import type { TerminalGridHandle } from './components/TerminalGrid'
-import type { Project, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
+import type { Project, Idea, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 import './styles/App.css'
 
 export function App() {
@@ -249,6 +249,52 @@ export function App() {
     [loadProjects],
   )
 
+  // ── Idea Log action handlers ─────────────────────────────────
+  const handleIdeaBuildAsApp = useCallback(
+    (idea: Idea) => {
+      setWordVomitPrdForApp(idea.description || `# ${idea.title}\n\nBuild an app for: ${idea.title}`)
+      setAppBuilderOpen(true)
+      setSettingsOpen(false)
+      setKanbanOpen(false)
+      setActiveProjectId(null)
+      setIdeaLogOpen(false)
+    },
+    [],
+  )
+
+  const handleIdeaSendToBacklog = useCallback(
+    async (idea: Idea) => {
+      await window.electronAPI.tickets.create({
+        title: idea.title,
+        description: idea.description || idea.title,
+        acceptanceCriteria: [],
+        type: 'feature',
+        priority: idea.priority === 'high' ? 'high' : idea.priority === 'low' ? 'low' : 'medium',
+        projectId: idea.projectId,
+      })
+      handleOpenKanban()
+    },
+    [handleOpenKanban],
+  )
+
+  const handleIdeaWorkInTerminal = useCallback(
+    async (idea: Idea) => {
+      try {
+        const safeName =
+          idea.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'new-idea'
+        const folderPath = await window.electronAPI.projects.createFolder({ name: safeName })
+        if (!folderPath) return
+        const project = await window.electronAPI.projects.add({ path: folderPath })
+        await loadProjects()
+        setActiveProjectId(project.id)
+        setIdeaLogOpen(false)
+      } catch (err) {
+        console.error('Failed to create project from idea:', err)
+      }
+    },
+    [loadProjects],
+  )
+
   useEffect(() => {
     loadProjects()
   }, [loadProjects])
@@ -460,7 +506,13 @@ export function App() {
       )}
       {ideaLogOpen && !settingsOpen && !kanbanOpen && !appBuilderOpen && (
         <React.Suspense fallback={null}>
-          <IdeaLogPage projects={projects} onOpenFolder={handleOpenFolder} />
+          <IdeaLogPage
+            projects={projects}
+            onOpenFolder={handleOpenFolder}
+            onBuildAsApp={handleIdeaBuildAsApp}
+            onSendToBacklog={handleIdeaSendToBacklog}
+            onWorkInTerminal={handleIdeaWorkInTerminal}
+          />
         </React.Suspense>
       )}
       {!settingsOpen && !kanbanOpen && !appBuilderOpen && !ideaLogOpen && projects.length === 0 && (

@@ -7,9 +7,18 @@ import '../../styles/IdeaLog.css'
 interface IdeaLogPageProps {
   projects: Project[]
   onOpenFolder?: () => void
+  onBuildAsApp?: (idea: Idea) => void
+  onSendToBacklog?: (idea: Idea) => void
+  onWorkInTerminal?: (idea: Idea) => void
 }
 
-export function IdeaLogPage({ projects, onOpenFolder }: IdeaLogPageProps) {
+export function IdeaLogPage({
+  projects,
+  onOpenFolder,
+  onBuildAsApp,
+  onSendToBacklog,
+  onWorkInTerminal,
+}: IdeaLogPageProps) {
   const { ideas, loading, createIdea, updateIdea, deleteIdea } = useIdeas()
   const { dragState, getDragProps, getDropZoneProps } = useDragIdea({ updateIdea })
 
@@ -374,6 +383,69 @@ export function IdeaLogPage({ projects, onOpenFolder }: IdeaLogPageProps) {
               <path d="M2 11.5h10M4 8.5l3-6 3 6H4z" />
             </svg>
           </button>
+          <span className="idea-log__card-action-divider" />
+          {onBuildAsApp && (
+            <button
+              className="idea-log__icon-btn"
+              onClick={() => onBuildAsApp(idea)}
+              title="Build as app"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="1.5" width="8" height="11" rx="1.5" />
+                <path d="M6 10.5h2" />
+              </svg>
+            </button>
+          )}
+          {onSendToBacklog && (
+            <button
+              className="idea-log__icon-btn"
+              onClick={() => onSendToBacklog(idea)}
+              title="Send to Ralph Loop backlog"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="1.5" y="2" width="11" height="10" rx="1" />
+                <path d="M1.5 5h11M5 5v7M9 5v7" />
+              </svg>
+            </button>
+          )}
+          {onWorkInTerminal && (
+            <button
+              className="idea-log__icon-btn"
+              onClick={() => onWorkInTerminal(idea)}
+              title="Work in terminal"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 4.5l3 2.5-3 2.5M7.5 10H11" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     )
