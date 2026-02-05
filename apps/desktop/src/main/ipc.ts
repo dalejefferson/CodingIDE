@@ -17,6 +17,7 @@ import { setupRalphIPC } from './ipcRalph'
 import { setupExpoIPC } from './ipcExpo'
 import { MobileAppStore } from '@services/mobileAppStore'
 import { TemplateCacheService } from '@services/templateCache'
+import { IdeaStore } from '@services/ideaStore'
 import type { LayoutNode } from '../shared/terminalLayout'
 import type { ProjectStatus, ProjectStatusChange } from '../shared/types'
 
@@ -30,6 +31,7 @@ let ticketStore: TicketStore | null = null
 let settingsStore: SettingsStore | null = null
 let mobileAppStore: MobileAppStore | null = null
 let templateCacheService: TemplateCacheService | null = null
+let ideaStore: IdeaStore | null = null
 let expoServiceRef: { expoService: import('@services/expoService').ExpoService } | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
@@ -82,6 +84,7 @@ export function setupIPC(): void {
   ticketStore = new TicketStore(ticketStorePath)
   settingsStore = new SettingsStore(settingsStorePath)
   mobileAppStore = new MobileAppStore(join(app.getPath('userData'), 'mobile-apps.json'))
+  ideaStore = new IdeaStore(join(app.getPath('userData'), 'ideas.json'))
 
   // ── Template Cache ──────────────────────────────────────────
   const resourcesDir = join(__dirname, '../../resources/expo-templates')
@@ -398,6 +401,23 @@ export function setupIPC(): void {
     getMainWindow,
   )
 
+  // ── Idea Log IPC ──────────────────────────────────────────
+  router.handle(IPC_CHANNELS.IDEA_GET_ALL, () => {
+    return ideaStore!.getAll()
+  })
+
+  router.handle(IPC_CHANNELS.IDEA_CREATE, (_event, payload) => {
+    return ideaStore!.create(payload)
+  })
+
+  router.handle(IPC_CHANNELS.IDEA_UPDATE, (_event, payload) => {
+    ideaStore!.update(payload.id, payload)
+  })
+
+  router.handle(IPC_CHANNELS.IDEA_DELETE, (_event, payload) => {
+    ideaStore!.delete(payload)
+  })
+
   // ── Auto-status: terminal busy → running, command done → idle ──
   terminalService!.onCommandDone((event) => {
     sendToRenderer('terminal:command-done', event)
@@ -473,6 +493,7 @@ export async function disposeIPC(): Promise<void> {
     expoServiceRef = null
   }
   mobileAppStore?.flush()
+  ideaStore?.flush()
   terminalService?.killAll()
   projectStore?.flush()
   themeStore?.flush()
@@ -493,5 +514,6 @@ export async function disposeIPC(): Promise<void> {
   settingsStore = null
   mobileAppStore = null
   templateCacheService = null
+  ideaStore = null
   lastClaudeActivity = {}
 }

@@ -68,6 +68,9 @@ import type {
   CopyPRDImagesRequest,
   GenerateWordVomitPRDRequest,
   GenerateWordVomitPRDResponse,
+  Idea,
+  CreateIdeaRequest,
+  UpdateIdeaRequest,
 } from './types'
 import { THEME_IDS, PROJECT_STATUSES, BROWSER_VIEW_MODES } from './types'
 import { isValidLayout } from './terminalLayout'
@@ -101,6 +104,7 @@ import {
   isCopyPRDImagesRequest,
 } from './expoValidators'
 import { isGenerateWordVomitPRDRequest } from './wordVomitValidators'
+import { isCreateIdeaRequest, isUpdateIdeaRequest } from './ideaValidators'
 
 // ── Channel Constants ──────────────────────────────────────────
 
@@ -180,6 +184,11 @@ export const IPC_CHANNELS = {
   EXPO_COPY_PRD_IMAGES: 'ipc:expo-copy-prd-images',
   // ── Word Vomit ────────────────────────────────────────────
   WORD_VOMIT_GENERATE_PRD: 'ipc:word-vomit-generate-prd',
+  // ── Idea Log ──────────────────────────────────────────────
+  IDEA_GET_ALL: 'ipc:idea-get-all',
+  IDEA_CREATE: 'ipc:idea-create',
+  IDEA_UPDATE: 'ipc:idea-update',
+  IDEA_DELETE: 'ipc:idea-delete',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -472,6 +481,23 @@ export interface IPCContracts {
     request: GenerateWordVomitPRDRequest
     response: GenerateWordVomitPRDResponse
   }
+  // ── Idea Log ──────────────────────────────────────────────
+  [IPC_CHANNELS.IDEA_GET_ALL]: {
+    request: void
+    response: Idea[]
+  }
+  [IPC_CHANNELS.IDEA_CREATE]: {
+    request: CreateIdeaRequest
+    response: Idea
+  }
+  [IPC_CHANNELS.IDEA_UPDATE]: {
+    request: UpdateIdeaRequest
+    response: void
+  }
+  [IPC_CHANNELS.IDEA_DELETE]: {
+    request: string
+    response: void
+  }
 }
 
 // ── Runtime Validators ─────────────────────────────────────────
@@ -747,6 +773,11 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.EXPO_COPY_PRD_IMAGES]: isCopyPRDImagesRequest,
   // ── Word Vomit ────────────────────────────────────────────
   [IPC_CHANNELS.WORD_VOMIT_GENERATE_PRD]: isGenerateWordVomitPRDRequest,
+  // ── Idea Log ──────────────────────────────────────────────
+  [IPC_CHANNELS.IDEA_GET_ALL]: isVoid,
+  [IPC_CHANNELS.IDEA_CREATE]: isCreateIdeaRequest,
+  [IPC_CHANNELS.IDEA_UPDATE]: isUpdateIdeaRequest,
+  [IPC_CHANNELS.IDEA_DELETE]: isNonEmptyString,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────
@@ -785,6 +816,8 @@ export {
 } from './expoValidators'
 
 export { isGenerateWordVomitPRDRequest } from './wordVomitValidators'
+
+export { isCreateIdeaRequest, isUpdateIdeaRequest } from './ideaValidators'
 
 /** Check if a channel string is in the allowlist */
 export function isAllowedChannel(channel: string): channel is IPCChannel {

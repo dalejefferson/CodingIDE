@@ -15,6 +15,9 @@ const AppBuilderPage = React.lazy(() =>
 const MobileWorkspace = React.lazy(() =>
   import('./components/appbuilder/MobileWorkspace').then((m) => ({ default: m.MobileWorkspace })),
 )
+const IdeaLogPage = React.lazy(() =>
+  import('./components/idealog/IdeaLogPage').then((m) => ({ default: m.IdeaLogPage })),
+)
 import { ToastContainer } from './components/ToastContainer'
 import { PrdGenerationIndicator } from './components/PrdGenerationIndicator'
 import { useTheme } from './hooks/useTheme'
@@ -31,6 +34,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [kanbanOpen, setKanbanOpen] = useState(false)
   const [appBuilderOpen, setAppBuilderOpen] = useState(false)
+  const [ideaLogOpen, setIdeaLogOpen] = useState(false)
   const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatusMap>({})
   const [wordVomitPrdForApp, setWordVomitPrdForApp] = useState<string | null>(null)
@@ -82,6 +86,7 @@ export function App() {
     setSettingsOpen(false)
     setKanbanOpen(false)
     setAppBuilderOpen(false)
+    setIdeaLogOpen(false)
   }, [])
 
   const handleGoHome = useCallback(() => {
@@ -89,6 +94,7 @@ export function App() {
     setSettingsOpen(false)
     setKanbanOpen(false)
     setAppBuilderOpen(false)
+    setIdeaLogOpen(false)
   }, [])
 
   const handleOpenKanban = useCallback(() => {
@@ -96,12 +102,22 @@ export function App() {
     setSettingsOpen(false)
     setActiveProjectId(null)
     setAppBuilderOpen(false)
+    setIdeaLogOpen(false)
   }, [])
 
   const handleOpenAppBuilder = useCallback(() => {
     setAppBuilderOpen(true)
     setSettingsOpen(false)
     setKanbanOpen(false)
+    setActiveProjectId(null)
+    setIdeaLogOpen(false)
+  }, [])
+
+  const handleOpenIdeaLog = useCallback(() => {
+    setIdeaLogOpen(true)
+    setSettingsOpen(false)
+    setKanbanOpen(false)
+    setAppBuilderOpen(false)
     setActiveProjectId(null)
   }, [])
 
@@ -123,6 +139,7 @@ export function App() {
         setKanbanOpen(false)
         setSettingsOpen(false)
         setAppBuilderOpen(false)
+        setIdeaLogOpen(false)
       } catch (err) {
         console.error('Failed to open ticket as project:', err)
       }
@@ -139,6 +156,7 @@ export function App() {
         setAppBuilderOpen(false)
         setSettingsOpen(false)
         setKanbanOpen(false)
+        setIdeaLogOpen(false)
       } catch (err) {
         console.error('Failed to open mobile app as project:', err)
       }
@@ -199,6 +217,7 @@ export function App() {
     setSettingsOpen(false)
     setKanbanOpen(false)
     setActiveProjectId(null)
+    setIdeaLogOpen(false)
   }, [])
 
   const handleWordVomitToProject = useCallback(
@@ -337,6 +356,7 @@ export function App() {
             setSettingsOpen(false)
             setActiveProjectId(null)
             setAppBuilderOpen(false)
+            setIdeaLogOpen(false)
           }
           return !prev
         })
@@ -349,6 +369,21 @@ export function App() {
           if (!prev) {
             setSettingsOpen(false)
             setKanbanOpen(false)
+            setActiveProjectId(null)
+            setIdeaLogOpen(false)
+          }
+          return !prev
+        })
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
+        e.preventDefault()
+        setIdeaLogOpen((prev) => {
+          if (!prev) {
+            setSettingsOpen(false)
+            setKanbanOpen(false)
+            setAppBuilderOpen(false)
             setActiveProjectId(null)
           }
           return !prev
@@ -365,6 +400,7 @@ export function App() {
         setActiveProjectId(currentProjects[nextIdx].id)
         setSettingsOpen(false)
         setAppBuilderOpen(false)
+        setIdeaLogOpen(false)
         return
       }
     }
@@ -422,7 +458,12 @@ export function App() {
           />
         </React.Suspense>
       )}
-      {!settingsOpen && !kanbanOpen && !appBuilderOpen && projects.length === 0 && (
+      {ideaLogOpen && !settingsOpen && !kanbanOpen && !appBuilderOpen && (
+        <React.Suspense fallback={null}>
+          <IdeaLogPage projects={projects} onOpenFolder={handleOpenFolder} />
+        </React.Suspense>
+      )}
+      {!settingsOpen && !kanbanOpen && !appBuilderOpen && !ideaLogOpen && projects.length === 0 && (
         <EmptyState
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
@@ -438,22 +479,27 @@ export function App() {
           onClearWordVomitGen={prdGen.clearWordVomit}
         />
       )}
-      {!settingsOpen && !kanbanOpen && !appBuilderOpen && projects.length > 0 && !activeProject && (
-        <EmptyState
-          onOpenFolder={handleOpenFolder}
-          onCreateProject={handleCreateProject}
-          projects={projects}
-          onSelectProject={handleSelectProject}
-          onOpenKanban={handleOpenKanban}
-          onOpenAppBuilder={handleOpenAppBuilder}
-          onWordVomitToRalph={handleWordVomitToRalph}
-          onWordVomitToApp={handleWordVomitToApp}
-          onWordVomitToProject={handleWordVomitToProject}
-          wordVomitGen={prdGen.wordVomit}
-          onStartWordVomitGen={prdGen.startWordVomitGen}
-          onClearWordVomitGen={prdGen.clearWordVomit}
-        />
-      )}
+      {!settingsOpen &&
+        !kanbanOpen &&
+        !appBuilderOpen &&
+        !ideaLogOpen &&
+        projects.length > 0 &&
+        !activeProject && (
+          <EmptyState
+            onOpenFolder={handleOpenFolder}
+            onCreateProject={handleCreateProject}
+            projects={projects}
+            onSelectProject={handleSelectProject}
+            onOpenKanban={handleOpenKanban}
+            onOpenAppBuilder={handleOpenAppBuilder}
+            onWordVomitToRalph={handleWordVomitToRalph}
+            onWordVomitToApp={handleWordVomitToApp}
+            onWordVomitToProject={handleWordVomitToProject}
+            wordVomitGen={prdGen.wordVomit}
+            onStartWordVomitGen={prdGen.startWordVomitGen}
+            onClearWordVomitGen={prdGen.clearWordVomit}
+          />
+        )}
       {projects.map((p) =>
         p.type === 'mobile' ? (
           <React.Suspense key={p.id} fallback={null}>
@@ -461,7 +507,11 @@ export function App() {
               project={p}
               app={mobileApps.find((a) => a.id === p.mobileAppId) ?? null}
               isVisible={
-                p.id === activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen
+                p.id === activeProjectId &&
+                !settingsOpen &&
+                !kanbanOpen &&
+                !appBuilderOpen &&
+                !ideaLogOpen
               }
               onStartApp={startApp}
               onStopApp={stopApp}
@@ -473,7 +523,13 @@ export function App() {
             project={p}
             palette={palette}
             gridRef={getGridRef(p.id)}
-            isVisible={p.id === activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen}
+            isVisible={
+              p.id === activeProjectId &&
+              !settingsOpen &&
+              !kanbanOpen &&
+              !appBuilderOpen &&
+              !ideaLogOpen
+            }
             getPortOwner={getPortOwner}
             registerPort={registerPort}
             unregisterPort={unregisterPort}
@@ -493,6 +549,7 @@ export function App() {
           settingsOpen={settingsOpen}
           kanbanOpen={kanbanOpen}
           appBuilderOpen={appBuilderOpen}
+          ideaLogOpen={ideaLogOpen}
           claudeActivity={claudeActivity}
           claudeStatus={claudeStatus}
           totalActiveClaudes={totalActiveClaudes}
@@ -504,6 +561,7 @@ export function App() {
           onGoHome={handleGoHome}
           onOpenKanban={handleOpenKanban}
           onOpenAppBuilder={handleOpenAppBuilder}
+          onOpenIdeaLog={handleOpenIdeaLog}
         />
       </div>
       <div className="main-pane">

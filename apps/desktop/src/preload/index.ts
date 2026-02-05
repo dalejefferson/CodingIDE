@@ -57,6 +57,9 @@ import type {
   CopyPRDImagesRequest,
   GenerateWordVomitPRDRequest,
   GenerateWordVomitPRDResponse,
+  Idea,
+  CreateIdeaRequest,
+  UpdateIdeaRequest,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -184,6 +187,12 @@ export interface ElectronAPI {
   }
   wordVomit: {
     generatePRD: (request: GenerateWordVomitPRDRequest) => Promise<GenerateWordVomitPRDResponse>
+  }
+  ideas: {
+    getAll: () => Promise<Idea[]>
+    create: (request: CreateIdeaRequest) => Promise<Idea>
+    update: (request: UpdateIdeaRequest) => Promise<void>
+    delete: (id: string) => Promise<void>
   }
 }
 
@@ -472,6 +481,14 @@ const electronAPI: ElectronAPI = {
         IPC_CHANNELS.WORD_VOMIT_GENERATE_PRD,
         request,
       ) as Promise<GenerateWordVomitPRDResponse>,
+  },
+  ideas: {
+    getAll: () => safeInvoke(IPC_CHANNELS.IDEA_GET_ALL) as Promise<Idea[]>,
+    create: (request: CreateIdeaRequest) =>
+      safeInvoke(IPC_CHANNELS.IDEA_CREATE, request) as Promise<Idea>,
+    update: (request: UpdateIdeaRequest) =>
+      safeInvoke(IPC_CHANNELS.IDEA_UPDATE, request) as Promise<void>,
+    delete: (id: string) => safeInvoke(IPC_CHANNELS.IDEA_DELETE, id) as Promise<void>,
   },
 }
 

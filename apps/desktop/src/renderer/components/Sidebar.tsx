@@ -40,6 +40,23 @@ function PhoneIcon() {
   )
 }
 
+function LightbulbIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 13h4M6.5 11c-.8-1-1.5-2-1.5-3.5a3.5 3.5 0 1 1 7 0c0 1.5-.7 2.5-1.5 3.5H6.5z" />
+    </svg>
+  )
+}
+
 interface SidebarProps {
   projects: Project[]
   activeProjectId: string | null
@@ -47,6 +64,7 @@ interface SidebarProps {
   settingsOpen: boolean
   kanbanOpen: boolean
   appBuilderOpen: boolean
+  ideaLogOpen: boolean
   claudeActivity: ClaudeActivityMap
   claudeStatus: ClaudeStatusMap
   totalActiveClaudes: number
@@ -58,6 +76,7 @@ interface SidebarProps {
   onGoHome: () => void
   onOpenKanban: () => void
   onOpenAppBuilder: () => void
+  onOpenIdeaLog: () => void
 }
 
 function ChevronLeftIcon() {
@@ -262,6 +281,7 @@ function Sidebar({
   settingsOpen,
   kanbanOpen,
   appBuilderOpen,
+  ideaLogOpen,
   claudeActivity,
   claudeStatus,
   totalActiveClaudes,
@@ -273,8 +293,9 @@ function Sidebar({
   onGoHome,
   onOpenKanban,
   onOpenAppBuilder,
+  onOpenIdeaLog,
 }: SidebarProps) {
-  const isHome = !activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen
+  const isHome = !activeProjectId && !settingsOpen && !kanbanOpen && !appBuilderOpen && !ideaLogOpen
   return (
     <aside className="sidebar" aria-label="Sidebar" aria-hidden={collapsed}>
       <div className="sidebar-drag-region">
@@ -317,6 +338,15 @@ function Sidebar({
         >
           <PhoneIcon />
           <span>App Builder</span>
+        </button>
+        <button
+          className={`sidebar-action-btn${ideaLogOpen ? ' sidebar-action-btn--active' : ''}`}
+          type="button"
+          onClick={onOpenIdeaLog}
+          aria-label="Idea Log"
+        >
+          <LightbulbIcon />
+          <span>Idea Log</span>
         </button>
       </div>
 

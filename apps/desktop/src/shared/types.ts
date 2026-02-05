@@ -610,3 +610,35 @@ export const IPHONE_DEVICES: readonly IPhoneDevice[] = [
   { id: 'iphone-16', name: 'iPhone 16', width: 393, height: 852 },
   { id: 'ipad-mini', name: 'iPad Mini', width: 744, height: 1133 },
 ] as const
+
+// ── Idea Log ────────────────────────────────────────────────
+
+export type IdeaPriority = 'low' | 'medium' | 'high'
+
+export const IDEA_PRIORITIES: readonly IdeaPriority[] = ['low', 'medium', 'high'] as const
+
+export interface Idea {
+  id: string
+  title: string
+  description: string
+  projectId: string | null
+  priority: IdeaPriority | null
+  createdAt: number
+  updatedAt: number
+  order: number
+}
+
+export interface CreateIdeaRequest {
+  title: string
+  description: string
+  projectId: string | null
+  priority: IdeaPriority | null
+}
+
+export interface UpdateIdeaRequest {
+  id: string
+  title?: string
+  description?: string
+  projectId?: string | null
+  priority?: IdeaPriority | null
+}
