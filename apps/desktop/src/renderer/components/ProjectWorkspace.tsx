@@ -233,7 +233,10 @@ function ProjectWorkspace({
     })
   }, [])
 
+  // Only listen for browser events when this workspace is visible.
+  // Hidden workspaces don't need to respond to global browser events.
   useEffect(() => {
+    if (!isVisible) return
     const handler = (e: Event) => {
       const mode = (e as CustomEvent).detail as BrowserViewMode
       setViewMode((prev) => {
@@ -244,10 +247,11 @@ function ProjectWorkspace({
     }
     window.addEventListener('browser:set-view-mode', handler)
     return () => window.removeEventListener('browser:set-view-mode', handler)
-  }, [])
+  }, [isVisible])
 
   // Navigate the embedded browser when a localhost link is clicked in the terminal
   useEffect(() => {
+    if (!isVisible) return
     const handler = (e: Event) => {
       const url = (e as CustomEvent).detail as string
       setBrowserUrl(url)
@@ -261,59 +265,50 @@ function ProjectWorkspace({
     }
     window.addEventListener('browser:navigate', handler)
     return () => window.removeEventListener('browser:navigate', handler)
-  }, [])
+  }, [isVisible])
 
-  useEffect(() => {
-    if (viewMode !== 'fullscreen' && viewMode !== 'pip') return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        setViewMode(previousModeRef.current)
-      }
-    }
-    window.addEventListener('keydown', handler, true)
-    return () => window.removeEventListener('keydown', handler, true)
-  }, [viewMode])
-
-  // Cmd+G: toggle browser open/closed
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'g') {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleBrowser()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown, true)
-    return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [toggleBrowser])
-
-  // Cmd+`: toggle inline terminal drawer
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === '`') {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleDrawer()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown, true)
-    return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [toggleDrawer])
-
-  // Cmd+E: toggle file explorer
+  // Consolidated keyboard handler — single listener instead of 4 separate ones.
+  // Skips all shortcuts when the workspace is hidden.
   useEffect(() => {
     if (!isVisible) return
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+      const mod = e.metaKey || e.ctrlKey
+
+      // Escape: exit fullscreen/pip
+      if (e.key === 'Escape' && (viewMode === 'fullscreen' || viewMode === 'pip')) {
+        e.preventDefault()
+        e.stopPropagation()
+        setViewMode(previousModeRef.current)
+        return
+      }
+
+      if (!mod || e.shiftKey) return
+
+      // Cmd+G: toggle browser
+      if (e.key === 'g') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleBrowser()
+        return
+      }
+
+      // Cmd+`: toggle inline terminal drawer
+      if (e.key === '`') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleDrawer()
+        return
+      }
+
+      // Cmd+E: toggle file explorer
+      if (e.key === 'e') {
         e.preventDefault()
         handleToggleExplorer()
       }
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isVisible, handleToggleExplorer])
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [isVisible, viewMode, toggleBrowser, toggleDrawer, handleToggleExplorer])
 
   useEffect(() => {
     if (viewMode === 'split' || viewMode === 'closed') {

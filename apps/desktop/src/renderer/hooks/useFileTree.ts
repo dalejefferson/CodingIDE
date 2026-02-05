@@ -24,13 +24,11 @@ export function useFileTree(projectId: string) {
       loadingRef.current.add(dirPath)
 
       setState((prev) => {
-        const newErrors = new Map(prev.errorDirs)
-        newErrors.delete(dirPath)
-        return {
-          ...prev,
-          loadingDirs: new Set([...prev.loadingDirs, dirPath]),
-          errorDirs: newErrors,
-        }
+        const newLoading = new Set(prev.loadingDirs)
+        newLoading.add(dirPath)
+        const newErrors = prev.errorDirs.has(dirPath) ? new Map(prev.errorDirs) : prev.errorDirs
+        if (newErrors !== prev.errorDirs) newErrors.delete(dirPath)
+        return { ...prev, loadingDirs: newLoading, errorDirs: newErrors }
       })
 
       try {
@@ -38,24 +36,26 @@ export function useFileTree(projectId: string) {
         setState((prev) => {
           const newEntries = new Map(prev.entries)
           newEntries.set(dirPath, entries)
+          const newLoading = new Set(prev.loadingDirs)
+          newLoading.delete(dirPath)
+          const newExpanded = new Set(prev.expandedDirs)
+          newExpanded.add(dirPath)
           return {
             ...prev,
             entries: newEntries,
-            loadingDirs: new Set([...prev.loadingDirs].filter((d) => d !== dirPath)),
-            expandedDirs: new Set([...prev.expandedDirs, dirPath]),
+            loadingDirs: newLoading,
+            expandedDirs: newExpanded,
           }
         })
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         console.error(`[useFileTree] fetchDir("${dirPath}") failed:`, msg)
         setState((prev) => {
+          const newLoading = new Set(prev.loadingDirs)
+          newLoading.delete(dirPath)
           const newErrors = new Map(prev.errorDirs)
           newErrors.set(dirPath, msg)
-          return {
-            ...prev,
-            loadingDirs: new Set([...prev.loadingDirs].filter((d) => d !== dirPath)),
-            errorDirs: newErrors,
-          }
+          return { ...prev, loadingDirs: newLoading, errorDirs: newErrors }
         })
       } finally {
         loadingRef.current.delete(dirPath)
@@ -78,7 +78,9 @@ export function useFileTree(projectId: string) {
 
         // Already loaded but collapsed → expand
         if (prev.entries.has(dirPath)) {
-          return { ...prev, expandedDirs: new Set([...prev.expandedDirs, dirPath]) }
+          const newExpanded = new Set(prev.expandedDirs)
+          newExpanded.add(dirPath)
+          return { ...prev, expandedDirs: newExpanded }
         }
 
         // Not yet loaded → fetchDir will handle expanding

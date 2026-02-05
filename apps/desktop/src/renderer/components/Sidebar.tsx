@@ -99,40 +99,6 @@ function PlusIcon() {
   )
 }
 
-function BoltIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 1.5L3.5 9H8L7 14.5L12.5 7H8L9 1.5Z" />
-    </svg>
-  )
-}
-
-function SparkleIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M8 1L9.5 6L14 8L9.5 10L8 15L6.5 10L2 8L6.5 6L8 1Z" />
-    </svg>
-  )
-}
-
 function HomeIcon() {
   return (
     <svg
@@ -320,14 +286,6 @@ function Sidebar({
         >
           <LoopIcon />
           <span>Ralph Loop</span>
-        </button>
-        <button className="sidebar-action-btn" type="button">
-          <BoltIcon />
-          <span>Automations</span>
-        </button>
-        <button className="sidebar-action-btn" type="button">
-          <SparkleIcon />
-          <span>Skills</span>
         </button>
       </div>
 

@@ -13,6 +13,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   useRef,
   useImperativeHandle,
   forwardRef,
@@ -458,6 +459,55 @@ interface LayoutRendererProps {
   onLocalhostDetected?: (terminalId: string, url: string) => void
 }
 
+/** Wrapper that passes stable callbacks to TerminalPane without inline closures. */
+const LeafPane = React.memo(function LeafPane({
+  leafId,
+  terminalId,
+  projectId,
+  cwd,
+  isActive,
+  palette,
+  pendingCommand,
+  onFocusLeaf,
+  onCommandSent,
+  onLocalhostDetected,
+}: {
+  leafId: string
+  terminalId: string
+  projectId: string
+  cwd: string
+  isActive: boolean
+  palette: string
+  pendingCommand?: string
+  onFocusLeaf: (id: string) => void
+  onCommandSent: (terminalId: string) => void
+  onLocalhostDetected?: (terminalId: string, url: string) => void
+}) {
+  const handleFocus = useCallback(() => onFocusLeaf(leafId), [onFocusLeaf, leafId])
+  const handleCommandSent = useCallback(
+    () => onCommandSent(terminalId),
+    [onCommandSent, terminalId],
+  )
+  const handleLocalhostDetected = useMemo(
+    () => (onLocalhostDetected ? (url: string) => onLocalhostDetected(terminalId, url) : undefined),
+    [onLocalhostDetected, terminalId],
+  )
+
+  return (
+    <TerminalPane
+      terminalId={terminalId}
+      projectId={projectId}
+      cwd={cwd}
+      isActive={isActive}
+      palette={palette}
+      pendingCommand={pendingCommand}
+      onFocus={handleFocus}
+      onCommandSent={handleCommandSent}
+      onLocalhostDetected={handleLocalhostDetected}
+    />
+  )
+})
+
 const LayoutRenderer = React.memo(function LayoutRenderer({
   node,
   activeLeafId,
@@ -472,21 +522,18 @@ const LayoutRenderer = React.memo(function LayoutRenderer({
 }: LayoutRendererProps) {
   if (node.type === 'leaf') {
     return (
-      <TerminalPane
+      <LeafPane
         key={node.id}
+        leafId={node.id}
         terminalId={node.terminalId}
         projectId={projectId}
         cwd={cwd}
         isActive={node.id === activeLeafId}
         palette={palette}
         pendingCommand={pendingCommands[node.terminalId]}
-        onFocus={() => onFocusLeaf(node.id)}
-        onCommandSent={() => onCommandSent(node.terminalId)}
-        onLocalhostDetected={
-          onLocalhostDetected
-            ? (url: string) => onLocalhostDetected(node.terminalId, url)
-            : undefined
-        }
+        onFocusLeaf={onFocusLeaf}
+        onCommandSent={onCommandSent}
+        onLocalhostDetected={onLocalhostDetected}
       />
     )
   }

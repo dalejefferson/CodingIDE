@@ -28,6 +28,22 @@ let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
 let lastClaudeStatus: Record<string, string> = {}
 
+/** Cached main window reference — avoids BrowserWindow.getAllWindows() on hot paths. */
+let cachedMainWindow: BrowserWindow | null = null
+
+/** Get the main renderer window, using a cached reference when possible. */
+function getMainWindow(): BrowserWindow | null {
+  if (cachedMainWindow && !cachedMainWindow.isDestroyed()) return cachedMainWindow
+  cachedMainWindow = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ?? null
+  return cachedMainWindow
+}
+
+/** Send a message to the renderer, using the cached window reference. */
+function sendToRenderer(channel: string, ...args: unknown[]): void {
+  const win = getMainWindow()
+  if (win) win.webContents.send(channel, ...args)
+}
+
 /** Shallow equality check for plain objects (string/number values) */
 function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   const keysA = Object.keys(a)
@@ -39,14 +55,10 @@ function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): b
   return true
 }
 
-/** Broadcast a project status change to all renderer windows */
+/** Broadcast a project status change to the renderer window */
 function broadcastStatusChange(id: string, status: ProjectStatus): void {
   const change: ProjectStatusChange = { id, status }
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('project:status-changed', change)
-    }
-  }
+  sendToRenderer('project:status-changed', change)
 }
 
 export function setupIPC(): void {
@@ -147,21 +159,40 @@ export function setupIPC(): void {
 
   // ── Terminal IPC ───────────────────────────────────────────
 
-  // Forward PTY data to the renderer via webContents.send
+  // Forward PTY data to the renderer via cached window reference.
+  // Batch chunks per terminal within a microtask to reduce IPC overhead
+  // during fast output (builds, npm install, large logs).
+  const pendingTermData = new Map<string, string[]>()
+  let termDataFlushScheduled = false
+
+  function flushTermData(): void {
+    termDataFlushScheduled = false
+    const win = getMainWindow()
+    if (!win) {
+      pendingTermData.clear()
+      return
+    }
+    for (const [tid, chunks] of pendingTermData) {
+      win.webContents.send('terminal:data', tid, chunks.join(''))
+    }
+    pendingTermData.clear()
+  }
+
   terminalService!.onData((terminalId, data) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('terminal:data', terminalId, data)
-      }
+    let arr = pendingTermData.get(terminalId)
+    if (!arr) {
+      arr = []
+      pendingTermData.set(terminalId, arr)
+    }
+    arr.push(data)
+    if (!termDataFlushScheduled) {
+      termDataFlushScheduled = true
+      queueMicrotask(flushTermData)
     }
   })
 
   terminalService!.onExit((terminalId, exitCode) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('terminal:exit', terminalId, exitCode)
-      }
-    }
+    sendToRenderer('terminal:exit', terminalId, exitCode)
   })
 
   router.handle(IPC_CHANNELS.TERMINAL_CREATE, (_event, payload) => {
@@ -330,21 +361,11 @@ export function setupIPC(): void {
   })
 
   // ── Ralph / PRD IPC ─────────────────────────────────────────
-  setupRalphIPC(
-    router,
-    ticketStore!,
-    settingsStore!,
-    projectStore!,
-    () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ?? null,
-  )
+  setupRalphIPC(router, ticketStore!, settingsStore!, projectStore!, getMainWindow)
 
   // ── Auto-status: terminal busy → running, command done → idle ──
   terminalService!.onCommandDone((event) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('terminal:command-done', event)
-      }
-    }
+    sendToRenderer('terminal:command-done', event)
     // Auto-set project to idle when command finishes (unless Claude is active)
     const activity = lastClaudeActivity[event.projectId] ?? 0
     if (activity === 0) {
@@ -363,12 +384,8 @@ export function setupIPC(): void {
       if (Object.keys(lastClaudeActivity).length > 0) {
         lastClaudeActivity = {}
         lastClaudeStatus = {}
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('claude:activity', {})
-            win.webContents.send('claude:status', {})
-          }
-        }
+        sendToRenderer('claude:activity', {})
+        sendToRenderer('claude:status', {})
       }
       return
     }
@@ -387,11 +404,7 @@ export function setupIPC(): void {
       if ((lastClaudeActivity[projectId] ?? 0) > 0 && (activity[projectId] ?? 0) === 0) {
         projectStore!.setStatus(projectId, 'done')
         broadcastStatusChange(projectId, 'done')
-        for (const win of BrowserWindow.getAllWindows()) {
-          if (!win.isDestroyed()) {
-            win.webContents.send('claude:done', { projectId })
-          }
-        }
+        sendToRenderer('claude:done', { projectId })
       }
     }
 
@@ -409,12 +422,8 @@ export function setupIPC(): void {
     lastClaudeStatus = { ...statusMap }
 
     if (activityChanged || statusChanged) {
-      for (const win of BrowserWindow.getAllWindows()) {
-        if (!win.isDestroyed()) {
-          if (activityChanged) win.webContents.send('claude:activity', activity)
-          if (statusChanged) win.webContents.send('claude:status', statusMap)
-        }
-      }
+      if (activityChanged) sendToRenderer('claude:activity', activity)
+      if (statusChanged) sendToRenderer('claude:status', statusMap)
     }
   }, 3000)
 }
@@ -432,6 +441,7 @@ export function disposeIPC(): void {
   ticketStore?.flush()
   settingsStore?.flush()
   lastClaudeStatus = {}
+  cachedMainWindow = null
   router?.dispose()
   router = null
   projectStore = null

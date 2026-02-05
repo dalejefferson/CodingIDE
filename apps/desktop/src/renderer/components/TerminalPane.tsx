@@ -532,29 +532,29 @@ function TerminalPaneInner({
     return removeListener
   }, [aiProcessing, terminalId])
 
-  // Poll git branch every 5 seconds
+  // Poll git branch — only when pane is active to avoid redundant subprocess calls.
+  // Fetches immediately on activation or cwd change, then every 10s while active.
   useEffect(() => {
+    if (!isActive) return
     let cancelled = false
 
     async function fetchBranch() {
       try {
         const result = await window.electronAPI.git.getBranch({ cwd: currentCwd })
-        if (!cancelled) {
-          setGitBranch(result.branch)
-        }
+        if (!cancelled) setGitBranch(result.branch)
       } catch {
         if (!cancelled) setGitBranch(null)
       }
     }
 
     fetchBranch()
-    const interval = setInterval(fetchBranch, 5000)
+    const interval = setInterval(fetchBranch, 10_000)
 
     return () => {
       cancelled = true
       clearInterval(interval)
     }
-  }, [currentCwd])
+  }, [currentCwd, isActive])
 
   return (
     <div className={`terminal-pane${isActive ? ' terminal-pane--active' : ''}`} onClick={onFocus}>
