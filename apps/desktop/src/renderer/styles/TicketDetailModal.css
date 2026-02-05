@@ -1,0 +1,375 @@
+/* ==========================================================================
+   TicketDetailModal — detail/edit view for a single Kanban ticket
+   Uses CSS custom properties from the global theme system.
+   ========================================================================== */
+
+/* ── Full-screen Overlay ─────────────────────────────────────────────────── */
+
+.ticket-detail-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+
+.ticket-detail-card {
+  position: relative;
+  max-width: 640px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-xl);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.ticket-detail-header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.ticket-detail-title {
+  font-family: inherit;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.ticket-detail-heading {
+  font-family: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+}
+
+/* ── Edit mode form elements ─────────────────────────────────────────────── */
+
+.ticket-detail-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.ticket-detail-input {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.ticket-detail-input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.ticket-detail-textarea {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  min-height: 80px;
+  resize: vertical;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.ticket-detail-textarea:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.ticket-detail-select {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  padding-right: var(--space-xl);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%236e6e73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-sm) center;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.ticket-detail-select:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.ticket-detail-row {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-md);
+}
+.ticket-detail-row > .ticket-detail-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+
+.ticket-detail-badges {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+
+.ticket-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ticket-detail-badge--status {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+.ticket-detail-badge--type {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+.ticket-detail-badge--priority {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+.ticket-detail-badge--prd-approved {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.ticket-detail-section {
+  margin-top: var(--space-lg);
+}
+
+.ticket-detail-section-title {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-sm);
+}
+
+.ticket-detail-text {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+  white-space: pre-wrap;
+}
+
+/* ── Acceptance Criteria ─────────────────────────────────────────────────── */
+
+.ticket-detail-criteria {
+  list-style: disc;
+  padding-left: var(--space-lg);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+.ticket-detail-criteria li {
+  margin-bottom: var(--space-xs);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ── PRD ─────────────────────────────────────────────────────────────────── */
+
+.ticket-detail-prd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.ticket-detail-prd-content {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-primary);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* ── PRD Error ───────────────────────────────────────────────────────────── */
+
+.ticket-detail-prd-error {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-error, #e53e3e);
+  margin-top: var(--space-sm);
+  line-height: var(--line-height-base);
+}
+
+/* ── Action Buttons ──────────────────────────────────────────────────────── */
+
+.ticket-detail-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  margin-top: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.ticket-detail-btn {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.ticket-detail-btn--primary {
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  border: none;
+}
+.ticket-detail-btn--primary:hover {
+  background: var(--color-accent-hover);
+}
+.ticket-detail-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ticket-detail-btn--secondary {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+}
+.ticket-detail-btn--secondary:hover {
+  background: var(--color-bg-hover);
+}
+
+.ticket-detail-btn--accent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  border: none;
+}
+.ticket-detail-btn--accent:hover {
+  background: var(--color-accent-hover);
+}
+.ticket-detail-btn--accent:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+
+.ticket-detail-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ticket-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ticket-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ticket-detail-btn--transition {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-primary);
+}
+.ticket-detail-btn--transition:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
+/* ── History ──────────────────────────────────────────────────────────────── */
+
+.ticket-detail-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ticket-detail-history-item {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-base);
+}
+
+.ticket-detail-history-time {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ticket-detail-history-action {
+  color: var(--color-text-secondary);
+}
+
+.ticket-detail-history-change {
+  color: var(--color-text-tertiary);
+}

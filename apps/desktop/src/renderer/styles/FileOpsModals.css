@@ -1,0 +1,229 @@
+/* -- File Operations Modals -------------------------------------------- */
+
+.fileops-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fileops-fade-in 0.15s ease-out;
+}
+
+@keyframes fileops-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fileops-modal {
+  background: var(--color-surface, #1e1e2e);
+  border: 1px solid var(--color-border, #2a2a3c);
+  border-radius: 12px;
+  width: 440px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  animation: fileops-slide-up 0.15s ease-out;
+}
+
+.fileops-modal--wide {
+  width: 600px;
+}
+
+@keyframes fileops-slide-up {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.fileops-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--color-border, #2a2a3c);
+}
+
+.fileops-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #cdd6f4);
+}
+
+.fileops-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #6c7086);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.fileops-close-btn:hover {
+  color: var(--color-text, #cdd6f4);
+  background: var(--color-hover, rgba(255, 255, 255, 0.06));
+}
+
+.fileops-modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fileops-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted, #6c7086);
+  font-weight: 500;
+}
+
+.fileops-input {
+  background: var(--color-bg, #11111b);
+  border: 1px solid var(--color-border, #2a2a3c);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--font-mono, 'SF Mono', 'Menlo', monospace);
+  color: var(--color-text, #cdd6f4);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.fileops-input:focus {
+  border-color: var(--color-accent, #89b4fa);
+}
+
+.fileops-textarea {
+  background: var(--color-bg, #11111b);
+  border: 1px solid var(--color-border, #2a2a3c);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--font-mono, 'SF Mono', 'Menlo', monospace);
+  color: var(--color-text, #cdd6f4);
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.15s;
+}
+
+.fileops-textarea:focus {
+  border-color: var(--color-accent, #89b4fa);
+}
+
+.fileops-textarea--editor {
+  min-height: 300px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fileops-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fileops-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted, #6c7086);
+  cursor: pointer;
+}
+
+.fileops-checkbox-label input[type='checkbox'] {
+  accent-color: var(--color-accent, #89b4fa);
+}
+
+.fileops-path-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.fileops-path-row .fileops-input {
+  flex: 1;
+}
+
+.fileops-message {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  animation: fileops-fade-in 0.15s ease-out;
+}
+
+.fileops-message--error {
+  background: rgba(243, 139, 168, 0.12);
+  color: #f38ba8;
+  border: 1px solid rgba(243, 139, 168, 0.2);
+}
+
+.fileops-message--success {
+  background: rgba(166, 227, 161, 0.12);
+  color: #a6e3a1;
+  border: 1px solid rgba(166, 227, 161, 0.2);
+}
+
+.fileops-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.fileops-btn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
+}
+
+.fileops-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fileops-btn--primary {
+  background: var(--color-accent, #89b4fa);
+  color: var(--color-bg, #11111b);
+  border-color: var(--color-accent, #89b4fa);
+}
+
+.fileops-btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.fileops-btn--secondary {
+  background: var(--color-hover, rgba(255, 255, 255, 0.06));
+  color: var(--color-text-muted, #6c7086);
+  border-color: var(--color-border, #2a2a3c);
+}
+
+.fileops-btn--secondary:hover:not(:disabled) {
+  color: var(--color-text, #cdd6f4);
+  background: rgba(255, 255, 255, 0.1);
+}

@@ -190,3 +190,55 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
+
+/* ── Integrations ───────────────────────────────────────────────────────── */
+
+.settings-input-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.settings-api-input {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  transition: border-color var(--transition-fast);
+}
+
+.settings-api-input:hover {
+  border-color: var(--color-accent);
+}
+
+.settings-api-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.settings-save-btn {
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.settings-save-btn:hover {
+  opacity: 0.85;
+}
+
+.settings-saved-indicator {
+  color: var(--color-success);
+  font-size: var(--font-size-xs);
+  margin-left: var(--space-sm);
+}

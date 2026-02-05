@@ -84,7 +84,7 @@
 }
 
 .workspace-panels--split .workspace-terminal {
-  min-width: 200px;
+  min-width: 60px;
   overflow: hidden;
   will-change: flex-basis;
 }
@@ -97,13 +97,13 @@
 }
 
 .workspace-panels--split .workspace-browser:not(.workspace-browser--hidden) {
-  min-width: 250px;
+  min-width: 60px;
 }
 
 /* ── Resizable Divider ──────────────────────────────────────── */
 
 .workspace-divider {
-  width: 5px;
+  width: 1px;
   cursor: col-resize;
   background: var(--color-border-primary);
   flex-shrink: 0;
@@ -289,6 +289,71 @@
   width: 12px;
   height: 12px;
   cursor: sw-resize;
+}
+
+/* ── File Explorer Panel ───────────────────────────────────── */
+
+.workspace-explorer {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--color-border-primary);
+}
+
+.workspace-explorer-tree {
+  width: 250px;
+  min-width: 180px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+  overflow: hidden;
+}
+
+.workspace-explorer-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 6px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+  flex-shrink: 0;
+}
+
+.workspace-explorer-tree-title {
+  /* inherits from header */
+}
+
+.workspace-explorer-tree-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.workspace-explorer-tree-close:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.workspace-explorer-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--color-border-primary);
 }
 
 /* ── Change Prompt (element picker → describe change) ────────── */

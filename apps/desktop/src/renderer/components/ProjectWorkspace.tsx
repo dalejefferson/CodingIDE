@@ -4,6 +4,10 @@ import type { Project, BrowserViewMode } from '@shared/types'
 import { TerminalGrid } from './TerminalGrid'
 import type { TerminalGridHandle } from './TerminalGrid'
 import { BrowserPane } from './BrowserPane'
+import { InlineTerminalDrawer } from './InlineTerminalDrawer'
+import { CreateFileModal, EditFileModal } from './FileOpsModals'
+import { FileTree } from './FileTree'
+import { CodeViewer } from './CodeViewer'
 import '../styles/ProjectWorkspace.css'
 
 interface PickedChange {
@@ -56,6 +60,30 @@ function ProjectWorkspace({
   const [pipSize, setPipSize] = useState<{ w: number; h: number }>({ w: 400, h: 300 })
   const panelsRef = useRef<HTMLDivElement>(null)
   const previousModeRef = useRef<BrowserViewMode>('split')
+
+  // Inline terminal drawer state (toggled per-pane terminal)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const toggleDrawer = useCallback(() => setDrawerOpen((prev) => !prev), [])
+
+  // File explorer state
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+
+  const handleToggleExplorer = useCallback(() => {
+    setExplorerOpen((prev) => !prev)
+  }, [])
+
+  const handleSelectFile = useCallback((relPath: string) => {
+    setSelectedFile(relPath)
+  }, [])
+
+  const handleCloseFile = useCallback(() => {
+    setSelectedFile(null)
+  }, [])
+
+  // File ops modal state
+  const [showCreateFile, setShowCreateFile] = useState(false)
+  const [showEditFile, setShowEditFile] = useState(false)
 
   // Change-chaining state
   const [pickedChanges, setPickedChanges] = useState<PickedChange[]>([])
@@ -249,6 +277,32 @@ function ProjectWorkspace({
     return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [toggleBrowser])
 
+  // Cmd+`: toggle inline terminal drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === '`') {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleDrawer()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [toggleDrawer])
+
+  // Cmd+E: toggle file explorer
+  useEffect(() => {
+    if (!isVisible) return
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+        e.preventDefault()
+        handleToggleExplorer()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isVisible, handleToggleExplorer])
+
   useEffect(() => {
     if (viewMode === 'split' || viewMode === 'closed') {
       const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 250)
@@ -279,7 +333,7 @@ function ProjectWorkspace({
     const parentRect = parent.getBoundingClientRect()
     const onMouseMove = (ev: MouseEvent) => {
       const ratio = (ev.clientX - parentRect.left) / parentRect.width
-      setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)))
+      setSplitRatio(Math.max(0.05, Math.min(0.95, ratio)))
     }
     const onMouseUp = () => {
       setIsDragging(false)
@@ -390,6 +444,87 @@ function ProjectWorkspace({
       <div className="workspace-toggle-bar">
         <button
           type="button"
+          className={`workspace-toggle-btn${explorerOpen ? ' workspace-toggle-btn--active' : ''}`}
+          onClick={handleToggleExplorer}
+          title="Toggle file explorer (Cmd+E)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2 2h4.5l1.5 2H14v10H2V2z" />
+            <path d="M2 6h12" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="workspace-toggle-btn"
+          onClick={() => setShowCreateFile(true)}
+          title="Create file (File Ops)"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6l-4-4z" />
+            <path d="M9 2v4h4" />
+            <path d="M8 9v3M6.5 10.5h3" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="workspace-toggle-btn"
+          onClick={() => setShowEditFile(true)}
+          title="Edit file (File Ops)"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className={`workspace-toggle-btn${drawerOpen ? ' workspace-toggle-btn--active' : ''}`}
+          onClick={toggleDrawer}
+          title={drawerOpen ? 'Hide terminal drawer (Cmd+`)' : 'Show terminal drawer (Cmd+`)'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="2" y="2" width="12" height="12" rx="1.5" />
+            <path d="M2 10h12" />
+            <path d="M5 12.5l1.5-1.5L5 9.5" />
+          </svg>
+        </button>
+        <button
+          type="button"
           className={`workspace-toggle-btn${browserVisible ? ' workspace-toggle-btn--active' : ''}`}
           onClick={toggleBrowser}
           title={browserVisible ? 'Hide browser' : 'Show browser'}
@@ -414,6 +549,47 @@ function ProjectWorkspace({
         ref={panelsRef}
         className={`workspace-panels${browserEverOpened ? ' workspace-panels--split' : ''}`}
       >
+        {explorerOpen && (
+          <div className="workspace-explorer">
+            <div className="workspace-explorer-tree">
+              <div className="workspace-explorer-tree-header">
+                <span className="workspace-explorer-tree-title">Explorer</span>
+                <button
+                  className="workspace-explorer-tree-close"
+                  onClick={handleToggleExplorer}
+                  title="Close explorer"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
+                    <path d="M3 3l8 8M11 3l-8 8" />
+                  </svg>
+                </button>
+              </div>
+              <FileTree
+                projectId={project.id}
+                projectPath={project.path}
+                selectedFile={selectedFile}
+                onSelectFile={handleSelectFile}
+              />
+            </div>
+            {selectedFile && (
+              <div className="workspace-explorer-editor">
+                <CodeViewer
+                  projectId={project.id}
+                  filePath={selectedFile}
+                  onClose={handleCloseFile}
+                />
+              </div>
+            )}
+          </div>
+        )}
         <div
           className={`workspace-terminal${viewMode === 'focused' ? ' workspace-terminal--collapsed' : ''}`}
           style={terminalStyle}
@@ -444,14 +620,24 @@ function ProjectWorkspace({
               display: viewMode === 'focused' ? 'none' : 'flex',
               flex: 1,
               minHeight: 0,
+              flexDirection: 'column',
             }}
           >
-            <TerminalGrid
-              ref={gridRef}
+            <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+              <TerminalGrid
+                ref={gridRef}
+                projectId={project.id}
+                cwd={project.path}
+                palette={palette}
+                onLocalhostDetected={handleLocalhostDetected}
+              />
+            </div>
+            <InlineTerminalDrawer
               projectId={project.id}
               cwd={project.path}
               palette={palette}
-              onLocalhostDetected={handleLocalhostDetected}
+              isOpen={drawerOpen && !showSplitBrowser}
+              onToggle={toggleDrawer}
             />
           </div>
         </div>
@@ -467,6 +653,13 @@ function ProjectWorkspace({
             >
               {browserPane}
               {isDragging && <div className="workspace-drag-overlay" />}
+              <InlineTerminalDrawer
+                projectId={project.id}
+                cwd={project.path}
+                palette={palette}
+                isOpen={drawerOpen && showSplitBrowser}
+                onToggle={toggleDrawer}
+              />
             </div>
           </>
         )}
@@ -586,6 +779,13 @@ function ProjectWorkspace({
             </button>
           </div>
         </div>
+      )}
+
+      {showCreateFile && (
+        <CreateFileModal projectId={project.id} onClose={() => setShowCreateFile(false)} />
+      )}
+      {showEditFile && (
+        <EditFileModal projectId={project.id} onClose={() => setShowEditFile(false)} />
       )}
     </div>
   )

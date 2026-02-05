@@ -21,6 +21,26 @@ import type {
   ClaudeDoneEvent,
   CommandPreset,
   BrowserNavigateRequest,
+  Ticket,
+  CreateTicketRequest,
+  UpdateTicketRequest,
+  TransitionTicketRequest,
+  ReorderTicketRequest,
+  GeneratePRDRequest,
+  ApprovePRDRequest,
+  RalphExecuteRequest,
+  RalphStatusRequest,
+  RalphStatusResponse,
+  RalphStopRequest,
+  OpenTicketAsProjectRequest,
+  PRD,
+  FileCreateRequest,
+  FileReadRequest,
+  FileReadResponse,
+  FileWriteRequest,
+  FileOpsResult,
+  FileListRequest,
+  FileListResponse,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -89,6 +109,42 @@ export interface ElectronAPI {
     onActivity: (callback: (activity: ClaudeActivityMap) => void) => () => void
     onStatus: (callback: (status: ClaudeStatusMap) => void) => () => void
     onDone: (callback: (event: ClaudeDoneEvent) => void) => () => void
+  }
+  settings: {
+    getOpenAIKey: () => Promise<string | null>
+    setOpenAIKey: (key: string) => Promise<void>
+    getClaudeKey: () => Promise<string | null>
+    setClaudeKey: (key: string) => Promise<void>
+  }
+  fileOps: {
+    createFile: (request: FileCreateRequest) => Promise<FileOpsResult>
+    readFile: (request: FileReadRequest) => Promise<FileReadResponse | FileOpsResult>
+    writeFile: (request: FileWriteRequest) => Promise<FileOpsResult>
+    listDir: (request: FileListRequest) => Promise<FileListResponse>
+  }
+  tickets: {
+    getAll: () => Promise<Ticket[]>
+    create: (request: CreateTicketRequest) => Promise<Ticket>
+    update: (request: UpdateTicketRequest) => Promise<void>
+    delete: (id: string) => Promise<void>
+    transition: (request: TransitionTicketRequest) => Promise<void>
+    reorder: (request: ReorderTicketRequest) => Promise<Ticket[]>
+    openAsProject: (request: OpenTicketAsProjectRequest) => Promise<Project>
+    onStatusChanged: (callback: (ticket: Ticket) => void) => () => void
+  }
+  prd: {
+    generate: (request: GeneratePRDRequest) => Promise<PRD>
+    approve: (request: ApprovePRDRequest) => Promise<void>
+    reject: (request: ApprovePRDRequest) => Promise<void>
+  }
+  ralph: {
+    execute: (request: RalphExecuteRequest) => Promise<void>
+    getStatus: (request: RalphStatusRequest) => Promise<RalphStatusResponse>
+    stop: (request: RalphStopRequest) => Promise<void>
+    chooseWorktreeDir: () => Promise<string | null>
+    onStatusChanged: (
+      callback: (data: { ticketId: string; running: boolean; iteration: number }) => void,
+    ) => () => void
   }
 }
 
@@ -254,6 +310,79 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.on('claude:done', listener)
       return () => {
         ipcRenderer.removeListener('claude:done', listener)
+      }
+    },
+  },
+  settings: {
+    getOpenAIKey: () => safeInvoke(IPC_CHANNELS.GET_OPENAI_KEY) as Promise<string | null>,
+    setOpenAIKey: (key: string) =>
+      safeInvoke(IPC_CHANNELS.SET_OPENAI_KEY, { key }) as Promise<void>,
+    getClaudeKey: () => safeInvoke(IPC_CHANNELS.GET_CLAUDE_KEY) as Promise<string | null>,
+    setClaudeKey: (key: string) =>
+      safeInvoke(IPC_CHANNELS.SET_CLAUDE_KEY, { key }) as Promise<void>,
+  },
+  fileOps: {
+    createFile: (request: FileCreateRequest) =>
+      safeInvoke(IPC_CHANNELS.FILE_CREATE, request) as Promise<FileOpsResult>,
+    readFile: (request: FileReadRequest) =>
+      safeInvoke(IPC_CHANNELS.FILE_READ, request) as Promise<FileReadResponse | FileOpsResult>,
+    writeFile: (request: FileWriteRequest) =>
+      safeInvoke(IPC_CHANNELS.FILE_WRITE, request) as Promise<FileOpsResult>,
+    listDir: (request: FileListRequest) =>
+      safeInvoke(IPC_CHANNELS.FILE_LIST, request) as Promise<FileListResponse>,
+  },
+  tickets: {
+    getAll: () => safeInvoke(IPC_CHANNELS.TICKET_GET_ALL) as Promise<Ticket[]>,
+    create: (request: CreateTicketRequest) =>
+      safeInvoke(IPC_CHANNELS.TICKET_CREATE, request) as Promise<Ticket>,
+    update: (request: UpdateTicketRequest) =>
+      safeInvoke(IPC_CHANNELS.TICKET_UPDATE, request) as Promise<void>,
+    delete: (id: string) => safeInvoke(IPC_CHANNELS.TICKET_DELETE, id) as Promise<void>,
+    transition: (request: TransitionTicketRequest) =>
+      safeInvoke(IPC_CHANNELS.TICKET_TRANSITION, request) as Promise<void>,
+    reorder: (request: ReorderTicketRequest) =>
+      safeInvoke(IPC_CHANNELS.TICKET_REORDER, request) as Promise<Ticket[]>,
+    openAsProject: (request: OpenTicketAsProjectRequest) =>
+      safeInvoke(IPC_CHANNELS.TICKET_OPEN_AS_PROJECT, request) as Promise<Project>,
+    onStatusChanged: (callback: (ticket: Ticket) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, ticket: Ticket) => {
+        callback(ticket)
+      }
+      ipcRenderer.on('ticket:status-changed', listener)
+      return () => {
+        ipcRenderer.removeListener('ticket:status-changed', listener)
+      }
+    },
+  },
+  prd: {
+    generate: (request: GeneratePRDRequest) =>
+      safeInvoke(IPC_CHANNELS.PRD_GENERATE, request) as Promise<PRD>,
+    approve: (request: ApprovePRDRequest) =>
+      safeInvoke(IPC_CHANNELS.PRD_APPROVE, request) as Promise<void>,
+    reject: (request: ApprovePRDRequest) =>
+      safeInvoke(IPC_CHANNELS.PRD_REJECT, request) as Promise<void>,
+  },
+  ralph: {
+    execute: (request: RalphExecuteRequest) =>
+      safeInvoke(IPC_CHANNELS.RALPH_EXECUTE, request) as Promise<void>,
+    getStatus: (request: RalphStatusRequest) =>
+      safeInvoke(IPC_CHANNELS.RALPH_STATUS, request) as Promise<RalphStatusResponse>,
+    stop: (request: RalphStopRequest) =>
+      safeInvoke(IPC_CHANNELS.RALPH_STOP, request) as Promise<void>,
+    chooseWorktreeDir: () =>
+      safeInvoke(IPC_CHANNELS.RALPH_CHOOSE_WORKTREE_DIR) as Promise<string | null>,
+    onStatusChanged: (
+      callback: (data: { ticketId: string; running: boolean; iteration: number }) => void,
+    ) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        data: { ticketId: string; running: boolean; iteration: number },
+      ) => {
+        callback(data)
+      }
+      ipcRenderer.on('ralph:status-changed', listener)
+      return () => {
+        ipcRenderer.removeListener('ralph:status-changed', listener)
       }
     },
   },

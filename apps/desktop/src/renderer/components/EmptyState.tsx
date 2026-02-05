@@ -7,6 +7,7 @@ interface EmptyStateProps {
   onCreateProject: (name: string) => void
   projects?: Project[]
   onSelectProject?: (id: string) => void
+  onOpenKanban?: () => void
 }
 
 interface SuggestionCard {
@@ -104,6 +105,7 @@ export default function EmptyState({
   onCreateProject,
   projects = [],
   onSelectProject,
+  onOpenKanban,
 }: EmptyStateProps) {
   const [showNameInput, setShowNameInput] = useState(false)
   const [projectName, setProjectName] = useState('')
@@ -189,7 +191,7 @@ export default function EmptyState({
   const suggestions: SuggestionCard[] = [
     { icon: <FolderOpenIcon />, label: 'Open Existing Project', onClick: onOpenFolder },
     { icon: <PlusIcon />, label: 'Create a New Project', onClick: handleCreateClick },
-    { icon: <LoopIcon />, label: 'Ralph Loop' },
+    { icon: <LoopIcon />, label: 'Ralph Loop', onClick: onOpenKanban },
   ]
 
   return (

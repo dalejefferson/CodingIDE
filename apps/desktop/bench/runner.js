@@ -62,6 +62,53 @@ async function main() {
       .reduce((acc, x) => acc + x, 0)
   }, 10000)
 
+  // File ops benchmarks
+  const fs = await import('node:fs')
+  const os = await import('node:os')
+  const pathMod = await import('node:path')
+
+  // Inline safeResolveProjectPath logic (mirrors src/services/fileOpsService.ts)
+  function safeResolveProjectPath(projectRoot, relPath) {
+    if (pathMod.isAbsolute(relPath)) throw new Error('Absolute paths are not allowed')
+    if (relPath.includes('\0')) throw new Error('Null bytes in path are not allowed')
+    const resolved = pathMod.normalize(pathMod.join(projectRoot, relPath))
+    const rel = pathMod.relative(projectRoot, resolved)
+    if (rel.startsWith('..') || pathMod.isAbsolute(rel)) {
+      throw new Error('Path escapes project root')
+    }
+    let check = resolved
+    while (!fs.existsSync(check)) {
+      const parent = pathMod.dirname(check)
+      if (parent === check) break
+      check = parent
+    }
+    if (fs.existsSync(check)) {
+      const real = fs.realpathSync(check)
+      const realRoot = fs.realpathSync(projectRoot)
+      if (!real.startsWith(realRoot)) throw new Error('Symlink escapes project root')
+    }
+    return resolved
+  }
+
+  const benchRoot = pathMod.join(os.tmpdir(), `bench-fileops-${Date.now()}`)
+  fs.mkdirSync(benchRoot, { recursive: true })
+
+  const pathResolveBench = new Benchmark('safeResolveProjectPath')
+  await pathResolveBench.run(() => {
+    safeResolveProjectPath(benchRoot, 'src/utils/deep/nested/file.ts')
+  }, 10000)
+
+  const atomicWriteBench = new Benchmark('Atomic write (small file)')
+  const benchFile = pathMod.join(benchRoot, 'bench-target.txt')
+  fs.writeFileSync(benchFile, 'initial')
+  await atomicWriteBench.run(() => {
+    const tmp = pathMod.join(benchRoot, `.bench-${Date.now()}.tmp`)
+    fs.writeFileSync(tmp, 'hello world - benchmark content')
+    fs.renameSync(tmp, benchFile)
+  }, 5000)
+
+  fs.rmSync(benchRoot, { recursive: true, force: true })
+
   console.log('\n' + '='.repeat(40))
   console.log('Done.\n')
 }

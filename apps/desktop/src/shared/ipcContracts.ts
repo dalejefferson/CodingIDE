@@ -32,9 +32,47 @@ import type {
   CommandPreset,
   SetPresetsRequest,
   BrowserNavigateRequest,
+  Ticket,
+  CreateTicketRequest,
+  UpdateTicketRequest,
+  TransitionTicketRequest,
+  ReorderTicketRequest,
+  GeneratePRDRequest,
+  ApprovePRDRequest,
+  RalphExecuteRequest,
+  RalphStatusRequest,
+  RalphStatusResponse,
+  RalphStopRequest,
+  OpenTicketAsProjectRequest,
+  PRD,
+  FileCreateRequest,
+  FileReadRequest,
+  FileReadResponse,
+  FileWriteRequest,
+  FileOpsResult,
+  FileListRequest,
+  FileListResponse,
 } from './types'
 import { THEME_IDS, PROJECT_STATUSES, BROWSER_VIEW_MODES } from './types'
 import { isValidLayout } from './terminalLayout'
+import {
+  isCreateTicketRequest,
+  isUpdateTicketRequest,
+  isTransitionTicketRequest,
+  isReorderTicketRequest,
+  isGeneratePRDRequest,
+  isApprovePRDRequest,
+  isRalphExecuteRequest,
+  isRalphStatusRequest,
+  isRalphStopRequest,
+  isOpenTicketAsProjectRequest,
+} from './ticketValidators'
+import {
+  isFileCreateRequest,
+  isFileReadRequest,
+  isFileWriteRequest,
+  isFileListRequest,
+} from './fileOpsValidators'
 
 // ── Channel Constants ──────────────────────────────────────────
 
@@ -68,6 +106,31 @@ export const IPC_CHANNELS = {
   SET_PROJECT_STATUS: 'ipc:set-project-status',
   BROWSER_NAVIGATE: 'ipc:browser-navigate',
   SET_PROJECT_BROWSER: 'ipc:set-project-browser',
+  // ── Kanban / Ralph Loop ──────────────────────────────────
+  TICKET_GET_ALL: 'ipc:ticket-get-all',
+  TICKET_CREATE: 'ipc:ticket-create',
+  TICKET_UPDATE: 'ipc:ticket-update',
+  TICKET_DELETE: 'ipc:ticket-delete',
+  TICKET_TRANSITION: 'ipc:ticket-transition',
+  TICKET_REORDER: 'ipc:ticket-reorder',
+  PRD_GENERATE: 'ipc:prd-generate',
+  PRD_APPROVE: 'ipc:prd-approve',
+  PRD_REJECT: 'ipc:prd-reject',
+  RALPH_EXECUTE: 'ipc:ralph-execute',
+  RALPH_STATUS: 'ipc:ralph-status',
+  RALPH_STOP: 'ipc:ralph-stop',
+  RALPH_CHOOSE_WORKTREE_DIR: 'ipc:ralph-choose-worktree-dir',
+  TICKET_OPEN_AS_PROJECT: 'ipc:ticket-open-as-project',
+  // ── Settings ───────────────────────────────────────────────
+  GET_OPENAI_KEY: 'ipc:get-openai-key',
+  SET_OPENAI_KEY: 'ipc:set-openai-key',
+  GET_CLAUDE_KEY: 'ipc:get-claude-key',
+  SET_CLAUDE_KEY: 'ipc:set-claude-key',
+  // ── File Operations ──────────────────────────────────────────
+  FILE_CREATE: 'ipc:file-create',
+  FILE_READ: 'ipc:file-read',
+  FILE_WRITE: 'ipc:file-write',
+  FILE_LIST: 'ipc:file-list',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -193,6 +256,97 @@ export interface IPCContracts {
   [IPC_CHANNELS.SET_PROJECT_BROWSER]: {
     request: SetProjectBrowserRequest
     response: void
+  }
+  // ── Kanban / Ralph Loop ──────────────────────────────────
+  [IPC_CHANNELS.TICKET_GET_ALL]: {
+    request: void
+    response: Ticket[]
+  }
+  [IPC_CHANNELS.TICKET_CREATE]: {
+    request: CreateTicketRequest
+    response: Ticket
+  }
+  [IPC_CHANNELS.TICKET_UPDATE]: {
+    request: UpdateTicketRequest
+    response: void
+  }
+  [IPC_CHANNELS.TICKET_DELETE]: {
+    request: string
+    response: void
+  }
+  [IPC_CHANNELS.TICKET_TRANSITION]: {
+    request: TransitionTicketRequest
+    response: void
+  }
+  [IPC_CHANNELS.TICKET_REORDER]: {
+    request: ReorderTicketRequest
+    response: Ticket[]
+  }
+  [IPC_CHANNELS.PRD_GENERATE]: {
+    request: GeneratePRDRequest
+    response: PRD
+  }
+  [IPC_CHANNELS.PRD_APPROVE]: {
+    request: ApprovePRDRequest
+    response: void
+  }
+  [IPC_CHANNELS.PRD_REJECT]: {
+    request: ApprovePRDRequest
+    response: void
+  }
+  [IPC_CHANNELS.RALPH_EXECUTE]: {
+    request: RalphExecuteRequest
+    response: void
+  }
+  [IPC_CHANNELS.RALPH_STATUS]: {
+    request: RalphStatusRequest
+    response: RalphStatusResponse
+  }
+  [IPC_CHANNELS.RALPH_STOP]: {
+    request: RalphStopRequest
+    response: void
+  }
+  [IPC_CHANNELS.RALPH_CHOOSE_WORKTREE_DIR]: {
+    request: void
+    response: string | null
+  }
+  [IPC_CHANNELS.TICKET_OPEN_AS_PROJECT]: {
+    request: OpenTicketAsProjectRequest
+    response: Project
+  }
+  // ── Settings ───────────────────────────────────────────────
+  [IPC_CHANNELS.GET_OPENAI_KEY]: {
+    request: void
+    response: string | null
+  }
+  [IPC_CHANNELS.SET_OPENAI_KEY]: {
+    request: { key: string }
+    response: void
+  }
+  [IPC_CHANNELS.GET_CLAUDE_KEY]: {
+    request: void
+    response: string | null
+  }
+  [IPC_CHANNELS.SET_CLAUDE_KEY]: {
+    request: { key: string }
+    response: void
+  }
+  // ── File Operations ──────────────────────────────────────────
+  [IPC_CHANNELS.FILE_CREATE]: {
+    request: FileCreateRequest
+    response: FileOpsResult
+  }
+  [IPC_CHANNELS.FILE_READ]: {
+    request: FileReadRequest
+    response: FileReadResponse
+  }
+  [IPC_CHANNELS.FILE_WRITE]: {
+    request: FileWriteRequest
+    response: FileOpsResult
+  }
+  [IPC_CHANNELS.FILE_LIST]: {
+    request: FileListRequest
+    response: FileListResponse
   }
 }
 
@@ -415,9 +569,63 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.SET_PROJECT_STATUS]: isSetProjectStatusRequest,
   [IPC_CHANNELS.BROWSER_NAVIGATE]: isBrowserNavigateRequest,
   [IPC_CHANNELS.SET_PROJECT_BROWSER]: isSetProjectBrowserRequest,
+  // ── Kanban / Ralph Loop ──────────────────────────────────
+  [IPC_CHANNELS.TICKET_GET_ALL]: isVoid,
+  [IPC_CHANNELS.TICKET_CREATE]: isCreateTicketRequest,
+  [IPC_CHANNELS.TICKET_UPDATE]: isUpdateTicketRequest,
+  [IPC_CHANNELS.TICKET_DELETE]: isNonEmptyString,
+  [IPC_CHANNELS.TICKET_TRANSITION]: isTransitionTicketRequest,
+  [IPC_CHANNELS.TICKET_REORDER]: isReorderTicketRequest,
+  [IPC_CHANNELS.PRD_GENERATE]: isGeneratePRDRequest,
+  [IPC_CHANNELS.PRD_APPROVE]: isApprovePRDRequest,
+  [IPC_CHANNELS.PRD_REJECT]: isApprovePRDRequest,
+  [IPC_CHANNELS.RALPH_EXECUTE]: isRalphExecuteRequest,
+  [IPC_CHANNELS.RALPH_STATUS]: isRalphStatusRequest,
+  [IPC_CHANNELS.RALPH_STOP]: isRalphStopRequest,
+  [IPC_CHANNELS.RALPH_CHOOSE_WORKTREE_DIR]: isVoid,
+  [IPC_CHANNELS.TICKET_OPEN_AS_PROJECT]: isOpenTicketAsProjectRequest,
+  // ── Settings ───────────────────────────────────────────────
+  [IPC_CHANNELS.GET_OPENAI_KEY]: isVoid,
+  [IPC_CHANNELS.SET_OPENAI_KEY]: (p: unknown): p is { key: string } =>
+    typeof p === 'object' &&
+    p !== null &&
+    'key' in p &&
+    typeof (p as Record<string, unknown>).key === 'string',
+  [IPC_CHANNELS.GET_CLAUDE_KEY]: isVoid,
+  [IPC_CHANNELS.SET_CLAUDE_KEY]: (p: unknown): p is { key: string } =>
+    typeof p === 'object' &&
+    p !== null &&
+    'key' in p &&
+    typeof (p as Record<string, unknown>).key === 'string',
+  // ── File Operations ──────────────────────────────────────────
+  [IPC_CHANNELS.FILE_CREATE]: isFileCreateRequest,
+  [IPC_CHANNELS.FILE_READ]: isFileReadRequest,
+  [IPC_CHANNELS.FILE_WRITE]: isFileWriteRequest,
+  [IPC_CHANNELS.FILE_LIST]: isFileListRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────
+
+// Re-export ticket validators for test access
+export {
+  isCreateTicketRequest,
+  isUpdateTicketRequest,
+  isTransitionTicketRequest,
+  isReorderTicketRequest,
+  isGeneratePRDRequest,
+  isApprovePRDRequest,
+  isRalphExecuteRequest,
+  isRalphStatusRequest,
+  isRalphStopRequest,
+  isOpenTicketAsProjectRequest,
+} from './ticketValidators'
+
+export {
+  isFileCreateRequest,
+  isFileReadRequest,
+  isFileWriteRequest,
+  isFileListRequest,
+} from './fileOpsValidators'
 
 /** Check if a channel string is in the allowlist */
 export function isAllowedChannel(channel: string): channel is IPCChannel {

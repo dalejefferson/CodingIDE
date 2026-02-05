@@ -2,11 +2,32 @@ import React from 'react'
 import type { Project, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 import '../styles/Sidebar.css'
 
+function LoopIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 2l4 4-4 4" />
+      <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+      <path d="M7 22l-4-4 4-4" />
+      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+    </svg>
+  )
+}
+
 interface SidebarProps {
   projects: Project[]
   activeProjectId: string | null
   collapsed: boolean
   settingsOpen: boolean
+  kanbanOpen: boolean
   claudeActivity: ClaudeActivityMap
   claudeStatus: ClaudeStatusMap
   totalActiveClaudes: number
@@ -16,6 +37,7 @@ interface SidebarProps {
   onRemoveProject: (id: string) => void
   onOpenSettings: () => void
   onGoHome: () => void
+  onOpenKanban: () => void
 }
 
 function ChevronLeftIcon() {
@@ -187,6 +209,25 @@ const SidebarProjectItem = React.memo(function SidebarProjectItem({
     >
       <FolderIcon open={isActive} />
       <span className="sidebar-project-name">{project.name}</span>
+      {project.origin === 'ralph-loop' && (
+        <span className="sidebar-ralph-badge" title="Created by Ralph Loop">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 2l4 4-4 4" />
+            <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+            <path d="M7 22l-4-4 4-4" />
+            <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+          </svg>
+        </span>
+      )}
       {isGenerating ? (
         claudeCount > 0 ? (
           <span className="sidebar-claude-badge" title={`${claudeCount} Claude generating`}>
@@ -233,6 +274,7 @@ function Sidebar({
   activeProjectId,
   collapsed,
   settingsOpen,
+  kanbanOpen,
   claudeActivity,
   claudeStatus,
   totalActiveClaudes,
@@ -242,8 +284,9 @@ function Sidebar({
   onRemoveProject,
   onOpenSettings,
   onGoHome,
+  onOpenKanban,
 }: SidebarProps) {
-  const isHome = !activeProjectId && !settingsOpen
+  const isHome = !activeProjectId && !settingsOpen && !kanbanOpen
   return (
     <aside className="sidebar" aria-label="Sidebar" aria-hidden={collapsed}>
       <div className="sidebar-drag-region">
@@ -268,6 +311,15 @@ function Sidebar({
         >
           <HomeIcon />
           <span>Home Page</span>
+        </button>
+        <button
+          className={`sidebar-action-btn${kanbanOpen ? ' sidebar-action-btn--active' : ''}`}
+          type="button"
+          onClick={onOpenKanban}
+          aria-label="Ralph Loop"
+        >
+          <LoopIcon />
+          <span>Ralph Loop</span>
         </button>
         <button className="sidebar-action-btn" type="button">
           <BoltIcon />

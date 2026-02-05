@@ -1,0 +1,411 @@
+/* ==========================================================================
+   Kanban Board — drag-and-drop ticket board with 6 status columns
+   ========================================================================== */
+
+/* ── Page Container ───────────────────────────────────────────────────────── */
+
+.kanban-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.kanban-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+}
+
+.kanban-title {
+  font-family: inherit;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.kanban-new-ticket-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.kanban-new-ticket-btn:hover {
+  background: var(--color-accent-hover);
+  box-shadow: var(--shadow-sm);
+}
+.kanban-new-ticket-btn:active {
+  background: var(--color-accent-active);
+}
+.kanban-new-ticket-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-focus);
+}
+.kanban-new-ticket-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Board (horizontal scroll container) ──────────────────────────────────── */
+
+.kanban-board {
+  display: flex;
+  gap: var(--space-md);
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-md) var(--space-lg);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ── Column ───────────────────────────────────────────────────────────────── */
+
+.kanban-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 180px;
+  min-height: 200px;
+  max-height: 100%;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  transition: box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Drop-target highlight — applied to inner ticket list via DnD state */
+.kanban-ticket-list.kanban-column--drag-over {
+  background: var(--color-bg-hover);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+  border-radius: var(--radius-md);
+}
+
+/* ── Column Header ────────────────────────────────────────────────────────── */
+
+.kanban-column-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+/* Status color bar */
+.kanban-column-header::before {
+  content: '';
+  width: 3px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.kanban-column--backlog .kanban-column-header::before {
+  background: var(--color-text-tertiary);
+}
+.kanban-column--up_next .kanban-column-header::before {
+  background: var(--color-accent);
+}
+.kanban-column--in_progress .kanban-column-header::before {
+  background: var(--color-primary);
+}
+.kanban-column--in_review .kanban-column-header::before {
+  background: var(--color-warning);
+}
+.kanban-column--in_testing .kanban-column-header::before {
+  background: var(--color-accent-hover);
+}
+.kanban-column--completed .kanban-column-header::before {
+  background: var(--color-success);
+}
+
+.kanban-column-name {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kanban-column-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-xs);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-hover);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* ── Ticket List ──────────────────────────────────────────────────────────── */
+
+.kanban-ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  flex: 1;
+  min-height: 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Empty Column State ───────────────────────────────────────────────────── */
+
+.kanban-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 60px;
+  padding: var(--space-lg);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-placeholder);
+  border: 2px dashed var(--color-border-primary);
+  border-radius: var(--radius-md);
+  margin: var(--space-sm);
+  user-select: none;
+}
+
+/* ── Ticket Card ──────────────────────────────────────────────────────────── */
+
+.ticket-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-xs);
+  cursor: grab;
+  user-select: none;
+  /* GPU compositing for smooth drag */
+  will-change: transform;
+  transform: translateZ(0);
+  transition:
+    box-shadow 200ms cubic-bezier(0.2, 0, 0, 1),
+    transform 200ms cubic-bezier(0.2, 0, 0, 1),
+    border-color var(--transition-fast);
+}
+.ticket-card:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--color-border-secondary);
+}
+.ticket-card:active {
+  cursor: grabbing;
+}
+
+/* Dragging state — elevated, slightly rotated */
+.ticket-card--dragging {
+  transform: scale(1.03) rotate(1.5deg);
+  box-shadow: var(--shadow-lg);
+  opacity: 0.92;
+  z-index: 100;
+}
+
+/* Drag placeholder left behind in original column */
+.ticket-card--ghost {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ── Card Title ───────────────────────────────────────────────────────────── */
+
+.ticket-card-title {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Card Meta Row ────────────────────────────────────────────────────────── */
+
+.ticket-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+/* ── Project Tag ──────────────────────────────────────────────────────────── */
+
+.ticket-project-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Type Badge ───────────────────────────────────────────────────────────── */
+
+.ticket-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.ticket-type-badge--feature {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+.ticket-type-badge--bug {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+}
+.ticket-type-badge--task {
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
+}
+.ticket-type-badge--chore {
+  background: var(--color-bg-hover);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Priority Dot ─────────────────────────────────────────────────────────── */
+
+.ticket-priority-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  margin-left: auto;
+}
+.ticket-priority-dot--low {
+  background: var(--color-success);
+}
+.ticket-priority-dot--medium {
+  background: var(--color-warning);
+}
+.ticket-priority-dot--high {
+  background: var(--color-error);
+}
+.ticket-priority-dot--critical {
+  background: var(--color-error);
+  animation: priority-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes priority-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-error-subtle);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--color-error-subtle);
+    opacity: 0.7;
+  }
+}
+
+/* ==========================================================================
+   Ralph Executing Animation — conic-gradient spinner border
+   ========================================================================== */
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.ralph-executing {
+  position: relative;
+}
+
+.ralph-executing::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--radius-lg);
+  background: conic-gradient(
+    from var(--angle),
+    var(--color-accent),
+    var(--color-success),
+    var(--color-warning),
+    var(--color-accent)
+  );
+  animation: ralph-spin 3s linear infinite;
+  z-index: -1;
+}
+
+@keyframes ralph-spin {
+  to {
+    --angle: 360deg;
+  }
+}
+
+/* ── Header Actions ──────────────────────────────────────────────────────── */
+
+.kanban-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.kanban-filter-select {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  outline: none;
+}
+.kanban-filter-select:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}

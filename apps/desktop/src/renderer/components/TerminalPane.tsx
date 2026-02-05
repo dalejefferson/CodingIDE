@@ -397,6 +397,12 @@ function TerminalPaneInner({
           .then(({ created }) => {
             if (disposed) return
 
+            // Suppress ResizeObserver-triggered resizes briefly after PTY
+            // creation/reconnection. The PTY was already created/resized with
+            // the correct dimensions — sending another resize immediately
+            // triggers SIGWINCH which causes the shell to reprint the prompt.
+            suppressResizeUntil = Date.now() + 500
+
             if (created) {
               // Brand-new PTY — no buffer to replay. Flush any live data
               // that arrived during create() (e.g. the initial shell prompt).
@@ -437,7 +443,10 @@ function TerminalPaneInner({
             // after a brief delay so the shell prompt is ready.
             if (pendingCommandRef.current) {
               const cmd = pendingCommandRef.current
-              setAiProcessing(true)
+              // Only show the AI overlay for cc-spawned terminals (element picker → Claude)
+              if (cmd.startsWith('cc ')) {
+                setAiProcessing(true)
+              }
               setTimeout(() => {
                 if (!disposed) {
                   window.electronAPI.terminal.write({ terminalId, data: cmd + '\n' })
@@ -456,12 +465,16 @@ function TerminalPaneInner({
     // Handle resize — debounce via rAF and guard against disposed state.
     // Enforce minimum 10 cols / 2 rows to prevent staircase rendering when
     // the container briefly collapses during layout transitions.
+    // Suppress resizes briefly after PTY creation to avoid SIGWINCH echoing
+    // the shell prompt a second time.
     let resizeRaf = 0
+    let suppressResizeUntil = 0
     const resizeObserver = new ResizeObserver(() => {
       cancelAnimationFrame(resizeRaf)
       resizeRaf = requestAnimationFrame(() => {
         if (disposed) return
         fitAddon.fit()
+        if (Date.now() < suppressResizeUntil) return
         const { cols, rows } = term
         if (cols >= 10 && rows >= 2) {
           window.electronAPI.terminal.resize({ terminalId, cols, rows })

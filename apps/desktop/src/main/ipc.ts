@@ -8,7 +8,11 @@ import { ThemeStore } from '@services/themeStore'
 import { TerminalService } from '@services/terminalService'
 import { TerminalLayoutStore } from '@services/terminalLayoutStore'
 import { PresetStore } from '@services/presetStore'
+import { TicketStore } from '@services/ticketStore'
+import { SettingsStore } from '@services/settingsStore'
 import { getGitBranch } from '@services/gitService'
+import * as fileOps from '@services/fileOpsService'
+import { setupRalphIPC } from './ipcRalph'
 import type { LayoutNode } from '../shared/terminalLayout'
 import type { ProjectStatus, ProjectStatusChange } from '../shared/types'
 
@@ -18,6 +22,8 @@ let themeStore: ThemeStore | null = null
 let terminalService: TerminalService | null = null
 let terminalLayoutStore: TerminalLayoutStore | null = null
 let presetStore: PresetStore | null = null
+let ticketStore: TicketStore | null = null
+let settingsStore: SettingsStore | null = null
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
 let lastClaudeStatus: Record<string, string> = {}
@@ -52,6 +58,10 @@ export function setupIPC(): void {
     join(app.getPath('userData'), 'terminal-layouts.json'),
   )
   presetStore = new PresetStore(join(app.getPath('userData'), 'command-presets.json'))
+  const ticketStorePath = join(app.getPath('userData'), 'tickets.json')
+  const settingsStorePath = join(app.getPath('userData'), 'settings.json')
+  ticketStore = new TicketStore(ticketStorePath)
+  settingsStore = new SettingsStore(settingsStorePath)
 
   router.handle(IPC_CHANNELS.PING, () => 'pong')
 
@@ -243,6 +253,91 @@ export function setupIPC(): void {
     projectStore!.setBrowser(payload.id, payload.browserUrl, payload.browserViewMode)
   })
 
+  // ── Kanban Ticket CRUD IPC ──────────────────────────────────
+  router.handle(IPC_CHANNELS.TICKET_GET_ALL, () => {
+    return ticketStore!.getAll()
+  })
+
+  router.handle(IPC_CHANNELS.TICKET_CREATE, (_event, payload) => {
+    return ticketStore!.create(payload)
+  })
+
+  router.handle(IPC_CHANNELS.TICKET_UPDATE, (_event, payload) => {
+    ticketStore!.update(payload.id, payload)
+  })
+
+  router.handle(IPC_CHANNELS.TICKET_DELETE, (_event, payload) => {
+    ticketStore!.delete(payload)
+  })
+
+  router.handle(IPC_CHANNELS.TICKET_TRANSITION, (_event, payload) => {
+    ticketStore!.transition(payload.id, payload.status)
+  })
+
+  router.handle(IPC_CHANNELS.TICKET_REORDER, (_event, payload) => {
+    return ticketStore!.reorder(payload.id, payload.status, payload.index)
+  })
+
+  // ── Settings IPC ───────────────────────────────────────────
+  router.handle(IPC_CHANNELS.GET_OPENAI_KEY, () => {
+    return settingsStore!.getOpenAIKey()
+  })
+
+  router.handle(IPC_CHANNELS.SET_OPENAI_KEY, (_event, payload) => {
+    settingsStore!.setOpenAIKey(payload.key)
+  })
+
+  router.handle(IPC_CHANNELS.GET_CLAUDE_KEY, () => {
+    return settingsStore!.getClaudeKey()
+  })
+
+  router.handle(IPC_CHANNELS.SET_CLAUDE_KEY, (_event, payload) => {
+    settingsStore!.setClaudeKey(payload.key)
+  })
+
+  // ── File Operations IPC ───────────────────────────────────────
+  router.handle(IPC_CHANNELS.FILE_CREATE, async (_event, payload) => {
+    const project = projectStore!.getById(payload.projectId)
+    if (!project)
+      return { ok: false, error: { code: 'UNKNOWN' as const, message: 'Project not found' } }
+    return fileOps.createFile(project.path, payload.relPath, payload.contents, payload.mkdirp)
+  })
+
+  router.handle(IPC_CHANNELS.FILE_READ, async (_event, payload) => {
+    const project = projectStore!.getById(payload.projectId)
+    if (!project)
+      return { ok: false, error: { code: 'UNKNOWN' as const, message: 'Project not found' } }
+    return fileOps.readFile(project.path, payload.relPath)
+  })
+
+  router.handle(IPC_CHANNELS.FILE_WRITE, async (_event, payload) => {
+    const project = projectStore!.getById(payload.projectId)
+    if (!project)
+      return { ok: false, error: { code: 'UNKNOWN' as const, message: 'Project not found' } }
+    return fileOps.writeFile(project.path, payload.relPath, payload.contents, payload.mode)
+  })
+
+  router.handle(IPC_CHANNELS.FILE_LIST, (_event, payload) => {
+    const project = projectStore!.getById(payload.projectId)
+    if (!project) return []
+    try {
+      return fileOps.listDir(project.path, payload.dirPath)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(`[FILE_LIST] listDir failed for "${project.path}/${payload.dirPath}":`, msg)
+      throw err
+    }
+  })
+
+  // ── Ralph / PRD IPC ─────────────────────────────────────────
+  setupRalphIPC(
+    router,
+    ticketStore!,
+    settingsStore!,
+    projectStore!,
+    () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed()) ?? null,
+  )
+
   // ── Auto-status: terminal busy → running, command done → idle ──
   terminalService!.onCommandDone((event) => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -334,6 +429,8 @@ export function disposeIPC(): void {
   themeStore?.flush()
   terminalLayoutStore?.flush()
   presetStore?.flush()
+  ticketStore?.flush()
+  settingsStore?.flush()
   lastClaudeStatus = {}
   router?.dispose()
   router = null
@@ -342,5 +439,7 @@ export function disposeIPC(): void {
   terminalService = null
   terminalLayoutStore = null
   presetStore = null
+  ticketStore = null
+  settingsStore = null
   lastClaudeActivity = {}
 }

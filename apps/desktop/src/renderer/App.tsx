@@ -6,6 +6,9 @@ import ProjectWorkspace from './components/ProjectWorkspace'
 const SettingsPage = React.lazy(() =>
   import('./components/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
+const KanbanPage = React.lazy(() =>
+  import('./components/kanban/KanbanPage').then((m) => ({ default: m.KanbanPage })),
+)
 import { ToastContainer } from './components/ToastContainer'
 import { useTheme } from './hooks/useTheme'
 import type { TerminalGridHandle } from './components/TerminalGrid'
@@ -17,6 +20,7 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [kanbanOpen, setKanbanOpen] = useState(false)
   const [claudeActivity, setClaudeActivity] = useState<ClaudeActivityMap>({})
   const [claudeStatus, setClaudeStatus] = useState<ClaudeStatusMap>({})
 
@@ -63,11 +67,19 @@ export function App() {
   const handleSelectProject = useCallback((id: string) => {
     setActiveProjectId(id)
     setSettingsOpen(false)
+    setKanbanOpen(false)
   }, [])
 
   const handleGoHome = useCallback(() => {
     setActiveProjectId(null)
     setSettingsOpen(false)
+    setKanbanOpen(false)
+  }, [])
+
+  const handleOpenKanban = useCallback(() => {
+    setKanbanOpen(true)
+    setSettingsOpen(false)
+    setActiveProjectId(null)
   }, [])
 
   const loadProjects = useCallback(async () => {
@@ -78,6 +90,21 @@ export function App() {
       console.error('Failed to load projects:', err)
     }
   }, [])
+
+  const handleOpenTicketAsProject = useCallback(
+    async (ticketId: string) => {
+      try {
+        const project = await window.electronAPI.tickets.openAsProject({ ticketId })
+        await loadProjects()
+        setActiveProjectId(project.id)
+        setKanbanOpen(false)
+        setSettingsOpen(false)
+      } catch (err) {
+        console.error('Failed to open ticket as project:', err)
+      }
+    },
+    [loadProjects],
+  )
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -134,6 +161,13 @@ export function App() {
     window.addEventListener('sidebar:collapse', handler)
     return () => window.removeEventListener('sidebar:collapse', handler)
   }, [])
+
+  // After sidebar collapse/expand transition completes, fire resize so all
+  // terminal panes re-fit to their new dimensions.
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 250)
+    return () => clearTimeout(t)
+  }, [sidebarCollapsed])
 
   // Run terminal commands dispatched from other components (e.g. Send to Claude)
   useEffect(() => {
@@ -201,6 +235,18 @@ export function App() {
         return
       }
 
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault()
+        setKanbanOpen((prev) => {
+          if (!prev) {
+            setSettingsOpen(false)
+            setActiveProjectId(null)
+          }
+          return !prev
+        })
+        return
+      }
+
       if (e.ctrlKey && e.key === 'Tab') {
         e.preventDefault()
         const currentProjects = projectsRef.current
@@ -243,20 +289,27 @@ export function App() {
           />
         </React.Suspense>
       )}
-      {!settingsOpen && projects.length === 0 && (
+      {kanbanOpen && !settingsOpen && (
+        <React.Suspense fallback={null}>
+          <KanbanPage projects={projects} onOpenTicketAsProject={handleOpenTicketAsProject} />
+        </React.Suspense>
+      )}
+      {!settingsOpen && !kanbanOpen && projects.length === 0 && (
         <EmptyState
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
           projects={projects}
           onSelectProject={handleSelectProject}
+          onOpenKanban={handleOpenKanban}
         />
       )}
-      {!settingsOpen && projects.length > 0 && !activeProject && (
+      {!settingsOpen && !kanbanOpen && projects.length > 0 && !activeProject && (
         <EmptyState
           onOpenFolder={handleOpenFolder}
           onCreateProject={handleCreateProject}
           projects={projects}
           onSelectProject={handleSelectProject}
+          onOpenKanban={handleOpenKanban}
         />
       )}
       {projects.map((p) => (
@@ -265,7 +318,7 @@ export function App() {
           project={p}
           palette={palette}
           gridRef={getGridRef(p.id)}
-          isVisible={p.id === activeProjectId && !settingsOpen}
+          isVisible={p.id === activeProjectId && !settingsOpen && !kanbanOpen}
           getPortOwner={getPortOwner}
           registerPort={registerPort}
           unregisterPort={unregisterPort}
@@ -282,6 +335,7 @@ export function App() {
           activeProjectId={activeProjectId}
           collapsed={sidebarCollapsed}
           settingsOpen={settingsOpen}
+          kanbanOpen={kanbanOpen}
           claudeActivity={claudeActivity}
           claudeStatus={claudeStatus}
           totalActiveClaudes={totalActiveClaudes}
@@ -291,6 +345,7 @@ export function App() {
           onRemoveProject={handleRemoveProject}
           onOpenSettings={toggleSettings}
           onGoHome={handleGoHome}
+          onOpenKanban={handleOpenKanban}
         />
       </div>
       <div className="main-pane">

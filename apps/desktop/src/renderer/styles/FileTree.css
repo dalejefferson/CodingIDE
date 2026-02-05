@@ -1,0 +1,164 @@
+/* ==========================================================================
+   FileTree — VS Code-style file explorer with lazy-loading directories
+   ========================================================================== */
+
+.file-tree {
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  padding: var(--space-xs) 0;
+}
+
+/* ── Tree Node (shared base for file + dir) ─────────────────── */
+
+.file-tree-node {
+  display: flex;
+  align-items: center;
+  padding: 2px var(--space-sm);
+  padding-left: calc(var(--depth) * 16px + var(--space-sm));
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  user-select: none;
+  line-height: var(--line-height-tight);
+  transition: background var(--transition-fast);
+}
+
+.file-tree-node:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.file-tree-node--selected {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.file-tree-node--selected:hover {
+  background: var(--color-accent-subtle);
+}
+
+.file-tree-node--dir {
+  font-weight: 500;
+}
+
+/* ── Chevron ────────────────────────────────────────────────── */
+
+.file-tree-chevron {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform var(--transition-fast);
+}
+
+.file-tree-chevron--expanded {
+  transform: rotate(90deg);
+}
+
+/* Invisible spacer for files (keeps alignment with dirs) */
+.file-tree-chevron--spacer {
+  visibility: hidden;
+}
+
+/* ── Icon ───────────────────────────────────────────────────── */
+
+.file-tree-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.file-tree-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Name ───────────────────────────────────────────────────── */
+
+.file-tree-name {
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Spinner (per-directory loading indicator) ──────────────── */
+
+.file-tree-spinner {
+  width: 12px;
+  height: 12px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--color-border-primary);
+  border-top-color: var(--color-accent);
+  border-radius: var(--radius-full);
+  animation: file-tree-spin 600ms linear infinite;
+}
+
+@keyframes file-tree-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Empty directory message ────────────────────────────────── */
+
+.file-tree-empty {
+  padding: var(--space-sm) var(--space-lg);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  user-select: none;
+}
+
+/* ── Error state ────────────────────────────────────────────── */
+
+.file-tree-error {
+  padding: 2px var(--space-sm);
+  padding-left: calc(var(--depth) * 16px + var(--space-sm) + 16px + 6px);
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  user-select: none;
+}
+
+/* ── File type color hints ──────────────────────────────────── */
+
+.file-tree-icon--ts {
+  color: #3178c6;
+}
+
+.file-tree-icon--js {
+  color: #f0db4f;
+}
+
+.file-tree-icon--json {
+  color: #a8b068;
+}
+
+.file-tree-icon--css {
+  color: #2965f1;
+}
+
+.file-tree-icon--md {
+  color: var(--color-text-tertiary);
+}
+
+.file-tree-icon--folder {
+  color: var(--color-accent);
+}
+
+.file-tree-icon--file {
+  color: var(--color-text-tertiary);
+}

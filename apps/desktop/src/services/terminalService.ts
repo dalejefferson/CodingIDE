@@ -121,14 +121,16 @@ export class TerminalService {
 
     ptyProcess.onData((data: string) => {
       instance.lastOutputAt = Date.now()
-      // Suppress buffer writes briefly after resize to avoid storing
-      // SIGWINCH-triggered prompt reprints in the scrollback
+      // Suppress buffer writes AND live forwarding briefly after resize to
+      // avoid SIGWINCH-triggered prompt reprints appearing in the terminal
       const isResizeEcho = Date.now() - instance.lastResizedAt < 150
       if (!isResizeEcho) {
         this.appendToBuffer(instance, data)
       }
       this.detectPrompt(terminalId, instance, data)
-      this.onDataCallback?.(terminalId, data)
+      if (!isResizeEcho) {
+        this.onDataCallback?.(terminalId, data)
+      }
     })
 
     ptyProcess.onExit(({ exitCode }) => {

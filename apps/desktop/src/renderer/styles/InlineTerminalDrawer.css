@@ -1,0 +1,97 @@
+/* ── Inline Terminal Drawer ─────────────────────────────────── */
+
+.inline-drawer {
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--terminal-bg, #1c2128);
+  border-top: 1px solid var(--color-border-primary);
+  transition: height 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inline-drawer--open {
+  /* height set via inline style */
+}
+
+/* ── Drag Handle ──────────────────────────────────────────── */
+
+.inline-drawer-handle {
+  flex-shrink: 0;
+  height: 6px;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--terminal-bg, #1c2128);
+  transition: background-color var(--transition-fast);
+}
+
+.inline-drawer-handle:hover {
+  background: var(--color-bg-hover);
+}
+
+.inline-drawer-handle-grip {
+  width: 32px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-border-primary);
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.inline-drawer-handle:hover .inline-drawer-handle-grip {
+  opacity: 1;
+  background: var(--color-accent);
+}
+
+/* ── Header Bar ───────────────────────────────────────────── */
+
+.inline-drawer-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 var(--space-sm);
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.inline-drawer-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.inline-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.inline-drawer-close:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* ── Terminal Container ───────────────────────────────────── */
+
+.inline-drawer-terminal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}

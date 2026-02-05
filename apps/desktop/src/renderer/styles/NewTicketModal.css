@@ -1,0 +1,179 @@
+/* ==========================================================================
+   NewTicketModal — creation modal for Kanban tickets
+   Uses CSS custom properties from the global theme system.
+   ========================================================================== */
+
+/* ── Full-screen Overlay ─────────────────────────────────────────────────── */
+
+.new-ticket-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+/* ── Modal Card ──────────────────────────────────────────────────────────── */
+
+.new-ticket-modal {
+  max-width: 520px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-xl);
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Heading ─────────────────────────────────────────────────────────────── */
+
+.new-ticket-heading {
+  font-family: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+}
+
+/* ── Form Layout ─────────────────────────────────────────────────────────── */
+
+.new-ticket-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.new-ticket-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.new-ticket-dropdowns {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-md);
+}
+.new-ticket-dropdowns > .new-ticket-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────────── */
+
+.new-ticket-input {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.new-ticket-input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+.new-ticket-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.new-ticket-textarea {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  min-height: 80px;
+  resize: vertical;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.new-ticket-textarea:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+.new-ticket-textarea::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.new-ticket-select {
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  padding-right: var(--space-xl);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%236e6e73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-sm) center;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.new-ticket-select:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.new-ticket-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  margin-top: var(--space-lg);
+}
+
+.new-ticket-btn {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.new-ticket-btn-submit {
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  border: none;
+}
+.new-ticket-btn-submit:hover {
+  background: var(--color-accent-hover);
+}
+.new-ticket-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.new-ticket-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+}
+.new-ticket-btn-cancel:hover {
+  background: var(--color-bg-hover);
+}
