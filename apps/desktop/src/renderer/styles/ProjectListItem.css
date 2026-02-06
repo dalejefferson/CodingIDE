@@ -1,0 +1,141 @@
+/* ==========================================================================
+   Project List Item — sidebar thread/project item styles
+   Extracted from Sidebar.css for file size management.
+   Includes: thread items, status indicators, Claude badges, delete button.
+   ========================================================================== */
+
+/* ── Thread / project list ───────────────────────────────────────────────────── */
+
+.sidebar-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 16px;
+}
+
+.sidebar-thread-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 400;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.sidebar-thread-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.sidebar-thread-item:active {
+  background: var(--color-bg-active);
+}
+
+.sidebar-thread-item svg {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+/* Active / selected state */
+.sidebar-thread-item--active {
+  background: var(--color-accent-subtle);
+}
+
+.sidebar-thread-item--active:hover {
+  background: var(--color-accent-subtle);
+}
+
+.sidebar-thread-item--active svg {
+  color: var(--color-accent);
+}
+
+/* ── Done / needs-attention highlight ───────────────────────────────────────── */
+
+.sidebar-thread-item--done {
+  background: var(--color-success-subtle);
+  border: 1.5px solid var(--color-success);
+}
+
+.sidebar-thread-item--done:hover {
+  background: var(--color-success-subtle);
+}
+
+.sidebar-thread-item--done svg {
+  color: var(--color-success);
+}
+
+.sidebar-done-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--color-success);
+  border-radius: 50%;
+}
+
+.sidebar-input-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--color-warning);
+  border-radius: 50%;
+}
+
+.sidebar-thread-item:hover .sidebar-done-dot,
+.sidebar-thread-item:hover .sidebar-input-dot {
+  display: none;
+}
+
+/* ── Needs-input / warning highlight ───────────────────────────────────────── */
+
+.sidebar-thread-item--needs-input {
+  background: var(--color-warning-subtle);
+  border: 1.5px solid var(--color-warning);
+}
+
+.sidebar-thread-item--needs-input:hover {
+  background: var(--color-warning-subtle);
+}
+
+.sidebar-thread-item--needs-input svg {
+  color: var(--color-warning);
+}
+
+/* ── Delete button (visible on hover) ──────────────────────────────────────── */
+
+.sidebar-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  transition:
+    opacity var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.sidebar-thread-item:hover .sidebar-delete-btn {
+  opacity: 1;
+}
+
+.sidebar-delete-btn:hover {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+/* ── Project name truncation ─────────────────────────────────────────────────── */
+
+.sidebar-project-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

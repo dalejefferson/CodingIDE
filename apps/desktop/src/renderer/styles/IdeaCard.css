@@ -1,0 +1,196 @@
+/* ==========================================================================
+   Idea Card — individual card styles for IdeaLog
+   Extracted from IdeaLog.css for file size management.
+   ========================================================================== */
+
+/* ── Idea Card ───────────────────────────────────────────────────────────── */
+
+.idea-log__card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  cursor: grab;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.idea-log__card:hover {
+  border-color: var(--color-border-secondary);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.idea-log__card:active {
+  cursor: grabbing;
+}
+
+/* Drag handle (grip dots) */
+.idea-log__card-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 14px;
+  min-height: 24px;
+  flex-shrink: 0;
+  padding-top: 2px;
+  color: var(--color-text-placeholder);
+  cursor: grab;
+  transition: color var(--transition-fast);
+}
+
+.idea-log__card:hover .idea-log__card-handle {
+  color: var(--color-text-tertiary);
+}
+
+.idea-log__card-handle-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.idea-log__card-handle-row {
+  display: flex;
+  gap: 3px;
+}
+
+/* Card content area */
+.idea-log__card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.idea-log__card-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.idea-log__card-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 3px 0 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: var(--line-height-base);
+}
+
+.idea-log__card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-xs);
+}
+
+.idea-log__card-project {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  line-height: 1.5;
+}
+
+/* Card actions (edit/delete) — hidden until hover */
+.idea-log__card-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.idea-log__card-action-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border-primary);
+  margin: 0 2px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.idea-log__card:hover .idea-log__card-actions {
+  opacity: 1;
+}
+
+/* ── Card Drag States ────────────────────────────────────────────────────── */
+
+.idea-log__card--dragging {
+  opacity: 0.35;
+  transform: scale(0.97);
+  box-shadow: none;
+  border-style: dashed;
+}
+
+.idea-log__card--drag-ghost {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent);
+  box-shadow: var(--shadow-lg);
+  opacity: 0.92;
+  transform: rotate(2deg) scale(1.02);
+  pointer-events: none;
+}
+
+/* ── Priority Badge ──────────────────────────────────────────────────────── */
+
+.idea-log__card-priority {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+}
+
+.idea-log__card-priority--high {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.idea-log__card-priority--medium {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.idea-log__card-priority--low {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+/* ── Icon Button (edit, delete, PRD) ─────────────────────────────────────── */
+
+.idea-log__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.idea-log__icon-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}

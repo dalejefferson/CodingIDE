@@ -1,0 +1,116 @@
+/* ==========================================================================
+   Idea Quick Add Bar — bottom quick-add input for IdeaLog
+   Extracted from IdeaLog.css for file size management.
+   ========================================================================== */
+
+/* ── Quick Add Bar ───────────────────────────────────────────────────────── */
+
+.idea-log__quick-add {
+  flex-shrink: 0;
+  padding: var(--space-lg) var(--space-xl);
+  border-top: 1px solid var(--color-border-primary);
+  background: var(--color-bg-secondary);
+}
+
+.idea-log__quick-add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.idea-log__quick-add-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.idea-log__quick-add-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.idea-log__quick-add-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.idea-log__quick-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.idea-log__quick-add-btn:hover {
+  background: var(--color-accent-hover);
+  transform: scale(1.05);
+}
+
+.idea-log__quick-add-btn:active {
+  background: var(--color-accent-active);
+  transform: scale(0.97);
+}
+
+.idea-log__quick-add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Expanded quick-add details (shown on focus/click) */
+.idea-log__quick-add-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border-primary);
+  animation: idea-log-expand 150ms ease-out;
+}
+
+@keyframes idea-log-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.idea-log__quick-add-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.idea-log__quick-add-selects {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.idea-log__quick-add-buttons {
+  display: flex;
+  gap: var(--space-xs);
+}

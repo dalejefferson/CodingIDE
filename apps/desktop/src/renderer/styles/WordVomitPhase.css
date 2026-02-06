@@ -1,0 +1,172 @@
+/* ==========================================================================
+   Word Vomit Phase — brain-dump flow for new project creation
+   Extracted from EmptyState.css for file size management.
+   ========================================================================== */
+
+/* ── Word Vomit Flow ──────────────────────────────────────── */
+
+.empty-state__wv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 24px;
+  animation: empty-state-wv-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes empty-state-wv-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.empty-state__wv-input,
+.empty-state__wv-review,
+.empty-state__wv-choose {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.empty-state__wv-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  outline: none;
+  resize: vertical;
+  min-height: 120px;
+  line-height: var(--line-height-relaxed, 1.6);
+  transition: border-color var(--transition-fast);
+}
+
+.empty-state__wv-textarea:focus {
+  border-color: var(--color-border-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.empty-state__wv-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.empty-state__wv-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty-state__wv-textarea--prd {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-sm, 13px);
+  min-height: 300px;
+  line-height: var(--line-height-relaxed, 1.6);
+}
+
+.empty-state__wv-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.empty-state__wv-btn {
+  padding: 8px 16px;
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.empty-state__wv-btn--primary {
+  background: var(--color-text-primary);
+  color: var(--color-bg-primary);
+  border: none;
+}
+
+.empty-state__wv-btn--primary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.empty-state__wv-btn--primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.empty-state__wv-btn--secondary {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.empty-state__wv-btn--secondary:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.empty-state__wv-btn--cancel {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.empty-state__wv-btn--cancel:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.empty-state__wv-btn--cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.empty-state__wv-error {
+  color: var(--color-danger, #e53e3e);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  text-align: center;
+}
+
+.empty-state__wv-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.empty-state__wv-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-primary);
+  border-top-color: var(--color-text-primary);
+  border-radius: 50%;
+  animation: empty-state-wv-spin 600ms linear infinite;
+}
+
+@keyframes empty-state-wv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state__wv-choose-label {
+  font-size: var(--font-size-md, 15px);
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+}
+
+.empty-state__wv-choose-cards {
+  display: flex;
+  gap: 16px;
+}

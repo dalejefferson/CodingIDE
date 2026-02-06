@@ -1,0 +1,193 @@
+/* ==========================================================================
+   Change Prompt + Change List — inline edit prompt and queued changes
+   Extracted from ProjectWorkspace.css for file size management.
+   ========================================================================== */
+
+/* ── Change Prompt ───────────────────────────────────────────── */
+
+.workspace-change-prompt {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-md);
+  box-shadow: var(--shadow-md);
+  max-width: 500px;
+  width: 90%;
+  z-index: 100;
+}
+
+.workspace-change-element {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin: 0 0 var(--space-xs) 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-change-input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  outline: none;
+  margin-bottom: var(--space-xs);
+  transition: border-color var(--transition-fast);
+}
+
+.workspace-change-input:focus {
+  border-color: var(--color-accent);
+}
+
+.workspace-change-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.workspace-change-btn {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.workspace-change-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.workspace-change-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.workspace-change-btn--primary {
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+}
+
+.workspace-change-btn--primary:hover:not(:disabled) {
+  opacity: 0.85;
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+}
+
+/* ── Change List (queued changes before sending to Claude) ───── */
+
+.workspace-change-list {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm);
+  box-shadow: var(--shadow-md);
+  max-width: 360px;
+  width: 90%;
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.workspace-change-list-header {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workspace-change-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 3px 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.workspace-change-item:last-of-type {
+  border-bottom: none;
+}
+
+.workspace-change-number {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+}
+
+.workspace-change-instruction {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-change-remove {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.workspace-change-remove:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.workspace-change-list-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.workspace-change-btn--send {
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+  font-weight: 600;
+}
+
+.workspace-change-btn--send:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-bg-primary);
+}

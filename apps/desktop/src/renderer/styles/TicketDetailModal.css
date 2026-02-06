@@ -1,6 +1,9 @@
+@import './TicketPRDSection.css';
+
 /* ==========================================================================
    TicketDetailModal — detail/edit view for a single Kanban ticket
    Uses CSS custom properties from the global theme system.
+   PRD, spinner, and history styles in TicketPRDSection.css.
    ========================================================================== */
 
 /* ── Full-screen Overlay ─────────────────────────────────────────────────── */
@@ -219,37 +222,6 @@
   line-height: var(--line-height-relaxed);
 }
 
-/* ── PRD ─────────────────────────────────────────────────────────────────── */
-
-.ticket-detail-prd {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.ticket-detail-prd-content {
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-primary);
-  max-height: 200px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-}
-
-/* ── PRD Error ───────────────────────────────────────────────────────────── */
-
-.ticket-detail-prd-error {
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  color: var(--color-error, #e53e3e);
-  margin-top: var(--space-sm);
-  line-height: var(--line-height-base);
-}
-
 /* ── Action Buttons ──────────────────────────────────────────────────────── */
 
 .ticket-detail-actions {
@@ -311,25 +283,6 @@
   cursor: not-allowed;
 }
 
-/* ── Spinner ──────────────────────────────────────────────────────────────── */
-
-.ticket-detail-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: ticket-spin 0.6s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes ticket-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .ticket-detail-btn--transition {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-primary);
@@ -338,38 +291,4 @@
 .ticket-detail-btn--transition:hover {
   background: var(--color-accent-subtle);
   border-color: var(--color-accent);
-}
-
-/* ── History ──────────────────────────────────────────────────────────────── */
-
-.ticket-detail-history {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.ticket-detail-history-item {
-  display: flex;
-  flex-direction: row;
-  gap: var(--space-sm);
-  font-family: inherit;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  line-height: var(--line-height-base);
-}
-
-.ticket-detail-history-time {
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.ticket-detail-history-action {
-  color: var(--color-text-secondary);
-}
-
-.ticket-detail-history-change {
-  color: var(--color-text-tertiary);
 }
