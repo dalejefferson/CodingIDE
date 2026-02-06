@@ -49,6 +49,8 @@ interface TerminalInstance {
   lastOutputAt: number
   /** Timestamp (ms) of the most recent PTY resize (for SIGWINCH echo suppression) */
   lastResizedAt: number
+  /** Count of actual dimension-changing resizes (for echo suppression gating) */
+  resizeCount: number
   /** Running total of buffer character length (avoids O(n) rescan) */
   bufferTotalLen: number
 }
@@ -87,12 +89,16 @@ export class TerminalService {
     const safeCols = cols >= 10 ? cols : DEFAULT_COLS
     const safeRows = rows >= 2 ? rows : DEFAULT_ROWS
 
+    const env = { ...process.env } as Record<string, string>
+    // Suppress zsh partial-line indicator ('%' at top-left on fresh terminals).
+    env.PROMPT_EOL_MARK = ''
+
     const ptyProcess = pty.spawn(DEFAULT_SHELL, [], {
       name: 'xterm-256color',
       cols: safeCols,
       rows: safeRows,
       cwd,
-      env: { ...process.env } as Record<string, string>,
+      env,
     })
 
     const instance: TerminalInstance = {
@@ -103,14 +109,17 @@ export class TerminalService {
       busySince: 0,
       lastOutputAt: 0,
       lastResizedAt: 0,
+      resizeCount: 0,
       bufferTotalLen: 0,
     }
 
     ptyProcess.onData((data: string) => {
       instance.lastOutputAt = Date.now()
       // Suppress buffer writes AND live forwarding briefly after resize to
-      // avoid SIGWINCH-triggered prompt reprints appearing in the terminal
-      const isResizeEcho = Date.now() - instance.lastResizedAt < 150
+      // avoid SIGWINCH-triggered prompt reprints appearing in the terminal.
+      // Skip suppression for the first real resize — it corrects initial
+      // dimensions for split panes that were created at default 80x24.
+      const isResizeEcho = instance.resizeCount > 1 && Date.now() - instance.lastResizedAt < 150
       if (!isResizeEcho) {
         this.appendToBuffer(instance, data)
       }
@@ -148,6 +157,9 @@ export class TerminalService {
     if (cols < 10 || rows < 2) return
     const instance = this.terminals.get(terminalId)
     if (!instance) return
+    if (instance.pty.cols !== cols || instance.pty.rows !== rows) {
+      instance.resizeCount++
+    }
     instance.lastResizedAt = Date.now()
     instance.pty.resize(cols, rows)
   }

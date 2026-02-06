@@ -10,15 +10,16 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { emit } from '../utils/eventBus'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { extractOsc7Cwd } from '@shared/osc7Parser'
-import { PaneInputBar } from './PaneInputBar'
 import { AiProcessingOverlay } from './AiProcessingOverlay'
 import { getXtermTheme, setupTerminalLinks } from './terminalUtils'
 import { useLocalhostDetection } from './useLocalhostDetection'
 import { useTerminalResize } from './useTerminalResize'
+import { waitForDimensions, pollForDimensions } from '../utils/waitForDimensions'
 
 interface TerminalPaneProps {
   terminalId: string
@@ -50,7 +51,6 @@ function TerminalPaneInner({
   const onCommandSentRef = useRef(onCommandSent)
   const connectedRef = useRef(false)
   const [currentCwd, setCurrentCwd] = useState(cwd)
-  const [gitBranch, setGitBranch] = useState<string | null>(null)
   const [aiProcessing, setAiProcessing] = useState(false)
 
   // Keep refs in sync
@@ -60,18 +60,12 @@ function TerminalPaneInner({
   const localhost = useLocalhostDetection({ onLocalhostDetected })
   const resize = useTerminalResize()
 
-  // Send command from input bar to PTY
-  const handleSendCommand = useCallback(
-    (command: string) => {
-      window.electronAPI.terminal.write({ terminalId, data: command + '\n' })
-    },
-    [terminalId],
-  )
-
   // Route localhost URLs to embedded browser, others to system browser
   const handleLinkClick = useCallback((url: string) => {
+    console.log('[TerminalPane] handleLinkClick fired:', url)
     if (/^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)/i.test(url)) {
-      window.dispatchEvent(new CustomEvent('browser:navigate', { detail: url }))
+      console.log('[TerminalPane] emitting browser:navigate')
+      emit('browser:navigate', url)
     } else {
       window.electronAPI.shell.openExternal(url)
     }
@@ -101,6 +95,24 @@ function TerminalPaneInner({
     term.options.theme = getXtermTheme()
 
     let disposed = false
+
+    // WebGL renderer: 3-10x faster rendering for high-throughput terminal output.
+    // Loads async after open() so the canvas is attached to the DOM.
+    // Falls back silently to the default canvas renderer on context loss or
+    // GPU issues (e.g. macOS P3 wide-gamut color space edge cases).
+    // NOTE: Disabled by default — enable via settings when GPU compat is confirmed.
+    // import('@xterm/addon-webgl')
+    //   .then(({ WebglAddon }) => {
+    //     if (disposed) return
+    //     const webgl = new WebglAddon()
+    //     webgl.onContextLoss(() => {
+    //       webgl.dispose()
+    //     })
+    //     term.loadAddon(webgl)
+    //   })
+    //   .catch(() => {
+    //     // Fallback: continue with default canvas renderer
+    //   })
 
     setupTerminalLinks(term, handleLinkClick, () => disposed)
 
@@ -137,75 +149,92 @@ function TerminalPaneInner({
       }
     })
 
-    // Wait two frames for layout then create PTY
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    // Wait for container to have non-zero dimensions, then create PTY.
+    // A double-RAF was insufficient when multiple panes mount simultaneously
+    // because flex layout hadn't computed real sizes within 2 frames.
+    const abortCtrl = new AbortController()
+
+    waitForDimensions(container, { signal: abortCtrl.signal }).then(async ({ width, height }) => {
+      if (disposed) return
+
+      let hasDimensions = width > 0 && height > 0
+
+      // Split panes may still be 0x0 if flex layout hasn't computed yet.
+      // Poll via rAF until the container gets real dimensions.
+      if (!hasDimensions) {
+        hasDimensions = await pollForDimensions(container, abortCtrl.signal)
         if (disposed) return
-        fitAddon.fit()
+      }
 
-        const cols = term.cols >= 10 ? term.cols : 80
-        const rows = term.rows >= 2 ? term.rows : 24
-        window.electronAPI.terminal
-          .create({ projectId, terminalId, cwd, cols, rows })
-          .then(({ created }) => {
+      if (hasDimensions) fitAddon.fit()
+
+      const cols = term.cols >= 10 ? term.cols : 80
+      const rows = term.rows >= 2 ? term.rows : 24
+
+      return window.electronAPI.terminal
+        .create({ projectId, terminalId, cwd, cols, rows })
+        .then(({ created }) => {
+          if (disposed) return
+
+          // Only suppress ResizeObserver when initial fit used real dimensions.
+          // If dimensions were 0x0 (timeout fallback), let the observer correct it.
+          if (hasDimensions) resize.suppressFor(300)
+
+          setTimeout(() => {
             if (disposed) return
-            resize.suppressFor(500)
-
-            setTimeout(() => {
-              if (disposed) return
-              fitAddon.fit()
-              const { cols: c, rows: r } = term
-              if (c >= 10 && r >= 2) {
-                window.electronAPI.terminal.resize({ terminalId, cols: c, rows: r })
-              }
-            }, 550)
-
-            if (created) {
-              replayDone = true
-              for (const chunk of pendingData) term.write(chunk)
-              pendingData.length = 0
-              return
+            fitAddon.fit()
+            const { cols: c, rows: r } = term
+            if (c >= 10 && r >= 2) {
+              window.electronAPI.terminal.resize({ terminalId, cols: c, rows: r })
             }
-            return window.electronAPI.terminal.getBuffer(terminalId)
-          })
-          .then((buffer) => {
-            if (disposed || replayDone) return
-            if (buffer) {
-              term.write(buffer)
-              const cwdFromBuffer = extractOsc7Cwd(buffer)
-              if (cwdFromBuffer) setCurrentCwd(cwdFromBuffer)
-            }
+          }, 350)
+
+          if (created) {
             replayDone = true
+            for (const chunk of pendingData) term.write(chunk)
             pendingData.length = 0
-            localhost.suppress(2000)
-          })
-          .then(() => {
-            if (disposed) return
-            connectedRef.current = true
-            if (pendingCommandRef.current) {
-              const cmd = pendingCommandRef.current
-              if (cmd.startsWith('cc ') && !terminalId.startsWith('drawer-')) {
-                setAiProcessing(true)
-              }
-              setTimeout(() => {
-                if (!disposed) {
-                  window.electronAPI.terminal.write({ terminalId, data: cmd + '\n' })
-                  onCommandSentRef.current?.()
-                }
-              }, 300)
+            return
+          }
+          return window.electronAPI.terminal.getBuffer(terminalId)
+        })
+        .then((buffer) => {
+          if (disposed || replayDone) return
+          if (buffer) {
+            term.write(buffer)
+            const cwdFromBuffer = extractOsc7Cwd(buffer)
+            if (cwdFromBuffer) setCurrentCwd(cwdFromBuffer)
+          }
+          replayDone = true
+          pendingData.length = 0
+          localhost.suppress(2000)
+        })
+        .then(() => {
+          if (disposed) return
+          connectedRef.current = true
+          if (pendingCommandRef.current) {
+            const cmd = pendingCommandRef.current
+            if (cmd.startsWith('cc ') && !terminalId.startsWith('drawer-')) {
+              setAiProcessing(true)
             }
-          })
-          .catch((err: unknown) => {
-            console.error('Failed to create/reconnect PTY:', err)
-            replayDone = true
-          })
-      })
+            setTimeout(() => {
+              if (!disposed) {
+                window.electronAPI.terminal.write({ terminalId, data: cmd + '\n' })
+                onCommandSentRef.current?.()
+              }
+            }, 300)
+          }
+        })
+        .catch((err: unknown) => {
+          console.error('Failed to create/reconnect PTY:', err)
+          replayDone = true
+        })
     })
 
     const cleanupResize = resize.observe(container, term, fitAddon, terminalId)
 
     return () => {
       disposed = true
+      abortCtrl.abort()
       connectedRef.current = false
       localhost.cleanup()
       onDataDispose.dispose()
@@ -259,28 +288,11 @@ function TerminalPaneInner({
     return removeListener
   }, [aiProcessing, terminalId])
 
-  // Poll git branch
-  useEffect(() => {
-    if (!isActive) return
-    let cancelled = false
-    async function fetchBranch() {
-      try {
-        const result = await window.electronAPI.git.getBranch({ cwd: currentCwd })
-        if (!cancelled) setGitBranch(result.branch)
-      } catch {
-        if (!cancelled) setGitBranch(null)
-      }
-    }
-    fetchBranch()
-    const interval = setInterval(fetchBranch, 30_000)
-    return () => { cancelled = true; clearInterval(interval) }
-  }, [currentCwd, isActive])
 
   return (
     <div className={`terminal-pane${isActive ? ' terminal-pane--active' : ''}`} onClick={onFocus}>
       <div ref={containerRef} className="terminal-pane-xterm" onClick={handleXtermClick} />
       {aiProcessing && <AiProcessingOverlay />}
-      <PaneInputBar cwd={currentCwd} gitBranch={gitBranch} onSendCommand={handleSendCommand} />
     </div>
   )
 }
