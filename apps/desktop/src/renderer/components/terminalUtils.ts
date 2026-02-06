@@ -1,3 +1,5 @@
+import type { Terminal } from '@xterm/xterm'
+
 /** Standard ANSI colors — fixed across all palettes so terminal text stays readable. */
 export const ANSI_COLORS = {
   black: '#1d1f21',
@@ -121,4 +123,60 @@ export function pickBestUrl(candidates: CollectedUrl[]): string | null {
 
   // 3. All are API servers — don't open browser
   return null
+}
+
+/**
+ * Set up clickable links on a Terminal instance:
+ *  - Dynamically loads WebLinksAddon for hover-click links
+ *  - Registers a link provider for Cmd+Click support
+ *
+ * @param disposed - callback returning true if the terminal has been disposed
+ * @returns void
+ */
+export function setupTerminalLinks(
+  term: Terminal,
+  onLinkClick: (url: string) => void,
+  isDisposed: () => boolean,
+): void {
+  // WebLinksAddon for hover-click
+  import('@xterm/addon-web-links')
+    .then(({ WebLinksAddon }) => {
+      if (isDisposed()) return
+      term.loadAddon(
+        new WebLinksAddon((_event, url) => onLinkClick(url), {
+          hover: (_event, text, location) => {
+            void text
+            void location
+          },
+        }),
+      )
+    })
+    .catch(() => console.warn('WebLinksAddon import failed'))
+
+  // Cmd+Click link provider
+  term.registerLinkProvider({
+    provideLinks(bufferLineNumber, callback) {
+      const line = term.buffer.active.getLine(bufferLineNumber)
+      if (!line) return callback(undefined)
+      const text = line.translateToString()
+      const urlRe = /https?:\/\/[^\s'"\]>)]+/g
+      const links: {
+        range: { start: { x: number; y: number }; end: { x: number; y: number } }
+        text: string
+        activate: (_event: MouseEvent, linkText: string) => void
+      }[] = []
+      let match: RegExpExecArray | null
+      while ((match = urlRe.exec(text)) !== null) {
+        links.push({
+          range: {
+            start: { x: match.index + 1, y: bufferLineNumber + 1 },
+            end: { x: match.index + match[0].length + 1, y: bufferLineNumber + 1 },
+          },
+          text: match[0],
+          activate: (_event, linkText) => onLinkClick(linkText),
+        })
+      }
+      callback(links.length > 0 ? links : undefined)
+    },
+  })
 }

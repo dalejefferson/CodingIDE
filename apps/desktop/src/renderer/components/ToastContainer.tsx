@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { CommandCompletionEvent } from '@shared/types'
+import { ToastItemView, formatDuration } from './ToastItem'
 import '../styles/Toast.css'
 
 const MAX_VISIBLE = 3
@@ -211,113 +212,13 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
   return (
     <div className="toast-container" role="status" aria-live="polite">
       {toasts.map((toast) => (
-        <div
+        <ToastItemView
           key={toast.id}
-          className={`toast-item${dismissing.has(toast.id) ? ' toast-item--dismissing' : ''}`}
-          onClick={() => handleClick(toast)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') handleClick(toast)
-          }}
-        >
-          <div
-            className={`toast-icon${toast.kind === 'claude' ? ' toast-icon--claude' : ''}${toast.kind === 'warning' ? ' toast-icon--warning' : ''}${toast.kind === 'prd' ? ' toast-icon--prd' : ''}`}
-          >
-            {toast.kind === 'claude' ? (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M8 1v4M8 11v4M1 8h4M11 8h4M3 3l2.5 2.5M10.5 10.5L13 13M13 3l-2.5 2.5M5.5 10.5L3 13" />
-              </svg>
-            ) : toast.kind === 'warning' ? (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M8 1L1 14h14L8 1z" />
-                <path d="M8 6v4M8 12h.01" />
-              </svg>
-            ) : toast.kind === 'prd' ? (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V5L9 1z" />
-                <polyline points="9 1 9 5 13 5" />
-                <polyline points="6 9 7.5 11 10 7" />
-              </svg>
-            ) : (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="2 8 6 12 14 4" />
-              </svg>
-            )}
-          </div>
-          <div className="toast-content">
-            <span className="toast-title">
-              {toast.kind === 'claude'
-                ? 'Claude finished'
-                : toast.kind === 'warning'
-                  ? 'Port conflict'
-                  : toast.kind === 'prd'
-                    ? 'PRD ready'
-                    : 'Command completed'}
-            </span>
-            <span className="toast-detail">
-              {toast.message ?? toast.projectName}
-              {toast.event ? ` \u00B7 ${formatDuration(toast.event.elapsedMs)}` : ''}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="toast-close"
-            onClick={(e) => {
-              e.stopPropagation()
-              dismissToast(toast.id)
-            }}
-            aria-label="Dismiss"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            >
-              <path d="M4 4L12 12M12 4L4 12" />
-            </svg>
-          </button>
-        </div>
+          toast={toast}
+          isDismissing={dismissing.has(toast.id)}
+          onClick={handleClick}
+          onDismiss={dismissToast}
+        />
       ))}
     </div>
   )
@@ -325,12 +226,3 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
 
 const MemoizedToastContainer = React.memo(ToastContainer)
 export { MemoizedToastContainer as ToastContainer }
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`
-  const seconds = ms / 1000
-  if (seconds < 60) return `${seconds.toFixed(1)}s`
-  const minutes = Math.floor(seconds / 60)
-  const remaining = Math.round(seconds % 60)
-  return `${minutes}m ${remaining}s`
-}

@@ -4,7 +4,7 @@
  * Handles:
  *   - xterm.js lifecycle (init, dispose)
  *   - Fit addon for responsive resizing
- *   - Data flow: keystrokes → IPC → PTY, PTY output → IPC → xterm
+ *   - Data flow: keystrokes -> IPC -> PTY, PTY output -> IPC -> xterm
  *   - OSC 7 CWD tracking
  *   - Git branch polling
  */
@@ -16,15 +16,9 @@ import '@xterm/xterm/css/xterm.css'
 import { extractOsc7Cwd } from '@shared/osc7Parser'
 import { PaneInputBar } from './PaneInputBar'
 import { AiProcessingOverlay } from './AiProcessingOverlay'
-import {
-  getXtermTheme,
-  stripAnsi,
-  LOCALHOST_RE,
-  extractPort,
-  classifyServerUrl,
-  pickBestUrl,
-} from './terminalUtils'
-import type { CollectedUrl } from './terminalUtils'
+import { getXtermTheme, setupTerminalLinks } from './terminalUtils'
+import { useLocalhostDetection } from './useLocalhostDetection'
+import { useTerminalResize } from './useTerminalResize'
 
 interface TerminalPaneProps {
   terminalId: string
@@ -54,9 +48,6 @@ function TerminalPaneInner({
   const fitRef = useRef<FitAddon | null>(null)
   const pendingCommandRef = useRef(pendingCommand)
   const onCommandSentRef = useRef(onCommandSent)
-  const onLocalhostDetectedRef = useRef(onLocalhostDetected)
-  const localhostFiredRef = useRef(false)
-  const seenUrlsRef = useRef<Set<string>>(new Set())
   const connectedRef = useRef(false)
   const [currentCwd, setCurrentCwd] = useState(cwd)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
@@ -65,7 +56,9 @@ function TerminalPaneInner({
   // Keep refs in sync
   pendingCommandRef.current = pendingCommand
   onCommandSentRef.current = onCommandSent
-  onLocalhostDetectedRef.current = onLocalhostDetected
+
+  const localhost = useLocalhostDetection({ onLocalhostDetected })
+  const resize = useTerminalResize()
 
   // Send command from input bar to PTY
   const handleSendCommand = useCallback(
@@ -74,6 +67,15 @@ function TerminalPaneInner({
     },
     [terminalId],
   )
+
+  // Route localhost URLs to embedded browser, others to system browser
+  const handleLinkClick = useCallback((url: string) => {
+    if (/^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)/i.test(url)) {
+      window.dispatchEvent(new CustomEvent('browser:navigate', { detail: url }))
+    } else {
+      window.electronAPI.shell.openExternal(url)
+    }
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -98,77 +100,11 @@ function TerminalPaneInner({
     term.open(container)
     term.options.theme = getXtermTheme()
 
-    // Guard against writes after disposal
     let disposed = false
 
-    // NOTE: WebGL renderer intentionally disabled. On macOS P3 wide-gamut
-    // displays, the WebGL canvas renders colors in a different color space than
-    // CSS backgrounds, producing a visible vertical seam at the canvas edge.
-    // The standard canvas 2D renderer shares CSS color space and has no seam.
-    // Performance difference is negligible for terminal text rendering.
+    setupTerminalLinks(term, handleLinkClick, () => disposed)
 
-    // Route localhost URLs to the embedded browser pane, others to system browser
-    const handleLinkClick = (url: string) => {
-      if (/^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)/i.test(url)) {
-        window.dispatchEvent(new CustomEvent('browser:navigate', { detail: url }))
-      } else {
-        window.electronAPI.shell.openExternal(url)
-      }
-    }
-
-    // Clickable links
-    import('@xterm/addon-web-links')
-      .then(({ WebLinksAddon }) => {
-        if (disposed) return
-        term.loadAddon(
-          new WebLinksAddon(
-            (_event, url) => {
-              handleLinkClick(url)
-            },
-            {
-              hover: (_event, text, location) => {
-                void text
-                void location
-              },
-            },
-          ),
-        )
-      })
-      .catch(() => {
-        console.warn('WebLinksAddon import failed')
-      })
-
-    // Also register via the terminal's link provider for Cmd+Click support
-    term.registerLinkProvider({
-      provideLinks(bufferLineNumber, callback) {
-        const line = term.buffer.active.getLine(bufferLineNumber)
-        if (!line) return callback(undefined)
-        const text = line.translateToString()
-        const urlRe = /https?:\/\/[^\s'"\]>)]+/g
-        const links: {
-          range: { start: { x: number; y: number }; end: { x: number; y: number } }
-          text: string
-          activate: (_event: MouseEvent, linkText: string) => void
-        }[] = []
-        let match: RegExpExecArray | null
-        while ((match = urlRe.exec(text)) !== null) {
-          links.push({
-            range: {
-              start: { x: match.index + 1, y: bufferLineNumber + 1 },
-              end: { x: match.index + match[0].length + 1, y: bufferLineNumber + 1 },
-            },
-            text: match[0],
-            activate: (_event, linkText) => {
-              handleLinkClick(linkText)
-            },
-          })
-        }
-        callback(links.length > 0 ? links : undefined)
-      },
-    })
-
-    // Let app-level shortcuts bubble to the global handler in App.tsx
-    // instead of being consumed by xterm as terminal input.
+    // Let app-level shortcuts bubble
     term.attachCustomKeyEventHandler((e) => {
       if (e.ctrlKey && e.key === 'Tab') return false
       if (e.metaKey && (e.key === '[' || e.key === ']')) return false
@@ -179,110 +115,29 @@ function TerminalPaneInner({
     termRef.current = term
     fitRef.current = fitAddon
 
-    // Queue live data until buffer replay finishes to avoid duplicates
     let replayDone = false
     const pendingData: string[] = []
 
-    // Forward keystrokes to PTY
     const onDataDispose = term.onData((data) => {
       window.electronAPI.terminal.write({ terminalId, data })
     })
 
-    // Reset localhost detection state for new terminal sessions
-    localhostFiredRef.current = false
-    seenUrlsRef.current.clear()
+    localhost.reset()
 
-    // Buffer recent output for localhost detection across chunk boundaries
-    let localhostBuffer = ''
-
-    // Suppress localhost detection briefly after reconnecting to an existing PTY.
-    // When switching back to a project whose dev server is still running, live
-    // data arrives immediately after replay — without this grace period the
-    // browser pane would auto-re-open on every project switch.
-    let localhostSuppressedUntil = 0
-
-    // Collection window: gather all detected URLs for 3 seconds before picking the best one.
-    // If a definite dev server URL appears, fire immediately (no need to wait).
-    const collectedUrls: CollectedUrl[] = []
-    let collectionTimer: ReturnType<typeof setTimeout> | null = null
-    const COLLECTION_WINDOW_MS = 3000
-
-    /** Flush the collection window — pick the best URL and fire the callback. */
-    function flushCollectionWindow() {
-      collectionTimer = null
-      if (localhostFiredRef.current || !onLocalhostDetectedRef.current) return
-      if (collectedUrls.length === 0) return
-
-      const best = pickBestUrl(collectedUrls)
-      if (best) {
-        localhostFiredRef.current = true
-        onLocalhostDetectedRef.current(best)
-      }
-      // If best is null (all API), keep listening — a dev server might start later.
-      // Clear collected so future URLs get a fresh window.
-      collectedUrls.length = 0
-    }
-
-    // Receive PTY output — queue until replay finishes, then write live
+    // Receive PTY output
     const removeDataListener = window.electronAPI.terminal.onData(terminalId, (data) => {
       if (disposed) return
       if (replayDone) {
         term.write(data)
         const newCwd = extractOsc7Cwd(data)
         if (newCwd) setCurrentCwd(newCwd)
-
-        // Detect localhost URLs in terminal output.
-        // Uses a collection window: gathers all URLs for 3 seconds, then picks
-        // the best candidate. Definite dev server URLs fire immediately.
-        if (
-          !localhostFiredRef.current &&
-          onLocalhostDetectedRef.current &&
-          Date.now() > localhostSuppressedUntil
-        ) {
-          localhostBuffer += data
-          if (localhostBuffer.length > 2048) {
-            localhostBuffer = localhostBuffer.slice(-2048)
-          }
-          const clean = stripAnsi(localhostBuffer)
-          LOCALHOST_RE.lastIndex = 0
-          let match: RegExpExecArray | null
-          while ((match = LOCALHOST_RE.exec(clean)) !== null) {
-            const url = match[0].replace(/[.,;:]+$/, '')
-            if (seenUrlsRef.current.has(url)) continue
-            seenUrlsRef.current.add(url)
-
-            // Check ~300 chars around the URL for classification hints
-            const ctxStart = Math.max(0, match.index - 300)
-            const ctxEnd = Math.min(clean.length, match.index + match[0].length + 300)
-            const context = clean.slice(ctxStart, ctxEnd)
-
-            const classification = classifyServerUrl(context)
-            const port = extractPort(url)
-            collectedUrls.push({ url, classification, port })
-
-            // Definite dev server → fire immediately, no need to wait
-            if (classification === 'dev') {
-              if (collectionTimer) {
-                clearTimeout(collectionTimer)
-                collectionTimer = null
-              }
-              localhostFiredRef.current = true
-              onLocalhostDetectedRef.current(url)
-              break
-            }
-
-            // Ambiguous or API — start/reset collection window
-            if (!collectionTimer) {
-              collectionTimer = setTimeout(flushCollectionWindow, COLLECTION_WINDOW_MS)
-            }
-          }
-        }
+        localhost.feed(data)
       } else {
         pendingData.push(data)
       }
     })
 
-    // Wait two frames so the container has a layout-computed size before fitting
+    // Wait two frames for layout then create PTY
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (disposed) return
@@ -291,25 +146,11 @@ function TerminalPaneInner({
         const cols = term.cols >= 10 ? term.cols : 80
         const rows = term.rows >= 2 ? term.rows : 24
         window.electronAPI.terminal
-          .create({
-            projectId,
-            terminalId,
-            cwd,
-            cols,
-            rows,
-          })
+          .create({ projectId, terminalId, cwd, cols, rows })
           .then(({ created }) => {
             if (disposed) return
+            resize.suppressFor(500)
 
-            // Suppress ResizeObserver-triggered resizes briefly after PTY
-            // creation/reconnection. The PTY was already created/resized with
-            // the correct dimensions — sending another resize immediately
-            // triggers SIGWINCH which causes the shell to reprint the prompt.
-            suppressResizeUntil = Date.now() + 500
-
-            // Deferred fit after the suppression window. If the container
-            // resized during the 500ms window (e.g. layout settling), this
-            // syncs xterm + PTY dimensions to prevent staircase rendering.
             setTimeout(() => {
               if (disposed) return
               fitAddon.fit()
@@ -320,48 +161,29 @@ function TerminalPaneInner({
             }, 550)
 
             if (created) {
-              // Brand-new PTY — no buffer to replay. Flush any live data
-              // that arrived during create() (e.g. the initial shell prompt).
               replayDone = true
-              for (const chunk of pendingData) {
-                term.write(chunk)
-              }
+              for (const chunk of pendingData) term.write(chunk)
               pendingData.length = 0
               return
             }
-
-            // Existing PTY — fetch and replay scrollback for reconnection
             return window.electronAPI.terminal.getBuffer(terminalId)
           })
           .then((buffer) => {
             if (disposed || replayDone) return
-            // Replay scrollback buffer (restores output from before project switch)
             if (buffer) {
               term.write(buffer)
               const cwdFromBuffer = extractOsc7Cwd(buffer)
               if (cwdFromBuffer) setCurrentCwd(cwdFromBuffer)
             }
-            // The buffer already contains everything the PTY emitted up to
-            // the getBuffer() snapshot. Any live data that arrived in the
-            // meantime is a duplicate — discard it and just start writing
-            // live from this point forward.
             replayDone = true
             pendingData.length = 0
-
-            // Suppress localhost detection for 2 seconds after reconnection.
-            // Live data from a still-running dev server would otherwise
-            // re-trigger the browser pane every time the user switches back.
-            localhostSuppressedUntil = Date.now() + 2000
+            localhost.suppress(2000)
           })
           .then(() => {
             if (disposed) return
             connectedRef.current = true
-            // If a command was queued (e.g. from the play button), send it
-            // after a brief delay so the shell prompt is ready.
             if (pendingCommandRef.current) {
               const cmd = pendingCommandRef.current
-              // Show the AI overlay for cc commands, but not in the drawer
-              // terminal — users want to watch the generation stream there.
               if (cmd.startsWith('cc ') && !terminalId.startsWith('drawer-')) {
                 setAiProcessing(true)
               }
@@ -380,93 +202,22 @@ function TerminalPaneInner({
       })
     })
 
-    // Handle resize — debounce via rAF and guard against disposed state.
-    // Enforce minimum 10 cols / 2 rows to prevent staircase rendering when
-    // the container briefly collapses during layout transitions.
-    // Suppress resizes briefly after PTY creation to avoid SIGWINCH echoing
-    // the shell prompt a second time.
-    //
-    // Key insight: during CSS transitions (flex-basis, height), the container
-    // size changes frame-by-frame. Fitting xterm mid-transition causes the
-    // terminal text to fragment/staircase. We suppress fitting while any
-    // ancestor is animating and do a single fit after the transition ends.
-    let resizeRaf = 0
-    let suppressResizeUntil = 0
-    let transitionCount = 0
-
-    // Detect when a CSS transition starts/ends on an ANCESTOR of this terminal.
-    // Only suppress fitting when an ancestor's layout property is animating —
-    // ignore transitions from unrelated elements (buttons, icons, etc.).
-    const isAncestorTransition = (e: TransitionEvent) => {
-      const prop = e.propertyName
-      if (prop !== 'flex-basis' && prop !== 'height' && prop !== 'width') return false
-      const target = e.target as Element | null
-      return target != null && target.contains(container)
-    }
-
-    const handleTransitionStart = (e: TransitionEvent) => {
-      if (isAncestorTransition(e)) transitionCount++
-    }
-    const handleTransitionEnd = (e: TransitionEvent) => {
-      if (!isAncestorTransition(e)) return
-      transitionCount = Math.max(0, transitionCount - 1)
-      if (transitionCount === 0 && !disposed) {
-        // All ancestor transitions done — do a single authoritative fit
-        requestAnimationFrame(() => {
-          if (disposed) return
-          fitAddon.fit()
-          const { cols, rows } = term
-          if (cols >= 10 && rows >= 2) {
-            window.electronAPI.terminal.resize({ terminalId, cols, rows })
-          }
-        })
-      }
-    }
-
-    document.addEventListener('transitionstart', handleTransitionStart, true)
-    document.addEventListener('transitionend', handleTransitionEnd, true)
-    document.addEventListener('transitioncancel', handleTransitionEnd, true)
-
-    const resizeObserver = new ResizeObserver(() => {
-      cancelAnimationFrame(resizeRaf)
-      resizeRaf = requestAnimationFrame(() => {
-        if (disposed) return
-        // Skip fitting during ancestor CSS transitions — we'll fit once at transitionend
-        if (transitionCount > 0) return
-        // Skip fitting entirely during the post-creation suppression window.
-        // Fitting without resizing the PTY creates a cols mismatch that
-        // causes staircase rendering (each line offset further right).
-        if (Date.now() < suppressResizeUntil) return
-        fitAddon.fit()
-        const { cols, rows } = term
-        if (cols >= 10 && rows >= 2) {
-          window.electronAPI.terminal.resize({ terminalId, cols, rows })
-        }
-      })
-    })
-    resizeObserver.observe(container)
+    const cleanupResize = resize.observe(container, term, fitAddon, terminalId)
 
     return () => {
       disposed = true
       connectedRef.current = false
-      if (collectionTimer) clearTimeout(collectionTimer)
+      localhost.cleanup()
       onDataDispose.dispose()
       removeDataListener()
-      cancelAnimationFrame(resizeRaf)
-      resizeObserver.disconnect()
-      document.removeEventListener('transitionstart', handleTransitionStart, true)
-      document.removeEventListener('transitionend', handleTransitionEnd, true)
-      document.removeEventListener('transitioncancel', handleTransitionEnd, true)
+      cleanupResize()
       term.dispose()
       termRef.current = null
       fitRef.current = null
     }
-  }, [terminalId, projectId, cwd])
+  }, [terminalId, projectId, cwd, handleLinkClick, localhost, resize])
 
-  // Handle late-arriving pendingCommand for an already-connected terminal.
-  // The creation chain above handles commands present at mount time; this
-  // effect catches commands that arrive *after* the PTY is ready (e.g. the
-  // element picker sending a command to the already-open drawer terminal).
+  // Handle late-arriving pendingCommand for an already-connected terminal
   useEffect(() => {
     if (!pendingCommand || !connectedRef.current || !isActive) return
     const cmd = pendingCommand
@@ -483,23 +234,17 @@ function TerminalPaneInner({
   // Update xterm colors when palette changes
   useEffect(() => {
     if (!termRef.current) return
-    // Small delay to let CSS variables settle after data-theme change
     const raf = requestAnimationFrame(() => {
-      if (termRef.current) {
-        termRef.current.options.theme = getXtermTheme()
-      }
+      if (termRef.current) termRef.current.options.theme = getXtermTheme()
     })
     return () => cancelAnimationFrame(raf)
   }, [palette])
 
   // Focus terminal when it becomes active
   useEffect(() => {
-    if (isActive && termRef.current) {
-      termRef.current.focus()
-    }
+    if (isActive && termRef.current) termRef.current.focus()
   }, [isActive])
 
-  // Click on xterm area re-focuses the terminal
   const handleXtermClick = useCallback(() => {
     onFocus()
     termRef.current?.focus()
@@ -509,19 +254,15 @@ function TerminalPaneInner({
   useEffect(() => {
     if (!aiProcessing) return
     const removeListener = window.electronAPI.terminal.onCommandDone((event) => {
-      if (event.terminalId === terminalId) {
-        setAiProcessing(false)
-      }
+      if (event.terminalId === terminalId) setAiProcessing(false)
     })
     return removeListener
   }, [aiProcessing, terminalId])
 
-  // Poll git branch — only when pane is active to avoid redundant subprocess calls.
-  // Fetches immediately on activation or cwd change, then every 10s while active.
+  // Poll git branch
   useEffect(() => {
     if (!isActive) return
     let cancelled = false
-
     async function fetchBranch() {
       try {
         const result = await window.electronAPI.git.getBranch({ cwd: currentCwd })
@@ -530,14 +271,9 @@ function TerminalPaneInner({
         if (!cancelled) setGitBranch(null)
       }
     }
-
     fetchBranch()
     const interval = setInterval(fetchBranch, 30_000)
-
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-    }
+    return () => { cancelled = true; clearInterval(interval) }
   }, [currentCwd, isActive])
 
   return (

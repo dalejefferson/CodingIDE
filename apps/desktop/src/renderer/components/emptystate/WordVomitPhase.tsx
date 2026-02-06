@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import type { WordVomitGen } from '../../hooks/usePrdGeneration'
-import { LoopIcon, PhoneIcon, PlusIcon } from './EmptyStateIcons'
+import { ChooseActionCards } from './ChooseActionCards'
 
 export type WordVomitPhaseType = 'idle' | 'input' | 'generating' | 'review' | 'accepting' | 'choose'
 
@@ -215,38 +215,12 @@ export const WordVomitFlow = React.memo(function WordVomitFlow({
         <div className="empty-state__wv-choose">
           <p className="empty-state__wv-choose-label">What do you want to do with this PRD?</p>
           {!wvShowProjectInput ? (
-            <div className="empty-state__wv-choose-cards">
-              <button
-                className="empty-state__card"
-                onClick={handleWvToRalph}
-                disabled={wvPhase === 'accepting'}
-              >
-                <span className="empty-state__card-icon">
-                  <LoopIcon />
-                </span>
-                <span className="empty-state__card-label">Ralph Loop</span>
-              </button>
-              <button
-                className="empty-state__card"
-                onClick={handleWvToApp}
-                disabled={wvPhase === 'accepting'}
-              >
-                <span className="empty-state__card-icon">
-                  <PhoneIcon />
-                </span>
-                <span className="empty-state__card-label">Build an App</span>
-              </button>
-              <button
-                className="empty-state__card"
-                onClick={() => setWvShowProjectInput(true)}
-                disabled={wvPhase === 'accepting'}
-              >
-                <span className="empty-state__card-icon">
-                  <PlusIcon />
-                </span>
-                <span className="empty-state__card-label">Start a Project</span>
-              </button>
-            </div>
+            <ChooseActionCards
+              disabled={wvPhase === 'accepting'}
+              onRalph={handleWvToRalph}
+              onApp={handleWvToApp}
+              onProject={() => setWvShowProjectInput(true)}
+            />
           ) : (
             <div className="empty-state__name-input-row">
               <input
