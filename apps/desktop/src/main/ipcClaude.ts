@@ -7,7 +7,7 @@
  * redundant IPC (~95% reduction in steady state).
  */
 
-import { shallowEqual, sendToRenderer, broadcastStatusChange } from './ipcHelpers'
+import { shallowEqual, broadcastStatusChange } from './ipcHelpers'
 import type { TerminalService } from '@services/terminalService'
 import type { ProjectStore } from '@services/projectStore'
 
