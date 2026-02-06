@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from 'electron'
-import { setupIPC, disposeIPC } from './ipc'
+import { setupIPC, disposeIPC, killAllTerminals } from './ipc'
 import { createMainWindow, hardenSession } from './windowManager'
 
 app.name = 'CodingIDE'
@@ -47,6 +47,10 @@ if (!gotTheLock) {
   })
 
   app.on('window-all-closed', () => {
+    // Kill all PTY processes when the last window closes.
+    // On macOS the app stays alive (dock), so without this,
+    // shells and dev servers would be orphaned until quit.
+    killAllTerminals()
     if (process.platform !== 'darwin') {
       app.quit()
     }

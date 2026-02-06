@@ -25,4 +25,8 @@ export function setupIdeaIPC(router: IPCRouter, getIdeaStore: () => IdeaStore): 
   router.handle(IPC_CHANNELS.IDEA_DELETE, (_event, payload) => {
     getIdeaStore().delete(payload)
   })
+
+  router.handle(IPC_CHANNELS.IDEA_DELETE_BY_PROJECT, (_event, payload) => {
+    return getIdeaStore().deleteByProjectId(payload)
+  })
 }

@@ -139,5 +139,26 @@ export function buildIdeasAPI(): ElectronAPI['ideas'] {
     update: (request) =>
       safeInvoke(IPC_CHANNELS.IDEA_UPDATE, request) as Promise<void>,
     delete: (id) => safeInvoke(IPC_CHANNELS.IDEA_DELETE, id) as Promise<void>,
+    deleteByProjectId: (projectId) =>
+      safeInvoke(IPC_CHANNELS.IDEA_DELETE_BY_PROJECT, projectId) as Promise<number>,
+  }
+}
+
+export function buildPortsAPI(): ElectronAPI['ports'] {
+  return {
+    check: (request) =>
+      safeInvoke(IPC_CHANNELS.PORT_CHECK, request) as ReturnType<ElectronAPI['ports']['check']>,
+    findAvailable: (request) =>
+      safeInvoke(IPC_CHANNELS.PORT_FIND_AVAILABLE, request) as ReturnType<
+        ElectronAPI['ports']['findAvailable']
+      >,
+    register: (request) =>
+      safeInvoke(IPC_CHANNELS.PORT_REGISTER, request) as Promise<void>,
+    unregister: (request) =>
+      safeInvoke(IPC_CHANNELS.PORT_UNREGISTER, request) as Promise<void>,
+    getOwner: (request) =>
+      safeInvoke(IPC_CHANNELS.PORT_GET_OWNER, request) as ReturnType<
+        ElectronAPI['ports']['getOwner']
+      >,
   }
 }

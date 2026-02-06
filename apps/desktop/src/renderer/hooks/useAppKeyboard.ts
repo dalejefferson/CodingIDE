@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { emit } from '../utils/eventBus'
 
 interface UseAppKeyboardOptions {
   cyclePalette: () => void
@@ -53,7 +54,7 @@ export function useAppKeyboard({
 
       if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
         e.preventDefault()
-        window.dispatchEvent(new Event('command-launcher:play'))
+        emit('command-launcher:play')
         return
       }
 

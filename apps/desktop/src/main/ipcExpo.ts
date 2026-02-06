@@ -7,7 +7,7 @@
  */
 
 import { BrowserWindow, dialog } from 'electron'
-import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs'
+import { access, mkdir, writeFile, copyFile } from 'node:fs/promises'
 import { join, basename } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipcContracts'
 import { ExpoService } from '@services/expoService'
@@ -18,6 +18,16 @@ import type { MobileAppStore } from '@services/mobileAppStore'
 import type { ProjectStore } from '@services/projectStore'
 import type { TemplateCacheService } from '@services/templateCache'
 import type { SettingsStore } from '@services/settingsStore'
+
+/** Async equivalent of existsSync -- resolves true if path is accessible. */
+async function exists(p: string): Promise<boolean> {
+  try {
+    await access(p)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function setupExpoIPC(
   router: IPCRouter,
@@ -59,10 +69,10 @@ export function setupExpoIPC(
     // Save PRD artifacts if provided
     if (payload.prdContent) {
       const prdDir = join(projectPath, '.prd')
-      mkdirSync(prdDir, { recursive: true })
-      writeFileSync(join(prdDir, 'prd.md'), payload.prdContent, 'utf-8')
+      await mkdir(prdDir, { recursive: true })
+      await writeFile(join(prdDir, 'prd.md'), payload.prdContent, 'utf-8')
       if (payload.paletteId) {
-        writeFileSync(
+        await writeFile(
           join(prdDir, 'palette.json'),
           JSON.stringify({ paletteId: payload.paletteId }),
           'utf-8',
@@ -73,21 +83,23 @@ export function setupExpoIPC(
     // Copy reference images if provided
     if (payload.imagePaths && payload.imagePaths.length > 0) {
       const imagesDir = join(projectPath, '.prd', 'images')
-      mkdirSync(imagesDir, { recursive: true })
-      for (const srcPath of payload.imagePaths) {
-        const destPath = join(imagesDir, basename(srcPath))
-        copyFileSync(srcPath, destPath)
-      }
+      await mkdir(imagesDir, { recursive: true })
+      await Promise.all(
+        payload.imagePaths.map((srcPath) => {
+          const destPath = join(imagesDir, basename(srcPath))
+          return copyFile(srcPath, destPath)
+        }),
+      )
     }
 
     return app
   })
 
   // ── Add Existing App ───────────────────────────────────────
-  router.handle(IPC_CHANNELS.EXPO_ADD, (_event, payload) => {
+  router.handle(IPC_CHANNELS.EXPO_ADD, async (_event, payload) => {
     // Validate it looks like an Expo project
     const appJsonPath = join(payload.path, 'app.json')
-    if (!existsSync(appJsonPath)) {
+    if (!(await exists(appJsonPath))) {
       throw new Error(`Not an Expo project: no app.json found at ${payload.path}`)
     }
     return mobileAppStore.add(payload)
@@ -157,7 +169,7 @@ export function setupExpoIPC(
   })
 
   // ── Template Status ──────────────────────────────────────
-  router.handle(IPC_CHANNELS.EXPO_TEMPLATE_STATUS, () => {
+  router.handle(IPC_CHANNELS.EXPO_TEMPLATE_STATUS, async () => {
     return templateCache.getStatus()
   })
 
@@ -201,12 +213,12 @@ export function setupExpoIPC(
   })
 
   // ── Save PRD ─────────────────────────────────────────────
-  router.handle(IPC_CHANNELS.EXPO_SAVE_PRD, (_event, payload) => {
+  router.handle(IPC_CHANNELS.EXPO_SAVE_PRD, async (_event, payload) => {
     const prdDir = join(payload.appPath, '.prd')
-    mkdirSync(prdDir, { recursive: true })
-    writeFileSync(join(prdDir, 'prd.md'), payload.prdContent, 'utf-8')
+    await mkdir(prdDir, { recursive: true })
+    await writeFile(join(prdDir, 'prd.md'), payload.prdContent, 'utf-8')
     if (payload.paletteId) {
-      writeFileSync(
+      await writeFile(
         join(prdDir, 'palette.json'),
         JSON.stringify({ paletteId: payload.paletteId }),
         'utf-8',
@@ -215,13 +227,15 @@ export function setupExpoIPC(
   })
 
   // ── Copy PRD Images ──────────────────────────────────────
-  router.handle(IPC_CHANNELS.EXPO_COPY_PRD_IMAGES, (_event, payload) => {
+  router.handle(IPC_CHANNELS.EXPO_COPY_PRD_IMAGES, async (_event, payload) => {
     const imagesDir = join(payload.appPath, '.prd', 'images')
-    mkdirSync(imagesDir, { recursive: true })
-    for (const srcPath of payload.imagePaths) {
-      const destPath = join(imagesDir, basename(srcPath))
-      copyFileSync(srcPath, destPath)
-    }
+    await mkdir(imagesDir, { recursive: true })
+    await Promise.all(
+      payload.imagePaths.map((srcPath) => {
+        const destPath = join(imagesDir, basename(srcPath))
+        return copyFile(srcPath, destPath)
+      }),
+    )
   })
 
   return { expoService }

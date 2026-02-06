@@ -274,10 +274,48 @@ function TerminalPaneInner({
     if (isActive && termRef.current) termRef.current.focus()
   }, [isActive])
 
-  const handleXtermClick = useCallback(() => {
-    onFocus()
-    termRef.current?.focus()
-  }, [onFocus])
+  // Cmd+Click interceptor: extract URL from buffer text around the click position.
+  // This handles cases where xterm's link providers miss URLs that wrap across lines.
+  const handleXtermClick = useCallback(
+    (e: React.MouseEvent) => {
+      onFocus()
+      termRef.current?.focus()
+
+      if (!e.metaKey || !termRef.current) return
+      const term = termRef.current
+      const buf = term.buffer.active
+
+      // Read a window of lines around the viewport to find URLs
+      const startLine = Math.max(0, buf.baseY)
+      const endLine = Math.min(buf.length, buf.baseY + term.rows + 1)
+      let text = ''
+      for (let i = startLine; i < endLine; i++) {
+        const line = buf.getLine(i)
+        if (!line) continue
+        // Unwrap: if line is wrapped, don't add a separator
+        if (line.isWrapped) {
+          text += line.translateToString(true)
+        } else {
+          text += '\n' + line.translateToString(true)
+        }
+      }
+
+      // Find localhost URLs in the concatenated text
+      const urlRe = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)(?:\/[^\s'")>\]]*)?/g
+      let match: RegExpExecArray | null
+      const urls: string[] = []
+      while ((match = urlRe.exec(text)) !== null) {
+        urls.push(match[0].replace(/[.,;:]+$/, ''))
+      }
+      if (urls.length > 0) {
+        // Use the last detected localhost URL (most recent in terminal output)
+        const url = urls[urls.length - 1]
+        console.log('[TerminalPane] Cmd+Click interceptor found URL:', url)
+        handleLinkClick(url)
+      }
+    },
+    [onFocus, handleLinkClick],
+  )
 
   // Listen for command completion to dismiss AI processing overlay
   useEffect(() => {

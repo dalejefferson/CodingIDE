@@ -345,55 +345,55 @@ describe('fileOps validators', () => {
 // ── listDir ─────────────────────────────────────────────────
 
 describe('listDir', () => {
-  it('lists files and directories correctly', () => {
+  it('lists files and directories correctly', async () => {
     writeFileSync(join(root, 'file.txt'), 'hello')
     mkdirSync(join(root, 'subdir'))
-    const result = listDir(root, '')
+    const result = await listDir(root, '')
     expect(result.length).toBe(2)
     expect(result[0]).toEqual({ name: 'subdir', isDir: true, size: 0 })
     expect(result[1]).toEqual({ name: 'file.txt', isDir: false, size: 5 })
   })
 
-  it('returns empty array for empty directory', () => {
-    const result = listDir(root, '')
+  it('returns empty array for empty directory', async () => {
+    const result = await listDir(root, '')
     expect(result).toEqual([])
   })
 
-  it('sorts directories before files', () => {
+  it('sorts directories before files', async () => {
     writeFileSync(join(root, 'aaa.txt'), 'a')
     mkdirSync(join(root, 'zzz'))
-    const result = listDir(root, '')
+    const result = await listDir(root, '')
     expect(result[0]!.name).toBe('zzz')
     expect(result[0]!.isDir).toBe(true)
     expect(result[1]!.name).toBe('aaa.txt')
     expect(result[1]!.isDir).toBe(false)
   })
 
-  it('skips hidden files (dotfiles)', () => {
+  it('skips hidden files (dotfiles)', async () => {
     writeFileSync(join(root, '.hidden'), 'secret')
     writeFileSync(join(root, 'visible.txt'), 'hello')
-    const result = listDir(root, '')
+    const result = await listDir(root, '')
     expect(result.length).toBe(1)
     expect(result[0]!.name).toBe('visible.txt')
   })
 
-  it('skips node_modules directory', () => {
+  it('skips node_modules directory', async () => {
     mkdirSync(join(root, 'node_modules'))
     mkdirSync(join(root, 'src'))
-    const result = listDir(root, '')
+    const result = await listDir(root, '')
     expect(result.length).toBe(1)
     expect(result[0]!.name).toBe('src')
   })
 
-  it('lists a subdirectory via dirPath', () => {
+  it('lists a subdirectory via dirPath', async () => {
     mkdirSync(join(root, 'src'))
     writeFileSync(join(root, 'src', 'index.ts'), 'export {}')
-    const result = listDir(root, 'src')
+    const result = await listDir(root, 'src')
     expect(result.length).toBe(1)
     expect(result[0]!.name).toBe('index.ts')
   })
 
-  it('rejects path traversal', () => {
-    expect(() => listDir(root, '../../../etc')).toThrow()
+  it('rejects path traversal', async () => {
+    await expect(listDir(root, '../../../etc')).rejects.toThrow()
   })
 })

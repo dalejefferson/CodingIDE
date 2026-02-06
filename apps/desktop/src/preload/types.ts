@@ -65,6 +65,14 @@ import type {
   Idea,
   CreateIdeaRequest,
   UpdateIdeaRequest,
+  PortCheckRequest,
+  PortCheckResponse,
+  PortFindAvailableRequest,
+  PortFindAvailableResponse,
+  PortRegisterRequest,
+  PortUnregisterRequest,
+  PortGetOwnerRequest,
+  PortGetOwnerResponse,
 } from '../shared/types'
 import type { LayoutNode } from '../shared/terminalLayout'
 
@@ -198,6 +206,14 @@ export interface ElectronAPI {
     create: (request: CreateIdeaRequest) => Promise<Idea>
     update: (request: UpdateIdeaRequest) => Promise<void>
     delete: (id: string) => Promise<void>
+    deleteByProjectId: (projectId: string) => Promise<number>
+  }
+  ports: {
+    check: (request: PortCheckRequest) => Promise<PortCheckResponse>
+    findAvailable: (request: PortFindAvailableRequest) => Promise<PortFindAvailableResponse>
+    register: (request: PortRegisterRequest) => Promise<void>
+    unregister: (request: PortUnregisterRequest) => Promise<void>
+    getOwner: (request: PortGetOwnerRequest) => Promise<PortGetOwnerResponse>
   }
 }
 

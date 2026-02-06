@@ -11,6 +11,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { TerminalPane } from './TerminalPane'
+import { triggerResize } from '../utils/triggerResize'
 import '../styles/InlineTerminalDrawer.css'
 
 interface InlineTerminalDrawerProps {
@@ -70,7 +71,7 @@ function InlineTerminalDrawerInner({
         window.removeEventListener('mousemove', onMouseMove)
         window.removeEventListener('mouseup', onMouseUp)
         // Fire resize so xterm can refit
-        window.dispatchEvent(new Event('resize'))
+        triggerResize(0)
       }
 
       window.addEventListener('mousemove', onMouseMove)
@@ -90,7 +91,7 @@ function InlineTerminalDrawerInner({
       prevHeightRef.current = drawerHeight
       setDrawerHeight(maxH)
     }
-    setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
+    triggerResize()
   }, [drawerHeight])
 
   // Fire resize after drawer open/close transition finishes (200ms CSS transition).
@@ -98,8 +99,7 @@ function InlineTerminalDrawerInner({
   // a fallback for cases where no transition fires (e.g. first mount).
   useEffect(() => {
     if (isOpen) {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
-      return () => clearTimeout(t)
+      triggerResize()
     }
   }, [isOpen])
 

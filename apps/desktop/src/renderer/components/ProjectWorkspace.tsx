@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import type { Ref } from 'react'
 import type { Project } from '@shared/types'
 import { TerminalGrid } from './TerminalGrid'
@@ -12,6 +12,8 @@ import { usePipResize } from '../hooks/usePipResize'
 import { useWorkspaceKeyboard } from '../hooks/useWorkspaceKeyboard'
 import { useChangeChaining } from '../hooks/useChangeChaining'
 import '../styles/ProjectWorkspace.css'
+
+const TERMINAL_INNER_STYLE: React.CSSProperties = { flex: 1, display: 'flex', minHeight: 0 }
 
 interface ProjectWorkspaceProps {
   project: Project
@@ -39,6 +41,15 @@ function ProjectWorkspace({
 
   // Inline terminal drawer state
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  // Wrap localhost detection to also auto-close the inline terminal drawer
+  const handleLocalhostDetectedAndCloseDrawer = useCallback(
+    (url: string) => {
+      bp.handleLocalhostDetected(url)
+      setDrawerOpen(false)
+    },
+    [bp.handleLocalhostDetected],
+  )
   const toggleDrawer = useCallback(() => setDrawerOpen((prev) => !prev), [])
   const [drawerPendingCommand, setDrawerPendingCommand] = useState<string | undefined>(undefined)
   const clearDrawerCommand = useCallback(() => setDrawerPendingCommand(undefined), [])
@@ -62,6 +73,15 @@ function ProjectWorkspace({
     toggleDrawer,
     handleToggleExplorer,
   })
+
+  const terminalContentStyle = useMemo<React.CSSProperties>(() => ({
+    visibility: bp.viewMode === 'focused' ? 'hidden' : undefined,
+    flex: bp.viewMode === 'focused' ? 0 : 1,
+    minHeight: 0,
+    flexDirection: 'column',
+    display: 'flex',
+    overflow: 'hidden',
+  }), [bp.viewMode])
 
   const browserPane = (
     <BrowserPane
@@ -117,13 +137,9 @@ function ProjectWorkspace({
               Terminal
             </div>
           )}
-          <div style={{
-            visibility: bp.viewMode === 'focused' ? 'hidden' : undefined,
-            flex: bp.viewMode === 'focused' ? 0 : 1,
-            minHeight: 0, flexDirection: 'column', display: 'flex', overflow: 'hidden',
-          }}>
-            <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-              <TerminalGrid ref={gridRef} projectId={project.id} cwd={project.path} palette={palette} onLocalhostDetected={bp.handleLocalhostDetected} />
+          <div style={terminalContentStyle}>
+            <div style={TERMINAL_INNER_STYLE}>
+              <TerminalGrid ref={gridRef} projectId={project.id} cwd={project.path} palette={palette} onLocalhostDetected={handleLocalhostDetectedAndCloseDrawer} />
             </div>
             <InlineTerminalDrawer
               projectId={project.id} cwd={project.path} palette={palette}

@@ -18,5 +18,23 @@ export function usePortRegistry() {
     }
   }, [])
 
-  return { getPortOwner, registerPort, unregisterPort }
+  /** Return all ports currently owned by a project */
+  const getProjectPorts = useCallback((projectId: string): number[] => {
+    const ports: number[] = []
+    for (const [port, owner] of portRegistryRef.current) {
+      if (owner === projectId) ports.push(port)
+    }
+    return ports
+  }, [])
+
+  /** Remove all port registrations owned by a specific project */
+  const unregisterAllForProject = useCallback((projectId: string) => {
+    for (const [port, owner] of portRegistryRef.current) {
+      if (owner === projectId) {
+        portRegistryRef.current.delete(port)
+      }
+    }
+  }, [])
+
+  return { getPortOwner, registerPort, unregisterPort, getProjectPorts, unregisterAllForProject }
 }

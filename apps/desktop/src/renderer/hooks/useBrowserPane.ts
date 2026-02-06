@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { BrowserViewMode } from '@shared/types'
+import { triggerResize } from '../utils/triggerResize'
+import { emit, on } from '../utils/eventBus'
 
 /** Extract the port number from a localhost URL, or null if not a localhost URL */
 function extractLocalhostPort(url: string | undefined): number | null {
@@ -45,22 +47,32 @@ export function useBrowserPane({
     if (browserVisible && !browserEverOpened) setBrowserEverOpened(true)
   }, [browserVisible, browserEverOpened])
 
-  // Track which port this project is using and register/deregister on change
+  // Track which port this project is using and register/deregister on change.
+  // Dual registry: renderer-side (fast UI checks) + main-process (OS-level truth).
   const lastPortRef = useRef<number | null>(extractLocalhostPort(browserUrl))
   useEffect(() => {
     const newPort = extractLocalhostPort(browserUrl)
     const oldPort = lastPortRef.current
 
     if (oldPort !== newPort) {
-      if (oldPort !== null) unregisterPort?.(project.id, oldPort)
-      if (newPort !== null) registerPort?.(project.id, newPort)
+      if (oldPort !== null) {
+        unregisterPort?.(project.id, oldPort)
+        window.electronAPI.ports.unregister({ projectId: project.id, port: oldPort }).catch(() => {})
+      }
+      if (newPort !== null) {
+        registerPort?.(project.id, newPort)
+        window.electronAPI.ports.register({ projectId: project.id, port: newPort }).catch(() => {})
+      }
       lastPortRef.current = newPort
     }
 
     return () => {
       // Cleanup on unmount
       const port = lastPortRef.current
-      if (port !== null) unregisterPort?.(project.id, port)
+      if (port !== null) {
+        unregisterPort?.(project.id, port)
+        window.electronAPI.ports.unregister({ projectId: project.id, port }).catch(() => {})
+      }
     }
   }, [browserUrl, project.id, registerPort, unregisterPort])
 
@@ -89,27 +101,33 @@ export function useBrowserPane({
   const handleLocalhostDetected = useCallback(
     (url: string) => {
       const port = extractLocalhostPort(url)
+
+      // Step 1: Check renderer-side registry for conflicts (fast, synchronous)
       if (port !== null && getPortOwner) {
         const owner = getPortOwner(port)
         if (owner !== null && owner !== project.id) {
-          window.dispatchEvent(
-            new CustomEvent('app:show-toast', {
-              detail: {
-                kind: 'warning',
-                projectId: project.id,
-                projectName: project.name,
-                message: `Port ${port} is already in use by another project`,
-              },
-            }),
-          )
+          emit('app:show-toast', {
+            kind: 'warning',
+            projectId: project.id,
+            projectName: project.name,
+            message: `Port ${port} is already in use by another project`,
+          })
           return
         }
       }
+
+      // Step 2: Register in both renderer-side and main-process registries
+      if (port !== null) {
+        registerPort?.(project.id, port)
+        window.electronAPI.ports.register({ projectId: project.id, port }).catch(() => {})
+      }
+
+      // Step 3: Open browser pane
       setBrowserUrl(url)
       setViewMode('focused')
-      window.dispatchEvent(new Event('sidebar:collapse'))
+      emit('sidebar:collapse')
     },
-    [getPortOwner, project.id, project.name],
+    [getPortOwner, registerPort, project.id, project.name],
   )
 
   const handleChangeViewMode = useCallback((mode: BrowserViewMode) => {
@@ -124,7 +142,7 @@ export function useBrowserPane({
   const toggleBrowser = useCallback(() => {
     setViewMode((prev) => {
       if (prev === 'closed') {
-        window.dispatchEvent(new Event('sidebar:collapse'))
+        emit('sidebar:collapse')
         return 'split'
       }
       return 'closed'
@@ -134,41 +152,38 @@ export function useBrowserPane({
   // Only listen for browser events when this workspace is visible.
   useEffect(() => {
     if (!isVisible) return
-    const handler = (e: Event) => {
-      const mode = (e as CustomEvent).detail as BrowserViewMode
+    return on('browser:set-view-mode', (mode) => {
       setViewMode((prev) => {
         if (mode === 'focused' && prev === 'focused') return 'split'
         previousModeRef.current = prev === 'closed' ? 'split' : prev
         return mode
       })
-    }
-    window.addEventListener('browser:set-view-mode', handler)
-    return () => window.removeEventListener('browser:set-view-mode', handler)
+    })
   }, [isVisible])
 
   // Navigate the embedded browser when a localhost link is clicked in the terminal
   useEffect(() => {
     if (!isVisible) return
-    const handler = (e: Event) => {
-      const url = (e as CustomEvent).detail as string
+    console.log('[useBrowserPane] registering browser:navigate listener')
+    return on('browser:navigate', (url) => {
+      console.log('[useBrowserPane] browser:navigate received:', url)
       setBrowserUrl(url)
       setViewMode((prev) => {
         if (prev === 'closed') {
-          window.dispatchEvent(new Event('sidebar:collapse'))
+          emit('sidebar:collapse')
           return 'split'
         }
         return prev
       })
-    }
-    window.addEventListener('browser:navigate', handler)
-    return () => window.removeEventListener('browser:navigate', handler)
+    })
   }, [isVisible])
 
   // Fire resize after view mode transitions settle.
+  // CSS transition on .workspace-terminal/.workspace-browser is 200ms,
+  // so fire well after it completes to ensure xterm fits to final dimensions.
   useEffect(() => {
     if (viewMode === 'split' || viewMode === 'closed') {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
-      return () => clearTimeout(t)
+      triggerResize(350)
     }
   }, [viewMode])
 
@@ -181,8 +196,7 @@ export function useBrowserPane({
   // Fire resize when becoming visible so terminals + browser recalculate dimensions.
   useEffect(() => {
     if (isVisible) {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
-      return () => clearTimeout(t)
+      triggerResize()
     }
   }, [isVisible])
 

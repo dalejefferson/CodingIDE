@@ -25,6 +25,7 @@ import {
   buildSettingsAPI,
   buildFileOpsAPI,
   buildIdeasAPI,
+  buildPortsAPI,
 } from './api/misc'
 
 const electronAPI: ElectronAPI = {
@@ -46,6 +47,7 @@ const electronAPI: ElectronAPI = {
   expo: buildExpoAPI(),
   wordVomit: buildWordVomitAPI(),
   ideas: buildIdeasAPI(),
+  ports: buildPortsAPI(),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

@@ -7,6 +7,7 @@ export interface UseIdeasReturn {
   createIdea: (request: CreateIdeaRequest) => Promise<Idea>
   updateIdea: (request: UpdateIdeaRequest) => Promise<void>
   deleteIdea: (id: string) => Promise<void>
+  deleteIdeasByProjectId: (projectId: string) => Promise<number>
 }
 
 export function useIdeas(): UseIdeasReturn {
@@ -58,5 +59,11 @@ export function useIdeas(): UseIdeasReturn {
     setIdeas((prev) => prev.filter((i) => i.id !== id))
   }, [])
 
-  return { ideas, loading, createIdea, updateIdea, deleteIdea }
+  const deleteIdeasByProjectId = useCallback(async (projectId: string): Promise<number> => {
+    const removed = await window.electronAPI.ideas.deleteByProjectId(projectId)
+    setIdeas((prev) => prev.filter((i) => i.projectId !== projectId))
+    return removed
+  }, [])
+
+  return { ideas, loading, createIdea, updateIdea, deleteIdea, deleteIdeasByProjectId }
 }

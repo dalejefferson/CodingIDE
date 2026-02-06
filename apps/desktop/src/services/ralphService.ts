@@ -77,7 +77,7 @@ class RalphService {
    *
    * @returns The full path to the created worktree directory.
    */
-  createWorktree(ticket: Ticket): string {
+  async createWorktree(ticket: Ticket): Promise<string> {
     return createWorktree(ticket)
   }
 

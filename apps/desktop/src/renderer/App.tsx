@@ -29,6 +29,8 @@ import { useIdeaHandlers } from './hooks/useIdeaHandlers'
 import { useWordVomitHandlers } from './hooks/useWordVomitHandlers'
 import { useAppNavigation } from './hooks/useAppNavigation'
 import { useProjectActions } from './hooks/useProjectActions'
+import { triggerResize } from './utils/triggerResize'
+import { on } from './utils/eventBus'
 import type { TerminalGridHandle } from './components/TerminalGrid'
 import './styles/App.css'
 
@@ -49,7 +51,8 @@ export function App() {
   const projectsRef = useRef(pa.projects)
   projectsRef.current = pa.projects
 
-  const { getPortOwner, registerPort, unregisterPort } = usePortRegistry()
+  const { getPortOwner, registerPort, unregisterPort, getProjectPorts, unregisterAllForProject } =
+    usePortRegistry()
 
   const getGridRef = useCallback((projectId: string) => {
     let ref = gridRefsRef.current.get(projectId)
@@ -90,27 +93,21 @@ export function App() {
 
   // Collapse sidebar when browser pane opens
   useEffect(() => {
-    const handler = () => nav.setSidebarCollapsed(true)
-    window.addEventListener('sidebar:collapse', handler)
-    return () => window.removeEventListener('sidebar:collapse', handler)
+    return on('sidebar:collapse', () => nav.setSidebarCollapsed(true))
   }, [nav])
 
   // After sidebar collapse/expand transition, fire resize
   useEffect(() => {
     if (!pa.sidebarMountedRef.current) { pa.sidebarMountedRef.current = true; return }
-    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 250)
-    return () => clearTimeout(t)
+    triggerResize(250)
   }, [nav.sidebarCollapsed, pa.sidebarMountedRef])
 
   // Run terminal commands dispatched from other components
   useEffect(() => {
-    const handler = (e: Event) => {
-      const command = (e as CustomEvent).detail as string
+    return on('terminal:run-command', (command) => {
       if (!nav.activeProjectId) return
       gridRefsRef.current.get(nav.activeProjectId)?.current?.runCommand(command)
-    }
-    window.addEventListener('terminal:run-command', handler)
-    return () => window.removeEventListener('terminal:run-command', handler)
+    })
   }, [nav.activeProjectId])
 
   useAppKeyboard({
@@ -142,10 +139,23 @@ export function App() {
 
   const handleRemoveProject = useCallback(
     async (id: string) => {
+      // Kill all PTY processes for this project before removing it.
+      // The main-process REMOVE_PROJECT handler also calls killAllForProject,
+      // but we call killAll from the renderer too to ensure the grid's exit
+      // listeners fire synchronously and clean up xterm instances.
+      await window.electronAPI.terminal.killAll(id)
+
+      // Unregister ports from main-process service before clearing renderer registry
+      const ports = getProjectPorts(id)
+      for (const port of ports) {
+        window.electronAPI.ports.unregister({ projectId: id, port }).catch(() => {})
+      }
+      unregisterAllForProject(id)
+
       await pa.handleRemoveProject(id)
       gridRefsRef.current.delete(id)
     },
-    [pa],
+    [pa, getProjectPorts, unregisterAllForProject],
   )
 
   const noPanel = !nav.settingsOpen && !nav.kanbanOpen && !nav.appBuilderOpen && !nav.ideaLogOpen

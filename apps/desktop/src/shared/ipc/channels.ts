@@ -81,6 +81,13 @@ export const IPC_CHANNELS = {
   IDEA_CREATE: 'ipc:idea-create',
   IDEA_UPDATE: 'ipc:idea-update',
   IDEA_DELETE: 'ipc:idea-delete',
+  IDEA_DELETE_BY_PROJECT: 'ipc:idea-delete-by-project',
+  // ── Port Service ────────────────────────────────────────────
+  PORT_CHECK: 'ipc:port-check',
+  PORT_FIND_AVAILABLE: 'ipc:port-find-available',
+  PORT_REGISTER: 'ipc:port-register',
+  PORT_UNREGISTER: 'ipc:port-unregister',
+  PORT_GET_OWNER: 'ipc:port-get-owner',
 } as const
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

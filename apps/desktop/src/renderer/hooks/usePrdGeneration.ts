@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import type { ExpoTemplate } from '@shared/types'
+import { emit } from '../utils/eventBus'
 
 // ── Generation state types ────────────────────────────────────────
 
@@ -25,11 +26,7 @@ export interface MobilePrdGen {
 // ── Toast helper ─────────────────────────────────────────────────
 
 function showPrdToast(message: string, kind: 'prd' | 'warning' = 'prd') {
-  window.dispatchEvent(
-    new CustomEvent('app:show-toast', {
-      detail: { kind, projectId: '', projectName: '', message },
-    }),
-  )
+  emit('app:show-toast', { kind, projectId: '', projectName: '', message })
 }
 
 // ── Hook ──────────────────────────────────────────────────────────

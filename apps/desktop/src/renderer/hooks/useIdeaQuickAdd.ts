@@ -4,7 +4,7 @@
  * state, and keyboard/button handlers for creating ideas.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import type { IdeaPriority } from '@shared/types'
 
 interface UseIdeaQuickAddOptions {
@@ -22,7 +22,7 @@ export function useIdeaQuickAdd({ createIdea }: UseIdeaQuickAddOptions) {
   const [quickProjectId, setQuickProjectId] = useState<string | null>(null)
   const [quickPriority, setQuickPriority] = useState<string | null>(null)
   const [showExpanded, setShowExpanded] = useState(false)
-  const quickInputRef = useRef<HTMLInputElement>(null)
+  const [isAdding, setIsAdding] = useState(false)
 
   const resetQuickAdd = useCallback(() => {
     setQuickTitle('')
@@ -30,6 +30,7 @@ export function useIdeaQuickAdd({ createIdea }: UseIdeaQuickAddOptions) {
     setQuickProjectId(null)
     setQuickPriority(null)
     setShowExpanded(false)
+    setIsAdding(false)
   }, [])
 
   const handleQuickCreate = useCallback(async () => {
@@ -82,8 +83,7 @@ export function useIdeaQuickAdd({ createIdea }: UseIdeaQuickAddOptions) {
   }, [quickTitle, handleQuickCreate])
 
   const handleGhostCardClick = useCallback(() => {
-    quickInputRef.current?.focus()
-    quickInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setIsAdding(true)
   }, [])
 
   return {
@@ -92,7 +92,7 @@ export function useIdeaQuickAdd({ createIdea }: UseIdeaQuickAddOptions) {
     quickProjectId,
     quickPriority,
     showExpanded,
-    quickInputRef,
+    isAdding,
     setQuickTitle,
     setQuickDescription,
     setQuickProjectId,

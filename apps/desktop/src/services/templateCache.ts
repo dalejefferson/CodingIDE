@@ -6,20 +6,46 @@
  * This eliminates network dependency and speeds up project creation.
  */
 
-import {
-  existsSync,
-  mkdirSync,
-  cpSync,
-  readFileSync,
-  writeFileSync,
-  rmSync,
-  statSync,
-} from 'node:fs'
+import { access, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { execSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { logger } from '@services/logger'
 import type { ExpoTemplate, TemplateStatus, TemplateStatusResponse } from '@shared/types'
 import { EXPO_TEMPLATES } from '@shared/types'
+
+// ── Helpers ──────────────────────────────────────────────────
+
+/** Async existence check using fs/promises access. */
+async function exists(p: string): Promise<boolean> {
+  try {
+    await access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Extract a tar.gz archive to a directory, returning a Promise. */
+function extractTarGz(archivePath: string, destDir: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('tar', ['-xzf', archivePath, '-C', destDir], {
+      stdio: 'ignore',
+      timeout: 30_000,
+    })
+
+    child.on('error', (err) => {
+      reject(err)
+    })
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(`tar exited with code ${code}`))
+      }
+    })
+  })
+}
 
 // ── Constants ──────────────────────────────────────────────────
 
@@ -43,11 +69,13 @@ export class TemplateCacheService {
   constructor(resourcesDir: string, cacheDir: string) {
     this.resourcesDir = resourcesDir
     this.cacheDir = cacheDir
+  }
 
-    // Ensure cache directory exists
-    if (!existsSync(this.cacheDir)) {
-      mkdirSync(this.cacheDir, { recursive: true })
-      logger.info('TemplateCache: created cache directory', { cacheDir })
+  /** Ensure the cache directory exists (lazy init, replaces sync constructor logic). */
+  private async ensureCacheDir(): Promise<void> {
+    if (!(await exists(this.cacheDir))) {
+      await mkdir(this.cacheDir, { recursive: true })
+      logger.info('TemplateCache: created cache directory', { cacheDir: this.cacheDir })
     }
   }
 
@@ -56,17 +84,19 @@ export class TemplateCacheService {
    * Skips any template that already has a valid package.json in the cache.
    */
   async ensureExtracted(): Promise<void> {
+    await this.ensureCacheDir()
+
     for (const template of EXPO_TEMPLATES) {
       const extractedDir = join(this.cacheDir, template)
       const marker = join(extractedDir, 'package.json')
 
-      if (existsSync(marker)) {
+      if (await exists(marker)) {
         logger.debug('TemplateCache: already extracted', { template })
         continue
       }
 
       const archivePath = join(this.resourcesDir, `${template}.tar.gz`)
-      if (!existsSync(archivePath)) {
+      if (!(await exists(archivePath))) {
         logger.warn('TemplateCache: archive not found, skipping', { template, archivePath })
         continue
       }
@@ -76,33 +106,31 @@ export class TemplateCacheService {
       try {
         // Extract to a temp location within cacheDir, then rename
         const tmpExtract = join(this.cacheDir, `_extracting_${template}`)
-        if (existsSync(tmpExtract)) {
-          rmSync(tmpExtract, { recursive: true, force: true })
+        if (await exists(tmpExtract)) {
+          await rm(tmpExtract, { recursive: true, force: true })
         }
-        mkdirSync(tmpExtract, { recursive: true })
+        await mkdir(tmpExtract, { recursive: true })
 
-        execSync(`tar -xzf "${archivePath}" -C "${tmpExtract}"`, {
-          timeout: 30_000,
-        })
+        await extractTarGz(archivePath, tmpExtract)
 
         // The archive contains a folder like "template-blank/", move its contents
         const innerDir = join(tmpExtract, ARCHIVE_PREFIX[template])
-        if (existsSync(innerDir)) {
+        if (await exists(innerDir)) {
           // Remove existing target if partial extraction happened before
-          if (existsSync(extractedDir)) {
-            rmSync(extractedDir, { recursive: true, force: true })
+          if (await exists(extractedDir)) {
+            await rm(extractedDir, { recursive: true, force: true })
           }
-          cpSync(innerDir, extractedDir, { recursive: true })
+          await cp(innerDir, extractedDir, { recursive: true })
         } else {
           // Fallback: archive may have extracted directly
-          if (existsSync(extractedDir)) {
-            rmSync(extractedDir, { recursive: true, force: true })
+          if (await exists(extractedDir)) {
+            await rm(extractedDir, { recursive: true, force: true })
           }
-          cpSync(tmpExtract, extractedDir, { recursive: true })
+          await cp(tmpExtract, extractedDir, { recursive: true })
         }
 
         // Clean up temp extraction folder
-        rmSync(tmpExtract, { recursive: true, force: true })
+        await rm(tmpExtract, { recursive: true, force: true })
 
         logger.info('TemplateCache: extraction complete', { template })
       } catch (err: unknown) {
@@ -120,15 +148,19 @@ export class TemplateCacheService {
    *
    * @returns Full path to the created project directory.
    */
-  createFromTemplate(template: ExpoTemplate, targetDir: string, appName: string): string {
+  async createFromTemplate(
+    template: ExpoTemplate,
+    targetDir: string,
+    appName: string,
+  ): Promise<string> {
     const sourceDir = join(this.cacheDir, template)
     const destDir = join(targetDir, appName)
 
-    if (!existsSync(sourceDir)) {
+    if (!(await exists(sourceDir))) {
       throw new Error(`Template "${template}" is not extracted. Run ensureExtracted() first.`)
     }
 
-    if (existsSync(destDir)) {
+    if (await exists(destDir)) {
       throw new Error(`Target directory already exists: ${destDir}`)
     }
 
@@ -139,15 +171,15 @@ export class TemplateCacheService {
     })
 
     // Copy entire template
-    cpSync(sourceDir, destDir, { recursive: true })
+    await cp(sourceDir, destDir, { recursive: true })
 
     // Patch package.json name
     const pkgPath = join(destDir, 'package.json')
-    if (existsSync(pkgPath)) {
+    if (await exists(pkgPath)) {
       try {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+        const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'))
         pkg.name = appName
-        writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8')
+        await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8')
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err)
         logger.warn('TemplateCache: failed to patch package.json', { error: message })
@@ -156,14 +188,14 @@ export class TemplateCacheService {
 
     // Patch app.json name and slug
     const appJsonPath = join(destDir, 'app.json')
-    if (existsSync(appJsonPath)) {
+    if (await exists(appJsonPath)) {
       try {
-        const appJson = JSON.parse(readFileSync(appJsonPath, 'utf-8'))
+        const appJson = JSON.parse(await readFile(appJsonPath, 'utf-8'))
         if (appJson.expo) {
           appJson.expo.name = appName
           appJson.expo.slug = appName
         }
-        writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2) + '\n', 'utf-8')
+        await writeFile(appJsonPath, JSON.stringify(appJson, null, 2) + '\n', 'utf-8')
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err)
         logger.warn('TemplateCache: failed to patch app.json', { error: message })
@@ -183,8 +215,8 @@ export class TemplateCacheService {
 
     for (const template of EXPO_TEMPLATES) {
       const extractedDir = join(this.cacheDir, template)
-      if (existsSync(extractedDir)) {
-        rmSync(extractedDir, { recursive: true, force: true })
+      if (await exists(extractedDir)) {
+        await rm(extractedDir, { recursive: true, force: true })
         logger.debug('TemplateCache: removed cached template', { template })
       }
     }
@@ -195,23 +227,26 @@ export class TemplateCacheService {
   /**
    * Return readiness status for all templates.
    */
-  getStatus(): TemplateStatusResponse {
-    const templates: TemplateStatus[] = EXPO_TEMPLATES.map((template) => {
+  async getStatus(): Promise<TemplateStatusResponse> {
+    const templates: TemplateStatus[] = []
+
+    for (const template of EXPO_TEMPLATES) {
       const extractedDir = join(this.cacheDir, template)
       const marker = join(extractedDir, 'package.json')
-      const ready = existsSync(marker)
+      const ready = await exists(marker)
 
       let extractedAt: number | null = null
       if (ready) {
         try {
-          extractedAt = statSync(marker).mtimeMs
+          const s = await stat(marker)
+          extractedAt = s.mtimeMs
         } catch {
           // Ignore stat errors
         }
       }
 
-      return { template, ready, extractedAt }
-    })
+      templates.push({ template, ready, extractedAt })
+    }
 
     const allReady = templates.every((t) => t.ready)
     return { templates, allReady }
@@ -220,9 +255,9 @@ export class TemplateCacheService {
   /**
    * Check whether a specific template is extracted and ready.
    */
-  isReady(template: ExpoTemplate): boolean {
+  async isReady(template: ExpoTemplate): Promise<boolean> {
     const extractedDir = join(this.cacheDir, template)
     const marker = join(extractedDir, 'package.json')
-    return existsSync(marker)
+    return exists(marker)
   }
 }

@@ -57,6 +57,14 @@ import type {
   Idea,
   CreateIdeaRequest,
   UpdateIdeaRequest,
+  PortCheckRequest,
+  PortCheckResponse,
+  PortFindAvailableRequest,
+  PortFindAvailableResponse,
+  PortRegisterRequest,
+  PortUnregisterRequest,
+  PortGetOwnerRequest,
+  PortGetOwnerResponse,
 } from '../types'
 import { IPC_CHANNELS } from './channels'
 
@@ -361,5 +369,30 @@ export interface IPCContracts {
   [IPC_CHANNELS.IDEA_DELETE]: {
     request: string
     response: void
+  }
+  [IPC_CHANNELS.IDEA_DELETE_BY_PROJECT]: {
+    request: string
+    response: number
+  }
+  // ── Port Service ────────────────────────────────────────────
+  [IPC_CHANNELS.PORT_CHECK]: {
+    request: PortCheckRequest
+    response: PortCheckResponse
+  }
+  [IPC_CHANNELS.PORT_FIND_AVAILABLE]: {
+    request: PortFindAvailableRequest
+    response: PortFindAvailableResponse
+  }
+  [IPC_CHANNELS.PORT_REGISTER]: {
+    request: PortRegisterRequest
+    response: void
+  }
+  [IPC_CHANNELS.PORT_UNREGISTER]: {
+    request: PortUnregisterRequest
+    response: void
+  }
+  [IPC_CHANNELS.PORT_GET_OWNER]: {
+    request: PortGetOwnerRequest
+    response: PortGetOwnerResponse
   }
 }

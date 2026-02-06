@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import type { CommandCompletionEvent } from '@shared/types'
 import { ToastItemView, formatDuration } from './ToastItem'
+import { on } from '../utils/eventBus'
 import '../styles/Toast.css'
 
 const MAX_VISIBLE = 3
@@ -176,13 +177,7 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
 
   // Listen for custom toast events (e.g. port conflict warnings)
   useEffect(() => {
-    const handler = (e: Event) => {
-      const { kind, projectId, projectName, message } = (e as CustomEvent).detail as {
-        kind: ToastKind
-        projectId: string
-        projectName: string
-        message?: string
-      }
+    return on('app:show-toast', ({ kind, projectId, projectName, message }) => {
       const id = `toast-${++nextId.current}`
       setToasts((prev) => {
         const next = [
@@ -192,9 +187,7 @@ function ToastContainer({ activeProjectId, onFocusProject }: ToastContainerProps
         if (next.length > MAX_VISIBLE) return next.slice(next.length - MAX_VISIBLE)
         return next
       })
-    }
-    window.addEventListener('app:show-toast', handler)
-    return () => window.removeEventListener('app:show-toast', handler)
+    })
   }, [])
 
   const handleClick = useCallback(

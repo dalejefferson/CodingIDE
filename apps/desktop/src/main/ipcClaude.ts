@@ -1,18 +1,28 @@
 /**
- * Claude Activity Polling
+ * Claude Activity Polling — Adaptive Backoff
  *
- * Polls terminal buffers every 5 seconds for Claude activity indicators,
- * detects status transitions (idle → running → done), and broadcasts
- * changes to the renderer. Uses shallow-equality diffing to suppress
- * redundant IPC (~95% reduction in steady state).
+ * Polls terminal buffers for Claude activity indicators using a recursive
+ * setTimeout chain with exponential backoff. Polls fast (2s) when Claude
+ * is active and slows down (up to 30s) when idle. Detects status
+ * transitions (idle → running → done) and broadcasts changes to the
+ * renderer. Uses shallow-equality diffing to suppress redundant IPC
+ * (~95% reduction in steady state).
  */
 
 import { shallowEqual, broadcastStatusChange } from './ipcHelpers'
 import type { TerminalService } from '@services/terminalService'
 import type { ProjectStore } from '@services/projectStore'
 
+/** Fast polling when Claude is actively running */
+const MIN_POLL_MS = 2_000
+/** Slow polling ceiling when idle */
+const MAX_POLL_MS = 30_000
+/** How quickly we ramp toward MAX_POLL_MS when idle */
+const BACKOFF_MULTIPLIER = 1.5
+
 export interface ClaudePollingState {
-  interval: ReturnType<typeof setInterval>
+  /** Call to stop the polling loop and release the timer. */
+  dispose: () => void
   lastActivity: Record<string, number>
   lastStatus: Record<string, string>
 }
@@ -24,8 +34,13 @@ export function setupClaudePolling(
 ): ClaudePollingState {
   let lastClaudeActivity: Record<string, number> = {}
   let lastClaudeStatus: Record<string, string> = {}
+  let pollIntervalMs = 5_000
+  let timerId: ReturnType<typeof setTimeout> | null = null
+  let disposed = false
 
-  const interval = setInterval(async () => {
+  async function poll(): Promise<void> {
+    if (disposed) return
+
     // Early exit: skip poll if no terminals exist
     if (!terminalService.hasAny()) {
       // Clear stale data if terminals were destroyed
@@ -35,6 +50,7 @@ export function setupClaudePolling(
         sendToRendererFn('claude:activity', {})
         sendToRendererFn('claude:status', {})
       }
+      scheduleNext()
       return
     }
 
@@ -73,11 +89,37 @@ export function setupClaudePolling(
       if (activityChanged) sendToRendererFn('claude:activity', activity)
       if (statusChanged) sendToRendererFn('claude:status', statusMap)
     }
-  }, 5000)
+
+    // ── Adaptive backoff ───────────────────────────────────────
+    const hasActivity = Object.values(activity).some((count) => count > 0)
+    if (hasActivity) {
+      // Claude is working — poll as fast as possible
+      pollIntervalMs = MIN_POLL_MS
+    } else {
+      // Idle — exponentially back off up to the ceiling
+      pollIntervalMs = Math.min(pollIntervalMs * BACKOFF_MULTIPLIER, MAX_POLL_MS)
+    }
+
+    scheduleNext()
+  }
+
+  function scheduleNext(): void {
+    if (disposed) return
+    timerId = setTimeout(poll, pollIntervalMs)
+  }
+
+  // Kick off the first poll
+  scheduleNext()
 
   // Return mutable state object so the orchestrator can read lastActivity
   const state: ClaudePollingState = {
-    interval,
+    dispose() {
+      disposed = true
+      if (timerId !== null) {
+        clearTimeout(timerId)
+        timerId = null
+      }
+    },
     get lastActivity() {
       return lastClaudeActivity
     },

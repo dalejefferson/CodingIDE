@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { CommandPreset } from '@shared/types'
+import { on } from '../utils/eventBus'
 import '../styles/CommandLauncher.css'
 
 interface CommandLauncherProps {
@@ -58,9 +59,7 @@ export function CommandLauncher({ projectId, onRunCommand }: CommandLauncherProp
 
   // Cmd+P global shortcut triggers play
   useEffect(() => {
-    const handler = () => handlePlayClick()
-    window.addEventListener('command-launcher:play', handler)
-    return () => window.removeEventListener('command-launcher:play', handler)
+    return on('command-launcher:play', () => handlePlayClick())
   }, [handlePlayClick])
 
   const handleRunDirect = useCallback(() => {

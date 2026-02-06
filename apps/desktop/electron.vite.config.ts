@@ -62,7 +62,13 @@ export default defineConfig({
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom'],
-            'vendor-xterm': ['@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-web-links'],
+            'vendor-xterm': [
+              '@xterm/xterm',
+              '@xterm/addon-fit',
+              '@xterm/addon-web-links',
+              '@xterm/addon-webgl',
+            ],
+            'vendor-dnd': ['@hello-pangea/dnd'],
           },
         },
       },

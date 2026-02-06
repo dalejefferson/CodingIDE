@@ -76,25 +76,45 @@ export function useTerminalResize(): TerminalResizeController {
       document.addEventListener('transitionend', handleTransitionEnd, true)
       document.addEventListener('transitioncancel', handleTransitionEnd, true)
 
+      const doFit = () => {
+        if (disposed) return
+        if (Date.now() < suppressUntilRef.current) return
+        fitAddon.fit()
+        const { cols, rows } = term
+        if (cols >= 10 && rows >= 2) {
+          window.electronAPI.terminal.resize({ terminalId, cols, rows })
+        }
+      }
+
       const resizeObserver = new ResizeObserver(() => {
         cancelAnimationFrame(resizeRaf)
         resizeRaf = requestAnimationFrame(() => {
           if (disposed) return
           if (transitionCount > 0) return
-          if (Date.now() < suppressUntilRef.current) return
-          fitAddon.fit()
-          const { cols, rows } = term
-          if (cols >= 10 && rows >= 2) {
-            window.electronAPI.terminal.resize({ terminalId, cols, rows })
-          }
+          doFit()
         })
       })
       resizeObserver.observe(container)
+
+      // Fallback: listen for window resize events (fired by triggerResize utility)
+      // to catch layout changes that the ResizeObserver may miss, e.g. when flex
+      // siblings shrink/grow but the container's final size settles after the
+      // ResizeObserver already fired during the transition suppression window.
+      const handleWindowResize = () => {
+        cancelAnimationFrame(resizeRaf)
+        resizeRaf = requestAnimationFrame(() => {
+          if (disposed) return
+          if (transitionCount > 0) return
+          doFit()
+        })
+      }
+      window.addEventListener('resize', handleWindowResize)
 
       return () => {
         disposed = true
         cancelAnimationFrame(resizeRaf)
         resizeObserver.disconnect()
+        window.removeEventListener('resize', handleWindowResize)
         document.removeEventListener('transitionstart', handleTransitionStart, true)
         document.removeEventListener('transitionend', handleTransitionEnd, true)
         document.removeEventListener('transitioncancel', handleTransitionEnd, true)

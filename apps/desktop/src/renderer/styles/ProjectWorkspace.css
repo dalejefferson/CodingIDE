@@ -94,7 +94,7 @@
 }
 
 .workspace-panels--split .workspace-terminal {
-  min-width: 60px;
+  min-width: 200px;
   overflow: hidden;
 }
 

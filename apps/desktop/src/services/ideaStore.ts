@@ -129,4 +129,16 @@ export class IdeaStore {
     this.markDirty()
     return true
   }
+
+  deleteByProjectId(projectId: string): number {
+    const ideas = this.load()
+    const before = ideas.length
+    const remaining = ideas.filter((i) => i.projectId !== projectId)
+    const removed = before - remaining.length
+    if (removed > 0) {
+      this.ideas = remaining
+      this.markDirty()
+    }
+    return removed
+  }
 }

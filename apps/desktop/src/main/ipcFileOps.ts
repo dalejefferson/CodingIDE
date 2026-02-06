@@ -32,11 +32,11 @@ export function setupFileOpsIPC(router: IPCRouter, projectStore: ProjectStore): 
     return fileOps.writeFile(project.path, payload.relPath, payload.contents, payload.mode)
   })
 
-  router.handle(IPC_CHANNELS.FILE_LIST, (_event, payload) => {
+  router.handle(IPC_CHANNELS.FILE_LIST, async (_event, payload) => {
     const project = projectStore.getById(payload.projectId)
     if (!project) return []
     try {
-      return fileOps.listDir(project.path, payload.dirPath)
+      return await fileOps.listDir(project.path, payload.dirPath)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error(`[FILE_LIST] listDir failed for "${project.path}/${payload.dirPath}":`, msg)

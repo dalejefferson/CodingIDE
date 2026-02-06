@@ -82,7 +82,7 @@ export function setupRalphIPC(
   })
 
   // ── Ralph Execute ───────────────────────────────────────
-  router.handle(IPC_CHANNELS.RALPH_EXECUTE, (_event, payload) => {
+  router.handle(IPC_CHANNELS.RALPH_EXECUTE, async (_event, payload) => {
     const ticket = ticketStore.getById(payload.ticketId)
     if (!ticket) throw new Error(`Ticket not found: ${payload.ticketId}`)
     if (!ticket.prd || !ticket.prd.approved) throw new Error('PRD not approved')
@@ -96,7 +96,7 @@ export function setupRalphIPC(
     // Create worktree if basePath is set but full path is not
     if (!ticket.worktreePath && basePath) {
       const withBase = { ...ticket, worktreeBasePath: basePath }
-      const fullPath = ralphService.createWorktree(withBase)
+      const fullPath = await ralphService.createWorktree(withBase)
       ticketStore.setWorktreePath(ticket.id, basePath, fullPath)
       // Re-read ticket with updated path
       const refreshed = ticketStore.getById(ticket.id)

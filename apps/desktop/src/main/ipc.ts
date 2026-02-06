@@ -2,8 +2,8 @@
  * IPC Orchestrator
  *
  * Creates all stores, wires dependencies, and delegates handler
- * registration to domain-specific modules. Exports setupIPC()
- * and disposeIPC() — the only two entry points for the app lifecycle.
+ * registration to domain-specific modules. Exports setupIPC(),
+ * killAllTerminals(), and disposeIPC() for the app lifecycle.
  */
 
 import { app } from 'electron'
@@ -33,6 +33,7 @@ import { setupIdeaIPC } from './ipcIdea'
 import { setupClaudePolling, type ClaudePollingState } from './ipcClaude'
 import { setupRalphIPC } from './ipcRalph'
 import { setupExpoIPC } from './ipcExpo'
+import { setupPortIPC } from './ipcPort'
 
 let router: IPCRouter | null = null
 let projectStore: ProjectStore | null = null
@@ -107,13 +108,21 @@ export function setupIPC(): void {
     getMainWindow,
   )
 
+  // ── Port Service ──────────────────────────────────────────────
+  setupPortIPC(router)
+
   // ── Claude Activity Polling ─────────────────────────────────
   claudePolling = setupClaudePolling(terminalService, projectStore, sendToRenderer)
 }
 
+/** Kill all running PTY processes without tearing down IPC or stores. */
+export function killAllTerminals(): void {
+  terminalService?.killAll()
+}
+
 export async function disposeIPC(): Promise<void> {
   if (claudePolling) {
-    clearInterval(claudePolling.interval)
+    claudePolling.dispose()
     claudePolling = null
   }
   if (expoServiceRef) {

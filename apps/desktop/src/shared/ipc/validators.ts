@@ -32,6 +32,13 @@ import {
 } from '../expoValidators'
 import { isGenerateWordVomitPRDRequest } from '../wordVomitValidators'
 import { isCreateIdeaRequest, isUpdateIdeaRequest } from '../ideaValidators'
+import {
+  isPortCheckRequest,
+  isPortFindAvailableRequest,
+  isPortRegisterRequest,
+  isPortUnregisterRequest,
+  isPortGetOwnerRequest,
+} from '../portValidators'
 
 // ── Runtime Validators ─────────────────────────────────────────
 
@@ -311,6 +318,13 @@ export const IPC_VALIDATORS: Record<IPCChannel, PayloadValidator> = {
   [IPC_CHANNELS.IDEA_CREATE]: isCreateIdeaRequest,
   [IPC_CHANNELS.IDEA_UPDATE]: isUpdateIdeaRequest,
   [IPC_CHANNELS.IDEA_DELETE]: isNonEmptyString,
+  [IPC_CHANNELS.IDEA_DELETE_BY_PROJECT]: isNonEmptyString,
+  // ── Port Service ────────────────────────────────────────────
+  [IPC_CHANNELS.PORT_CHECK]: isPortCheckRequest,
+  [IPC_CHANNELS.PORT_FIND_AVAILABLE]: isPortFindAvailableRequest,
+  [IPC_CHANNELS.PORT_REGISTER]: isPortRegisterRequest,
+  [IPC_CHANNELS.PORT_UNREGISTER]: isPortUnregisterRequest,
+  [IPC_CHANNELS.PORT_GET_OWNER]: isPortGetOwnerRequest,
 }
 
 // ── Validation Helpers ─────────────────────────────────────────

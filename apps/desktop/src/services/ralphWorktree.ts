@@ -5,8 +5,8 @@
  * a git repo, and writes a README with ticket context.
  */
 
-import { execSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Ticket } from '@shared/types'
 import { logger } from '@services/logger'
@@ -30,6 +30,23 @@ export function slugify(input: string): string {
 }
 
 /**
+ * Run `git init` in the given directory.
+ *
+ * Uses `spawn` instead of `execSync` so the main process event loop
+ * is never blocked while the child process runs.
+ */
+function gitInit(cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('git', ['init'], { cwd, stdio: 'pipe' })
+    proc.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`git init exited with code ${code}`))
+    })
+    proc.on('error', reject)
+  })
+}
+
+/**
  * Create an isolated worktree directory for a ticket.
  *
  * The directory is placed at `{ticket.worktreeBasePath}/{slug}/` where
@@ -38,7 +55,7 @@ export function slugify(input: string): string {
  *
  * @returns The full path to the created worktree directory.
  */
-export function createWorktree(ticket: Ticket): string {
+export async function createWorktree(ticket: Ticket): Promise<string> {
   if (!ticket.worktreeBasePath) {
     throw new Error(`Ticket "${ticket.id}" has no worktreeBasePath set`)
   }
@@ -51,11 +68,11 @@ export function createWorktree(ticket: Ticket): string {
   const worktreePath = join(ticket.worktreeBasePath, slug)
 
   // Create directory (recursive in case basePath doesn't exist yet)
-  mkdirSync(worktreePath, { recursive: true })
+  await mkdir(worktreePath, { recursive: true })
 
   // Initialize a git repo in the worktree
   try {
-    execSync('git init', { cwd: worktreePath, stdio: 'pipe' })
+    await gitInit(worktreePath)
     logger.info('Ralph: git init in worktree', { worktreePath })
   } catch (err) {
     logger.error('Ralph: git init failed', {
@@ -77,7 +94,7 @@ export function createWorktree(ticket: Ticket): string {
     `Priority: ${ticket.priority}`,
   ].join('\n')
 
-  writeFileSync(join(worktreePath, 'README.md'), readme, 'utf-8')
+  await writeFile(join(worktreePath, 'README.md'), readme, 'utf-8')
   logger.info('Ralph: worktree created', { worktreePath, ticketId: ticket.id })
 
   return worktreePath

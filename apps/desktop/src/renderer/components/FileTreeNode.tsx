@@ -1,6 +1,19 @@
 import React, { useMemo } from 'react'
 import type { FileEntry } from '@shared/types'
 
+/* ── FlatNode types (used by virtualizer) ─────────────────── */
+
+export type FlatNodeKind = 'dir' | 'file' | 'loading' | 'error' | 'empty'
+
+export interface FlatNode {
+  kind: FlatNodeKind
+  entry: FileEntry
+  depth: number
+  fullPath: string
+  parentPath: string
+  errorMsg?: string
+}
+
 /* ── SVG Icons ──────────────────────────────────────────────── */
 
 export function ChevronRightIcon() {
@@ -89,111 +102,88 @@ export function getFileIconClass(name: string): string {
   }
 }
 
-/* ── FileTreeNode (recursive sub-component) ─────────────────── */
+/* ── VirtualFileRow (flat, non-recursive row) ────────────────── */
 
-export interface FileTreeNodeProps {
-  entry: FileEntry
-  depth: number
-  parentPath: string
-  projectId: string
+export interface VirtualFileRowProps {
+  node: FlatNode
   selectedFile: string | null
   expandedDirs: Set<string>
   loadingDirs: Set<string>
-  errorDirs: Map<string, string>
-  entries: Map<string, FileEntry[]>
   onToggleDir: (path: string) => void
   onSelectFile: (path: string) => void
 }
 
-export const FileTreeNode = React.memo(function FileTreeNode({
-  entry,
-  depth,
-  parentPath,
-  projectId,
+export const VirtualFileRow = React.memo(function VirtualFileRow({
+  node,
   selectedFile,
   expandedDirs,
   loadingDirs,
-  errorDirs,
-  entries,
   onToggleDir,
   onSelectFile,
-}: FileTreeNodeProps) {
-  const fullPath = parentPath ? parentPath + '/' + entry.name : entry.name
-  const isExpanded = expandedDirs.has(fullPath)
-  const isLoading = loadingDirs.has(fullPath)
-  const hasError = errorDirs.has(fullPath)
-  const errorMsg = errorDirs.get(fullPath)
-  const isSelected = selectedFile === fullPath
-  const children = entries.get(fullPath)
+}: VirtualFileRowProps) {
+  const style = useMemo(() => ({ '--depth': node.depth }) as React.CSSProperties, [node.depth])
 
-  const style = useMemo(() => ({ '--depth': depth }) as React.CSSProperties, [depth])
-
-  if (entry.isDir) {
-    const nodeClasses = ['file-tree-node', 'file-tree-node--dir'].join(' ')
-
+  // Loading placeholder row
+  if (node.kind === 'loading') {
     return (
-      <>
-        <div
-          className={nodeClasses}
-          style={style}
-          onClick={() => onToggleDir(fullPath)}
-          role="treeitem"
-          aria-expanded={isExpanded}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onToggleDir(fullPath)
-            }
-          }}
-        >
-          <span className={`file-tree-chevron${isExpanded ? ' file-tree-chevron--expanded' : ''}`}>
-            <ChevronRightIcon />
-          </span>
-          <span className="file-tree-icon file-tree-icon--folder">
-            <FolderIcon open={isExpanded} />
-          </span>
-          <span className="file-tree-name">{entry.name}</span>
-          {isLoading && <span className="file-tree-spinner" />}
-        </div>
-
-        {hasError && (
-          <div className="file-tree-error" style={{ '--depth': depth + 1 } as React.CSSProperties}>
-            {errorMsg ?? 'Failed to load'}
-          </div>
-        )}
-
-        {isExpanded && children && (
-          <>
-            {children.length === 0 ? (
-              <div
-                className="file-tree-empty"
-                style={{ '--depth': depth + 1 } as React.CSSProperties}
-              >
-                Empty folder
-              </div>
-            ) : (
-              <SortedEntries
-                entries={children}
-                depth={depth + 1}
-                parentPath={fullPath}
-                projectId={projectId}
-                selectedFile={selectedFile}
-                expandedDirs={expandedDirs}
-                loadingDirs={loadingDirs}
-                errorDirs={errorDirs}
-                entriesMap={entries}
-                onToggleDir={onToggleDir}
-                onSelectFile={onSelectFile}
-              />
-            )}
-          </>
-        )}
-      </>
+      <div className="file-tree-empty" style={style}>
+        <span className="file-tree-spinner" /> Loading...
+      </div>
     )
   }
 
-  // File node
+  // Error placeholder row
+  if (node.kind === 'error') {
+    return (
+      <div className="file-tree-error" style={style}>
+        {node.errorMsg ?? 'Failed to load'}
+      </div>
+    )
+  }
+
+  // Empty folder placeholder row
+  if (node.kind === 'empty') {
+    return (
+      <div className="file-tree-empty" style={style}>
+        Empty folder
+      </div>
+    )
+  }
+
+  // Directory row
+  if (node.kind === 'dir') {
+    const isExpanded = expandedDirs.has(node.fullPath)
+    const isLoading = loadingDirs.has(node.fullPath)
+
+    return (
+      <div
+        className="file-tree-node file-tree-node--dir"
+        style={style}
+        onClick={() => onToggleDir(node.fullPath)}
+        role="treeitem"
+        aria-expanded={isExpanded}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggleDir(node.fullPath)
+          }
+        }}
+      >
+        <span className={`file-tree-chevron${isExpanded ? ' file-tree-chevron--expanded' : ''}`}>
+          <ChevronRightIcon />
+        </span>
+        <span className="file-tree-icon file-tree-icon--folder">
+          <FolderIcon open={isExpanded} />
+        </span>
+        <span className="file-tree-name">{node.entry.name}</span>
+        {isLoading && <span className="file-tree-spinner" />}
+      </div>
+    )
+  }
+
+  // File row
+  const isSelected = selectedFile === node.fullPath
   const fileClasses = ['file-tree-node', isSelected ? 'file-tree-node--selected' : '']
     .filter(Boolean)
     .join(' ')
@@ -202,80 +192,23 @@ export const FileTreeNode = React.memo(function FileTreeNode({
     <div
       className={fileClasses}
       style={style}
-      onClick={() => onSelectFile(fullPath)}
+      onClick={() => onSelectFile(node.fullPath)}
       role="treeitem"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onSelectFile(fullPath)
+          onSelectFile(node.fullPath)
         }
       }}
     >
       <span className="file-tree-chevron file-tree-chevron--spacer">
         <ChevronRightIcon />
       </span>
-      <span className={`file-tree-icon ${getFileIconClass(entry.name)}`}>
+      <span className={`file-tree-icon ${getFileIconClass(node.entry.name)}`}>
         <FileIcon />
       </span>
-      <span className="file-tree-name">{entry.name}</span>
+      <span className="file-tree-name">{node.entry.name}</span>
     </div>
-  )
-})
-
-/* ── SortedEntries (dirs first, then files, alphabetical) ──── */
-
-export interface SortedEntriesProps {
-  entries: FileEntry[]
-  depth: number
-  parentPath: string
-  projectId: string
-  selectedFile: string | null
-  expandedDirs: Set<string>
-  loadingDirs: Set<string>
-  errorDirs: Map<string, string>
-  entriesMap: Map<string, FileEntry[]>
-  onToggleDir: (path: string) => void
-  onSelectFile: (path: string) => void
-}
-
-export const SortedEntries = React.memo(function SortedEntries({
-  entries,
-  depth,
-  parentPath,
-  projectId,
-  selectedFile,
-  expandedDirs,
-  loadingDirs,
-  errorDirs,
-  entriesMap,
-  onToggleDir,
-  onSelectFile,
-}: SortedEntriesProps) {
-  const sorted = useMemo(() => {
-    const dirs = entries.filter((e) => e.isDir).sort((a, b) => a.name.localeCompare(b.name))
-    const files = entries.filter((e) => !e.isDir).sort((a, b) => a.name.localeCompare(b.name))
-    return [...dirs, ...files]
-  }, [entries])
-
-  return (
-    <>
-      {sorted.map((entry) => (
-        <FileTreeNode
-          key={entry.name}
-          entry={entry}
-          depth={depth}
-          parentPath={parentPath}
-          projectId={projectId}
-          selectedFile={selectedFile}
-          expandedDirs={expandedDirs}
-          loadingDirs={loadingDirs}
-          errorDirs={errorDirs}
-          entries={entriesMap}
-          onToggleDir={onToggleDir}
-          onSelectFile={onSelectFile}
-        />
-      ))}
-    </>
   )
 })

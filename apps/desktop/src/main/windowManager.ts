@@ -25,6 +25,7 @@ export function createMainWindow(): BrowserWindow {
       navigateOnDragDrop: false,
       webviewTag: true,
       backgroundThrottling: false,
+      v8CacheOptions: 'code',
     },
   })
 
