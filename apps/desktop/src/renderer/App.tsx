@@ -23,8 +23,12 @@ import { PrdGenerationIndicator } from './components/PrdGenerationIndicator'
 import { useTheme } from './hooks/useTheme'
 import { useExpoApps } from './hooks/useExpoApps'
 import { usePrdGeneration } from './hooks/usePrdGeneration'
+import { usePortRegistry } from './hooks/usePortRegistry'
+import { useAppKeyboard } from './hooks/useAppKeyboard'
+import { useIdeaHandlers } from './hooks/useIdeaHandlers'
+import { useWordVomitHandlers } from './hooks/useWordVomitHandlers'
 import type { TerminalGridHandle } from './components/TerminalGrid'
-import type { Project, Idea, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
+import type { Project, ClaudeActivityMap, ClaudeStatusMap } from '@shared/types'
 import './styles/App.css'
 
 export function App() {
@@ -47,23 +51,7 @@ export function App() {
   const projectsRef = useRef(projects)
   projectsRef.current = projects
 
-  // Port registry: port → projectId. Prevents browser pane port collisions across projects.
-  const portRegistryRef = useRef(new Map<number, string>())
-
-  const getPortOwner = useCallback((port: number): string | null => {
-    return portRegistryRef.current.get(port) ?? null
-  }, [])
-
-  const registerPort = useCallback((projectId: string, port: number) => {
-    portRegistryRef.current.set(port, projectId)
-  }, [])
-
-  const unregisterPort = useCallback((projectId: string, port: number) => {
-    // Only remove if this project actually owns the port
-    if (portRegistryRef.current.get(port) === projectId) {
-      portRegistryRef.current.delete(port)
-    }
-  }, [])
+  const { getPortOwner, registerPort, unregisterPort } = usePortRegistry()
 
   const getGridRef = useCallback((projectId: string) => {
     let ref = gridRefsRef.current.get(projectId)
@@ -193,107 +181,29 @@ export function App() {
     [loadProjects],
   )
 
-  // ── Word Vomit handlers ──────────────────────────────────────
-  const handleWordVomitToRalph = useCallback(
-    async (rawIdea: string, prdContent: string) => {
-      const title = rawIdea.split(/[.\n]/)[0]?.trim().slice(0, 60) || 'Word Vomit Idea'
-      await window.electronAPI.tickets.create({
-        title,
-        description: rawIdea,
-        acceptanceCriteria: [],
-        type: 'feature',
-        priority: 'medium',
-        projectId: null,
-        prd: { content: prdContent, generatedAt: Date.now(), approved: true },
-      })
-      handleOpenKanban()
-    },
-    [handleOpenKanban],
-  )
+  const { handleWordVomitToRalph, handleWordVomitToApp, handleWordVomitToProject } =
+    useWordVomitHandlers({
+      handleOpenKanban,
+      loadProjects,
+      setWordVomitPrdForApp,
+      setAppBuilderOpen,
+      setSettingsOpen,
+      setKanbanOpen,
+      setActiveProjectId,
+      setIdeaLogOpen,
+    })
 
-  const handleWordVomitToApp = useCallback((prdContent: string) => {
-    setWordVomitPrdForApp(prdContent)
-    setAppBuilderOpen(true)
-    setSettingsOpen(false)
-    setKanbanOpen(false)
-    setActiveProjectId(null)
-    setIdeaLogOpen(false)
-  }, [])
-
-  const handleWordVomitToProject = useCallback(
-    async (name: string, rawIdea: string, prdContent: string) => {
-      const folderPath = await window.electronAPI.projects.createFolder({ name })
-      if (!folderPath) return
-
-      const project = await window.electronAPI.projects.add({ path: folderPath })
-
-      // Save PRD into the project folder
-      await window.electronAPI.fileOps.createFile({
-        projectId: project.id,
-        relPath: '.prd/prd.md',
-        contents: prdContent,
-        mkdirp: true,
-      })
-
-      // Save the raw idea as context
-      await window.electronAPI.fileOps.createFile({
-        projectId: project.id,
-        relPath: '.prd/raw-idea.md',
-        contents: `# Original Idea\n\n${rawIdea}`,
-        mkdirp: true,
-      })
-
-      await loadProjects()
-      setActiveProjectId(project.id)
-    },
-    [loadProjects],
-  )
-
-  // ── Idea Log action handlers ─────────────────────────────────
-  const handleIdeaBuildAsApp = useCallback((idea: Idea) => {
-    setWordVomitPrdForApp(idea.description || `# ${idea.title}\n\nBuild an app for: ${idea.title}`)
-    setAppBuilderOpen(true)
-    setSettingsOpen(false)
-    setKanbanOpen(false)
-    setActiveProjectId(null)
-    setIdeaLogOpen(false)
-  }, [])
-
-  const handleIdeaSendToBacklog = useCallback(
-    async (idea: Idea) => {
-      await window.electronAPI.tickets.create({
-        title: idea.title,
-        description: idea.description || idea.title,
-        acceptanceCriteria: [],
-        type: 'feature',
-        priority: idea.priority === 'high' ? 'high' : idea.priority === 'low' ? 'low' : 'medium',
-        projectId: idea.projectId,
-      })
-      handleOpenKanban()
-    },
-    [handleOpenKanban],
-  )
-
-  const handleIdeaWorkInTerminal = useCallback(
-    async (idea: Idea) => {
-      try {
-        const safeName =
-          idea.title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '') || 'new-idea'
-        const folderPath = await window.electronAPI.projects.createFolder({ name: safeName })
-        if (!folderPath) return
-        const project = await window.electronAPI.projects.add({ path: folderPath })
-        await loadProjects()
-        setActiveProjectId(project.id)
-        setIdeaLogOpen(false)
-      } catch (err) {
-        console.error('Failed to create project from idea:', err)
-      }
-    },
-    [loadProjects],
-  )
+  const { handleIdeaBuildAsApp, handleIdeaSendToBacklog, handleIdeaWorkInTerminal } =
+    useIdeaHandlers({
+      handleOpenKanban,
+      loadProjects,
+      setWordVomitPrdForApp,
+      setAppBuilderOpen,
+      setSettingsOpen,
+      setKanbanOpen,
+      setActiveProjectId,
+      setIdeaLogOpen,
+    })
 
   useEffect(() => {
     loadProjects()
@@ -322,8 +232,7 @@ export function App() {
     return () => window.removeEventListener('sidebar:collapse', handler)
   }, [])
 
-  // After sidebar collapse/expand transition completes, fire resize so all
-  // terminal panes re-fit to their new dimensions. Skip on initial mount.
+  // After sidebar collapse/expand transition completes, fire resize
   const sidebarMountedRef = useRef(false)
   useEffect(() => {
     if (!sidebarMountedRef.current) {
@@ -334,7 +243,7 @@ export function App() {
     return () => clearTimeout(t)
   }, [sidebarCollapsed])
 
-  // Run terminal commands dispatched from other components (e.g. Send to Claude)
+  // Run terminal commands dispatched from other components
   useEffect(() => {
     const handler = (e: Event) => {
       const command = (e as CustomEvent).detail as string
@@ -344,6 +253,20 @@ export function App() {
     window.addEventListener('terminal:run-command', handler)
     return () => window.removeEventListener('terminal:run-command', handler)
   }, [activeProjectId])
+
+  useAppKeyboard({
+    cyclePalette,
+    cycleFont,
+    toggleSidebar,
+    handleOpenFolder,
+    projectsRef,
+    activeProjectIdRef,
+    setActiveProjectId,
+    setSettingsOpen,
+    setKanbanOpen,
+    setAppBuilderOpen,
+    setIdeaLogOpen,
+  })
 
   const totalActiveClaudes = useMemo(
     () => Object.values(claudeActivity).reduce((sum, n) => sum + n, 0),
@@ -357,108 +280,6 @@ export function App() {
     },
     [activeProjectId],
   )
-
-  /**
-   * Global keyboard handler.
-   *
-   * Cmd/Ctrl+N — open folder dialog (new project)
-   * Cmd/Ctrl+P — open command launcher
-   * Cmd/Ctrl+B — toggle sidebar
-   * Cmd/Ctrl+T — cycle through color palettes
-   * Cmd/Ctrl+F — cycle through fonts
-   * Ctrl+Tab   — cycle projects forward
-   */
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-        e.preventDefault()
-        handleOpenFolder()
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
-        e.preventDefault()
-        window.dispatchEvent(new Event('command-launcher:play'))
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault()
-        toggleSidebar()
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 't') {
-        e.preventDefault()
-        cyclePalette()
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
-        e.preventDefault()
-        cycleFont()
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
-        e.preventDefault()
-        setKanbanOpen((prev) => {
-          if (!prev) {
-            setSettingsOpen(false)
-            setActiveProjectId(null)
-            setAppBuilderOpen(false)
-            setIdeaLogOpen(false)
-          }
-          return !prev
-        })
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'm') {
-        e.preventDefault()
-        setAppBuilderOpen((prev) => {
-          if (!prev) {
-            setSettingsOpen(false)
-            setKanbanOpen(false)
-            setActiveProjectId(null)
-            setIdeaLogOpen(false)
-          }
-          return !prev
-        })
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
-        e.preventDefault()
-        setIdeaLogOpen((prev) => {
-          if (!prev) {
-            setSettingsOpen(false)
-            setKanbanOpen(false)
-            setAppBuilderOpen(false)
-            setActiveProjectId(null)
-          }
-          return !prev
-        })
-        return
-      }
-
-      if (e.ctrlKey && e.key === 'Tab') {
-        e.preventDefault()
-        const currentProjects = projectsRef.current
-        if (currentProjects.length < 2) return
-        const currentIdx = currentProjects.findIndex((p) => p.id === activeProjectIdRef.current)
-        const nextIdx = (currentIdx + 1) % currentProjects.length
-        setActiveProjectId(currentProjects[nextIdx].id)
-        setSettingsOpen(false)
-        setAppBuilderOpen(false)
-        setIdeaLogOpen(false)
-        return
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cyclePalette, cycleFont, toggleSidebar, handleOpenFolder])
 
   const handleRemoveProject = useCallback(
     async (id: string) => {

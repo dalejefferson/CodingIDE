@@ -8,6 +8,7 @@ import type {
   TicketPriority,
 } from '@shared/types'
 import { VALID_TRANSITIONS, TICKET_TYPES, TICKET_PRIORITIES } from '@shared/types'
+import { TicketPRDSection } from './TicketPRDSection'
 import '../../styles/TicketDetailModal.css'
 
 interface TicketDetailModalProps {
@@ -52,13 +53,12 @@ export function TicketDetailModal({
   onClearPrdGenError,
 }: TicketDetailModalProps) {
   const [mode, setMode] = useState<'view' | 'edit'>('view')
-  const [prdError, setPrdError] = useState<string | null>(null)
 
   // Use parent-provided generating state; fall back to local for legacy usage
   const generatingPRD = prdGenerating
 
-  // Sync parent error into local display
-  const displayPrdError = prdGenError ?? prdError
+  // Parent error passed through for display
+  const displayPrdError = prdGenError ?? null
 
   // ── Edit-mode form state ──────────────────────────────────────────────
   const [title, setTitle] = useState(ticket.title)
@@ -308,58 +308,14 @@ export function TicketDetailModal({
         )}
 
         {/* PRD */}
-        <div className="ticket-detail-section">
-          <h3 className="ticket-detail-section-title" style={fi}>
-            PRD
-          </h3>
-          {!ticket.prd && (
-            <>
-              <button
-                className="ticket-detail-btn ticket-detail-btn--accent"
-                style={fi}
-                disabled={generatingPRD}
-                onClick={() => {
-                  setPrdError(null)
-                  onClearPrdGenError?.()
-                  onGeneratePRD(ticket.id)
-                }}
-              >
-                {generatingPRD ? (
-                  <>
-                    <span className="ticket-detail-spinner" />
-                    Generating...
-                  </>
-                ) : (
-                  'Generate PRD'
-                )}
-              </button>
-              {displayPrdError && (
-                <p className="ticket-detail-prd-error" style={fi}>
-                  {displayPrdError}
-                </p>
-              )}
-            </>
-          )}
-          {ticket.prd && !ticket.prd.approved && (
-            <div className="ticket-detail-prd">
-              <pre className="ticket-detail-prd-content" style={fi}>
-                {ticket.prd.content}
-              </pre>
-              <button
-                className="ticket-detail-btn ticket-detail-btn--accent"
-                style={fi}
-                onClick={() => onApprovePRD(ticket.id)}
-              >
-                Approve PRD
-              </button>
-            </div>
-          )}
-          {ticket.prd && ticket.prd.approved && (
-            <span className="ticket-detail-badge ticket-detail-badge--prd-approved" style={fi}>
-              PRD Approved
-            </span>
-          )}
-        </div>
+        <TicketPRDSection
+          ticket={ticket}
+          generatingPRD={generatingPRD}
+          displayPrdError={displayPrdError}
+          onGeneratePRD={onGeneratePRD}
+          onApprovePRD={onApprovePRD}
+          onClearPrdGenError={onClearPrdGenError}
+        />
 
         {/* Transition actions */}
         {nextStatuses.length > 0 && (

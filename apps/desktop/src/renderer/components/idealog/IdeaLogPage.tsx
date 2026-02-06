@@ -1,6 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useIdeas } from '../../hooks/useIdeas'
 import { useDragIdea } from '../../hooks/useDragIdea'
+import { IdeaEditForm } from './IdeaEditForm'
+import { IdeaCard } from './IdeaCard'
+import { IdeaQuickAdd } from './IdeaQuickAdd'
 import type { Idea, IdeaPriority, Project } from '@shared/types'
 import '../../styles/IdeaLog.css'
 
@@ -107,24 +110,13 @@ export function IdeaLogPage({
     setShowExpanded(false)
   }, [])
 
-  const toggleFolder = useCallback((projectId: string) => {
-    setCollapsedFolders((prev) => {
-      const next = new Set(prev)
-      if (next.has(projectId)) next.delete(projectId)
-      else next.add(projectId)
-      return next
-    })
-  }, [])
-
   const handleFolderClick = useCallback(
     (projectId: string) => {
-      // If already filtering to this project, clear the filter
       if (filterProjectId === projectId) {
         setFilterProjectId(null)
       } else {
         setFilterProjectId(projectId)
       }
-      // Expand the folder when clicked
       setCollapsedFolders((prev) => {
         const next = new Set(prev)
         next.delete(projectId)
@@ -255,225 +247,43 @@ export function IdeaLogPage({
 
   // ── Render helpers ───────────────────────────────────────────
 
-  const renderEditForm = (idea: Idea) => (
-    <div key={idea.id} className="idea-log__form idea-log__form--edit">
-      <input
-        className="idea-log__input"
-        type="text"
-        value={editTitle}
-        onChange={(e) => setEditTitle(e.target.value)}
-        onKeyDown={handleEditInputKeyDown}
-        autoFocus
-      />
-      <textarea
-        className="idea-log__textarea"
-        value={editDescription}
-        onChange={(e) => setEditDescription(e.target.value)}
-        onKeyDown={handleEditTextareaKeyDown}
-        rows={3}
-      />
-      <div className="idea-log__form-footer">
-        <div className="idea-log__form-selects">
-          <select
-            className="idea-log__select"
-            value={editProjectId ?? ''}
-            onChange={(e) => setEditProjectId(e.target.value || null)}
-          >
-            <option value="">No project</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="idea-log__select"
-            value={editPriority ?? ''}
-            onChange={(e) => setEditPriority(e.target.value || null)}
-          >
-            <option value="">No priority</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-        <div className="idea-log__form-buttons">
-          <button className="idea-log__btn idea-log__btn--ghost" onClick={handleCancelEdit}>
-            Cancel
-          </button>
-          <button
-            className="idea-log__btn idea-log__btn--primary"
-            onClick={handleSaveEdit}
-            disabled={!editTitle.trim()}
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-
   const renderCard = (idea: Idea, showProjectBadge: boolean) => {
-    if (editingId === idea.id) return renderEditForm(idea)
-
-    const isDragging = dragState.draggingId === idea.id
+    if (editingId === idea.id) {
+      return (
+        <IdeaEditForm
+          key={idea.id}
+          idea={idea}
+          editTitle={editTitle}
+          editDescription={editDescription}
+          editProjectId={editProjectId}
+          editPriority={editPriority}
+          projects={projects}
+          onEditTitleChange={setEditTitle}
+          onEditDescriptionChange={setEditDescription}
+          onEditProjectIdChange={setEditProjectId}
+          onEditPriorityChange={setEditPriority}
+          onSave={handleSaveEdit}
+          onCancel={handleCancelEdit}
+          onInputKeyDown={handleEditInputKeyDown}
+          onTextareaKeyDown={handleEditTextareaKeyDown}
+        />
+      )
+    }
 
     return (
-      <div
+      <IdeaCard
         key={idea.id}
-        className={`idea-log__card${isDragging ? ' idea-log__card--dragging' : ''}`}
-        {...getDragProps(idea.id)}
-      >
-        <div className="idea-log__card-handle">
-          <div className="idea-log__card-handle-row">
-            <span className="idea-log__card-handle-dot" />
-            <span className="idea-log__card-handle-dot" />
-          </div>
-          <div className="idea-log__card-handle-row">
-            <span className="idea-log__card-handle-dot" />
-            <span className="idea-log__card-handle-dot" />
-          </div>
-          <div className="idea-log__card-handle-row">
-            <span className="idea-log__card-handle-dot" />
-            <span className="idea-log__card-handle-dot" />
-          </div>
-        </div>
-        <div className="idea-log__card-content">
-          <h3 className="idea-log__card-title">{idea.title}</h3>
-          {idea.description && <p className="idea-log__card-desc">{idea.description}</p>}
-          <div className="idea-log__card-badges">
-            {showProjectBadge && idea.projectId && (
-              <span className="idea-log__card-project">
-                {getProjectName(idea.projectId) ?? 'Unknown project'}
-              </span>
-            )}
-            {idea.priority && (
-              <span className={`idea-log__card-priority idea-log__card-priority--${idea.priority}`}>
-                {idea.priority}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="idea-log__card-actions">
-          <button
-            className="idea-log__icon-btn"
-            onClick={() => handleStartEdit(idea.id)}
-            title="Edit"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M10 1.5l2.5 2.5L4.5 12H2v-2.5L10 1.5z" />
-            </svg>
-          </button>
-          <button
-            className="idea-log__icon-btn"
-            onClick={() => handleDelete(idea.id)}
-            title="Delete"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2.5 3.5h9M5 3.5V2.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M9.5 3.5v7.5a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V3.5" />
-            </svg>
-          </button>
-          <button
-            className="idea-log__icon-btn"
-            onClick={() => alert('PRD generation coming soon')}
-            title="Generate PRD"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 11.5h10M4 8.5l3-6 3 6H4z" />
-            </svg>
-          </button>
-          <span className="idea-log__card-action-divider" />
-          {onBuildAsApp && (
-            <button
-              className="idea-log__icon-btn"
-              onClick={() => onBuildAsApp(idea)}
-              title="Build as app"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="1.5" width="8" height="11" rx="1.5" />
-                <path d="M6 10.5h2" />
-              </svg>
-            </button>
-          )}
-          {onSendToBacklog && (
-            <button
-              className="idea-log__icon-btn"
-              onClick={() => onSendToBacklog(idea)}
-              title="Send to Ralph Loop backlog"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="1.5" y="2" width="11" height="10" rx="1" />
-                <path d="M1.5 5h11M5 5v7M9 5v7" />
-              </svg>
-            </button>
-          )}
-          {onWorkInTerminal && (
-            <button
-              className="idea-log__icon-btn"
-              onClick={() => onWorkInTerminal(idea)}
-              title="Work in terminal"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 4.5l3 2.5-3 2.5M7.5 10H11" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
+        idea={idea}
+        showProjectBadge={showProjectBadge}
+        isDragging={dragState.draggingId === idea.id}
+        projectName={getProjectName(idea.projectId)}
+        dragProps={getDragProps(idea.id)}
+        onStartEdit={handleStartEdit}
+        onDelete={handleDelete}
+        onBuildAsApp={onBuildAsApp}
+        onSendToBacklog={onSendToBacklog}
+        onWorkInTerminal={onWorkInTerminal}
+      />
     )
   }
 
@@ -655,74 +465,26 @@ export function IdeaLogPage({
         </div>
       </div>
 
-      {/* QUICK ADD BAR — pinned to bottom */}
-      <div className="idea-log__quick-add">
-        <div className="idea-log__quick-add-row">
-          <input
-            ref={quickInputRef}
-            className="idea-log__quick-add-input"
-            type="text"
-            placeholder="What's your idea?"
-            value={quickTitle}
-            onChange={(e) => setQuickTitle(e.target.value)}
-            onKeyDown={handleQuickInputKeyDown}
-            onFocus={() => !showExpanded && setShowExpanded(false)}
-          />
-          <button className="idea-log__quick-add-btn" onClick={handleQuickAddBtnClick}>
-            +
-          </button>
-        </div>
-        {showExpanded && (
-          <div className="idea-log__quick-add-expanded">
-            <textarea
-              className="idea-log__textarea"
-              placeholder="Describe your idea (optional)..."
-              value={quickDescription}
-              onChange={(e) => setQuickDescription(e.target.value)}
-              onKeyDown={handleQuickTextareaKeyDown}
-              rows={3}
-            />
-            <div className="idea-log__quick-add-footer">
-              <div className="idea-log__quick-add-selects">
-                <select
-                  className="idea-log__select"
-                  value={quickProjectId ?? ''}
-                  onChange={(e) => setQuickProjectId(e.target.value || null)}
-                >
-                  <option value="">No project</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="idea-log__select"
-                  value={quickPriority ?? ''}
-                  onChange={(e) => setQuickPriority(e.target.value || null)}
-                >
-                  <option value="">No priority</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-              <div className="idea-log__quick-add-buttons">
-                <button className="idea-log__btn idea-log__btn--ghost" onClick={resetQuickAdd}>
-                  Cancel
-                </button>
-                <button
-                  className="idea-log__btn idea-log__btn--primary"
-                  onClick={handleQuickCreate}
-                  disabled={!quickTitle.trim()}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* QUICK ADD BAR -- pinned to bottom */}
+      <IdeaQuickAdd
+        quickInputRef={quickInputRef}
+        quickTitle={quickTitle}
+        quickDescription={quickDescription}
+        quickProjectId={quickProjectId}
+        quickPriority={quickPriority}
+        showExpanded={showExpanded}
+        projects={projects}
+        onQuickTitleChange={setQuickTitle}
+        onQuickDescriptionChange={setQuickDescription}
+        onQuickProjectIdChange={setQuickProjectId}
+        onQuickPriorityChange={setQuickPriority}
+        onInputKeyDown={handleQuickInputKeyDown}
+        onTextareaKeyDown={handleQuickTextareaKeyDown}
+        onAddBtnClick={handleQuickAddBtnClick}
+        onQuickCreate={handleQuickCreate}
+        onReset={resetQuickAdd}
+        onFocusInput={() => !showExpanded && setShowExpanded(false)}
+      />
     </div>
   )
 }

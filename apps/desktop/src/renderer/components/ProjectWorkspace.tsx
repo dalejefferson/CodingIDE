@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import type { Ref } from 'react'
-import type { Project, BrowserViewMode } from '@shared/types'
+import type { Project } from '@shared/types'
 import { TerminalGrid } from './TerminalGrid'
 import type { TerminalGridHandle } from './TerminalGrid'
 import { BrowserPane } from './BrowserPane'
@@ -8,6 +8,10 @@ import { InlineTerminalDrawer } from './InlineTerminalDrawer'
 import { FileTree } from './FileTree'
 import type { FileTreeHandle } from './FileTree'
 import { CodeViewer } from './CodeViewer'
+import { ChangePrompt } from './ChangePrompt'
+import { useBrowserPane } from '../hooks/useBrowserPane'
+import { usePipResize } from '../hooks/usePipResize'
+import { useWorkspaceKeyboard } from '../hooks/useWorkspaceKeyboard'
 import '../styles/ProjectWorkspace.css'
 
 interface PickedChange {
@@ -28,13 +32,6 @@ interface ProjectWorkspaceProps {
   unregisterPort?: (projectId: string, port: number) => void
 }
 
-/** Extract the port number from a localhost URL, or null if not a localhost URL */
-function extractLocalhostPort(url: string | undefined): number | null {
-  if (!url) return null
-  const match = url.match(/^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)/i)
-  return match ? parseInt(match[1], 10) : null
-}
-
 function ProjectWorkspace({
   project,
   palette,
@@ -44,22 +41,20 @@ function ProjectWorkspace({
   registerPort,
   unregisterPort,
 }: ProjectWorkspaceProps) {
-  // Restore persisted browser state from the project, or default to closed/undefined.
-  // Only restore split/focused if there's actually a URL to show — otherwise the browser
-  // pane opens to a blank white page and wastes screen space.
-  const [viewMode, setViewMode] = useState<BrowserViewMode>(() => {
-    const persisted = project.browserViewMode
-    if (!persisted || persisted === 'closed') return 'closed'
-    if (!project.browserUrl) return 'closed'
-    return persisted
+  const bp = useBrowserPane({
+    project,
+    isVisible,
+    getPortOwner,
+    registerPort,
+    unregisterPort,
   })
-  const [browserUrl, setBrowserUrl] = useState<string | undefined>(project.browserUrl ?? undefined)
-  const [splitRatio, setSplitRatio] = useState(0.35)
-  const [isDragging, setIsDragging] = useState(false)
-  const [pipPos, setPipPos] = useState<{ x: number; y: number } | null>(null)
-  const [pipSize, setPipSize] = useState<{ w: number; h: number }>({ w: 400, h: 300 })
-  const panelsRef = useRef<HTMLDivElement>(null)
-  const previousModeRef = useRef<BrowserViewMode>('split')
+
+  const { handlePipDragStart, handlePipResizeStart } = usePipResize({
+    pipPos: bp.pipPos,
+    pipSize: bp.pipSize,
+    setPipPos: bp.setPipPos,
+    setPipSize: bp.setPipSize,
+  })
 
   // Inline terminal drawer state (toggled per-pane terminal)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -84,73 +79,25 @@ function ProjectWorkspace({
     setSelectedFile(null)
   }, [])
 
-  // File ops modal state
-
   // Change-chaining state
   const [pickedChanges, setPickedChanges] = useState<PickedChange[]>([])
   const [pendingPick, setPendingPick] = useState<string | null>(null)
   const [changeInput, setChangeInput] = useState('')
-  const changeInputRef = useRef<HTMLInputElement>(null)
 
-  // Track which port this project is using and register/deregister on change
-  const lastPortRef = useRef<number | null>(extractLocalhostPort(browserUrl))
-  useEffect(() => {
-    const newPort = extractLocalhostPort(browserUrl)
-    const oldPort = lastPortRef.current
-
-    if (oldPort !== newPort) {
-      if (oldPort !== null) unregisterPort?.(project.id, oldPort)
-      if (newPort !== null) registerPort?.(project.id, newPort)
-      lastPortRef.current = newPort
-    }
-
-    return () => {
-      // Cleanup on unmount
-      const port = lastPortRef.current
-      if (port !== null) unregisterPort?.(project.id, port)
-    }
-  }, [browserUrl, project.id, registerPort, unregisterPort])
-
-  // Persist browser URL to disk when it changes (debounced to avoid write spam)
-  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
-    persistTimerRef.current = setTimeout(() => {
-      window.electronAPI.browser
-        .setProjectBrowser({
-          id: project.id,
-          browserUrl: browserUrl ?? null,
-          browserViewMode: viewMode,
-        })
-        .catch(() => {})
-    }, 500)
-    return () => {
-      if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
-    }
-  }, [browserUrl, viewMode, project.id])
-
-  const browserVisible = viewMode !== 'closed'
-  const showSplitBrowser = viewMode === 'split' || viewMode === 'focused'
-  // Track whether the browser has ever been opened so we can keep the webview
-  // mounted after the first open (avoids expensive re-init on every toggle).
-  const [browserEverOpened, setBrowserEverOpened] = useState(browserVisible)
-  useEffect(() => {
-    if (browserVisible && !browserEverOpened) setBrowserEverOpened(true)
-  }, [browserVisible, browserEverOpened])
-
-  const handleBrowserUrlChange = useCallback((url: string) => {
-    setBrowserUrl(url)
-  }, [])
+  useWorkspaceKeyboard({
+    isVisible,
+    viewMode: bp.viewMode,
+    previousModeRef: bp.previousModeRef,
+    setViewMode: bp.setViewMode,
+    toggleBrowser: bp.toggleBrowser,
+    toggleDrawer,
+    handleToggleExplorer,
+  })
 
   const handlePickElement = useCallback((formatted: string) => {
     setPendingPick(formatted)
     setChangeInput('')
   }, [])
-
-  // Focus the input when a new element is picked
-  useEffect(() => {
-    if (pendingPick) changeInputRef.current?.focus()
-  }, [pendingPick])
 
   const handleSubmitChange = useCallback(() => {
     if (!pendingPick || !changeInput.trim()) return
@@ -173,16 +120,13 @@ function ProjectWorkspace({
     })
     const prompt = lines.join('\n')
     const escaped = prompt.replace(/'/g, "'\\''")
-    // Ensure the browser is in split mode so the drawer under it is visible.
-    // If the user was in fullscreen/pip/focused, switch to split so the
-    // terminal drawer slides up underneath the browser pane.
-    setViewMode('split')
+    bp.setViewMode('split')
     setDrawerOpen(true)
     setDrawerPendingCommand(`cc '${escaped}'`)
     setPickedChanges([])
     setPendingPick(null)
     setChangeInput('')
-  }, [pickedChanges])
+  }, [pickedChanges, bp])
 
   const handleClearChanges = useCallback(() => {
     setPickedChanges([])
@@ -190,282 +134,14 @@ function ProjectWorkspace({
     setChangeInput('')
   }, [])
 
-  const handleLocalhostDetected = useCallback(
-    (url: string) => {
-      // Check if another project already owns this port
-      const port = extractLocalhostPort(url)
-      if (port !== null && getPortOwner) {
-        const owner = getPortOwner(port)
-        if (owner !== null && owner !== project.id) {
-          // Port is used by another project — notify user instead of silently ignoring
-          window.dispatchEvent(
-            new CustomEvent('app:show-toast', {
-              detail: {
-                kind: 'warning',
-                projectId: project.id,
-                projectName: project.name,
-                message: `Port ${port} is already in use by another project`,
-              },
-            }),
-          )
-          return
-        }
-      }
-      setBrowserUrl(url)
-      setViewMode('focused')
-      window.dispatchEvent(new Event('sidebar:collapse'))
-    },
-    [getPortOwner, project.id, project.name],
-  )
-
-  const handleChangeViewMode = useCallback((mode: BrowserViewMode) => {
-    setViewMode((prev) => {
-      if (mode !== 'closed') {
-        previousModeRef.current = prev === 'closed' ? 'split' : prev
-      }
-      return mode
-    })
-  }, [])
-
-  const toggleBrowser = useCallback(() => {
-    setViewMode((prev) => {
-      if (prev === 'closed') {
-        window.dispatchEvent(new Event('sidebar:collapse'))
-        return 'split'
-      }
-      return 'closed'
-    })
-  }, [])
-
-  // Only listen for browser events when this workspace is visible.
-  // Hidden workspaces don't need to respond to global browser events.
-  useEffect(() => {
-    if (!isVisible) return
-    const handler = (e: Event) => {
-      const mode = (e as CustomEvent).detail as BrowserViewMode
-      setViewMode((prev) => {
-        if (mode === 'focused' && prev === 'focused') return 'split'
-        previousModeRef.current = prev === 'closed' ? 'split' : prev
-        return mode
-      })
-    }
-    window.addEventListener('browser:set-view-mode', handler)
-    return () => window.removeEventListener('browser:set-view-mode', handler)
-  }, [isVisible])
-
-  // Navigate the embedded browser when a localhost link is clicked in the terminal
-  useEffect(() => {
-    if (!isVisible) return
-    const handler = (e: Event) => {
-      const url = (e as CustomEvent).detail as string
-      setBrowserUrl(url)
-      setViewMode((prev) => {
-        if (prev === 'closed') {
-          window.dispatchEvent(new Event('sidebar:collapse'))
-          return 'split'
-        }
-        return prev
-      })
-    }
-    window.addEventListener('browser:navigate', handler)
-    return () => window.removeEventListener('browser:navigate', handler)
-  }, [isVisible])
-
-  // Consolidated keyboard handler — single listener instead of 4 separate ones.
-  // Skips all shortcuts when the workspace is hidden.
-  useEffect(() => {
-    if (!isVisible) return
-    const handler = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey
-
-      // Escape: exit fullscreen/pip
-      if (e.key === 'Escape' && (viewMode === 'fullscreen' || viewMode === 'pip')) {
-        e.preventDefault()
-        e.stopPropagation()
-        setViewMode(previousModeRef.current)
-        return
-      }
-
-      if (!mod || e.shiftKey) return
-
-      // Cmd+G: toggle browser
-      if (e.key === 'g') {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleBrowser()
-        return
-      }
-
-      // Cmd+`: toggle inline terminal drawer
-      if (e.key === '`') {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleDrawer()
-        return
-      }
-
-      // Cmd+E: toggle file explorer
-      if (e.key === 'e') {
-        e.preventDefault()
-        handleToggleExplorer()
-      }
-    }
-    window.addEventListener('keydown', handler, true)
-    return () => window.removeEventListener('keydown', handler, true)
-  }, [isVisible, viewMode, toggleBrowser, toggleDrawer, handleToggleExplorer])
-
-  // Fire resize after view mode transitions settle. The CSS transitions are
-  // 200ms — the transitionend listener in TerminalPane handles fitting during
-  // the transition. This timeout is a fallback to ensure a final fit happens.
-  useEffect(() => {
-    if (viewMode === 'split' || viewMode === 'closed') {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
-      return () => clearTimeout(t)
-    }
-  }, [viewMode])
-
-  useEffect(() => {
-    if (viewMode === 'pip') {
-      setPipPos({ x: window.innerWidth - pipSize.w - 16, y: window.innerHeight - pipSize.h - 16 })
-    }
-  }, [viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fire resize when becoming visible so terminals + browser recalculate dimensions.
-  // Use 220ms to clear any CSS transitions that may still be settling.
-  useEffect(() => {
-    if (isVisible) {
-      const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 220)
-      return () => clearTimeout(t)
-    }
-  }, [isVisible])
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    const parent = panelsRef.current
-    if (!parent) return
-    setIsDragging(true)
-    document.body.classList.add('is-resizing-h')
-    const parentRect = parent.getBoundingClientRect()
-    let rafId = 0
-    const onMouseMove = (ev: MouseEvent) => {
-      cancelAnimationFrame(rafId)
-      rafId = requestAnimationFrame(() => {
-        const ratio = (ev.clientX - parentRect.left) / parentRect.width
-        setSplitRatio(Math.max(0.05, Math.min(0.95, ratio)))
-      })
-    }
-    const onMouseUp = () => {
-      cancelAnimationFrame(rafId)
-      setIsDragging(false)
-      document.body.classList.remove('is-resizing-h')
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
-    }
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-  }, [])
-
-  const handlePipDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      if (!pipPos) return
-      e.preventDefault()
-      const startX = e.clientX - pipPos.x
-      const startY = e.clientY - pipPos.y
-      let rafId = 0
-      const onMouseMove = (ev: MouseEvent) => {
-        cancelAnimationFrame(rafId)
-        rafId = requestAnimationFrame(() => {
-          const x = Math.max(-350, Math.min(window.innerWidth - 50, ev.clientX - startX))
-          const y = Math.max(0, Math.min(window.innerHeight - 50, ev.clientY - startY))
-          setPipPos({ x, y })
-        })
-      }
-      const onMouseUp = () => {
-        cancelAnimationFrame(rafId)
-        window.removeEventListener('mousemove', onMouseMove)
-        window.removeEventListener('mouseup', onMouseUp)
-      }
-      window.addEventListener('mousemove', onMouseMove)
-      window.addEventListener('mouseup', onMouseUp)
-    },
-    [pipPos],
-  )
-
-  const PIP_MIN_W = 280
-  const PIP_MIN_H = 200
-  const PIP_MAX_W = 1200
-  const PIP_MAX_H = 900
-
-  const handlePipResizeStart = useCallback(
-    (e: React.MouseEvent, edge: string) => {
-      if (!pipPos) return
-      e.preventDefault()
-      e.stopPropagation()
-      const startX = e.clientX
-      const startY = e.clientY
-      const startW = pipSize.w
-      const startH = pipSize.h
-      const startPosX = pipPos.x
-      const startPosY = pipPos.y
-
-      let rafId = 0
-      const onMouseMove = (ev: MouseEvent) => {
-        cancelAnimationFrame(rafId)
-        rafId = requestAnimationFrame(() => {
-          const dx = ev.clientX - startX
-          const dy = ev.clientY - startY
-          let newW = startW
-          let newH = startH
-          let newX = startPosX
-          let newY = startPosY
-
-          if (edge.includes('e')) newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, startW + dx))
-          if (edge.includes('s')) newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, startH + dy))
-          if (edge.includes('w')) {
-            const proposedW = startW - dx
-            newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, proposedW))
-            newX = startPosX + (startW - newW)
-          }
-          if (edge.includes('n')) {
-            const proposedH = startH - dy
-            newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, proposedH))
-            newY = startPosY + (startH - newH)
-          }
-
-          setPipSize({ w: newW, h: newH })
-          setPipPos({ x: newX, y: newY })
-        })
-      }
-
-      const onMouseUp = () => {
-        cancelAnimationFrame(rafId)
-        window.removeEventListener('mousemove', onMouseMove)
-        window.removeEventListener('mouseup', onMouseUp)
-      }
-      window.addEventListener('mousemove', onMouseMove)
-      window.addEventListener('mouseup', onMouseUp)
-    },
-    [pipPos, pipSize],
-  )
-
-  // Use individual flex properties instead of the `flex` shorthand to avoid
-  // the shorthand resetting `flex-basis` when applied after it in inline styles.
-  // In 'closed' mode, omit inline flex so the CSS `flex: 1` rule fills the space.
-  const terminalStyle =
-    viewMode === 'split'
-      ? { flexGrow: 0, flexShrink: 0, flexBasis: `${splitRatio * 100}%` }
-      : viewMode === 'focused'
-        ? { flexGrow: 0, flexShrink: 0, flexBasis: '28px', overflow: 'hidden' as const }
-        : {}
-
   const browserPane = (
     <BrowserPane
-      initialUrl={browserUrl}
+      initialUrl={bp.browserUrl}
       projectId={project.id}
       onPickElement={handlePickElement}
-      onUrlChange={handleBrowserUrlChange}
-      viewMode={viewMode}
-      onChangeViewMode={handleChangeViewMode}
+      onUrlChange={bp.handleBrowserUrlChange}
+      viewMode={bp.viewMode}
+      onChangeViewMode={bp.handleChangeViewMode}
     />
   )
 
@@ -515,9 +191,9 @@ function ProjectWorkspace({
         </button>
         <button
           type="button"
-          className={`workspace-toggle-btn${browserVisible ? ' workspace-toggle-btn--active' : ''}`}
-          onClick={toggleBrowser}
-          title={browserVisible ? 'Hide browser' : 'Show browser'}
+          className={`workspace-toggle-btn${bp.browserVisible ? ' workspace-toggle-btn--active' : ''}`}
+          onClick={bp.toggleBrowser}
+          title={bp.browserVisible ? 'Hide browser' : 'Show browser'}
         >
           <svg
             width="14"
@@ -536,8 +212,8 @@ function ProjectWorkspace({
       </div>
 
       <div
-        ref={panelsRef}
-        className={`workspace-panels${browserEverOpened ? ' workspace-panels--split' : ''}`}
+        ref={bp.panelsRef}
+        className={`workspace-panels${bp.browserEverOpened ? ' workspace-panels--split' : ''}`}
       >
         {explorerOpen && (
           <div className="workspace-explorer">
@@ -626,13 +302,13 @@ function ProjectWorkspace({
           </div>
         )}
         <div
-          className={`workspace-terminal${viewMode === 'focused' ? ' workspace-terminal--collapsed' : ''}`}
-          style={terminalStyle}
+          className={`workspace-terminal${bp.viewMode === 'focused' ? ' workspace-terminal--collapsed' : ''}`}
+          style={bp.terminalStyle}
         >
-          {viewMode === 'focused' && (
+          {bp.viewMode === 'focused' && (
             <div
               className="workspace-collapsed-bar"
-              onClick={() => setViewMode('split')}
+              onClick={() => bp.setViewMode('split')}
               title="Expand terminal"
             >
               <svg
@@ -652,8 +328,8 @@ function ProjectWorkspace({
           )}
           <div
             style={{
-              visibility: viewMode === 'focused' ? 'hidden' : undefined,
-              flex: viewMode === 'focused' ? 0 : 1,
+              visibility: bp.viewMode === 'focused' ? 'hidden' : undefined,
+              flex: bp.viewMode === 'focused' ? 0 : 1,
               minHeight: 0,
               flexDirection: 'column',
               display: 'flex',
@@ -666,39 +342,39 @@ function ProjectWorkspace({
                 projectId={project.id}
                 cwd={project.path}
                 palette={palette}
-                onLocalhostDetected={handleLocalhostDetected}
+                onLocalhostDetected={bp.handleLocalhostDetected}
               />
             </div>
             <InlineTerminalDrawer
               projectId={project.id}
               cwd={project.path}
               palette={palette}
-              isOpen={drawerOpen && !showSplitBrowser}
+              isOpen={drawerOpen && !bp.showSplitBrowser}
               onToggle={toggleDrawer}
-              pendingCommand={!showSplitBrowser ? drawerPendingCommand : undefined}
+              pendingCommand={!bp.showSplitBrowser ? drawerPendingCommand : undefined}
               onCommandSent={clearDrawerCommand}
             />
           </div>
         </div>
 
-        {browserEverOpened && (
+        {bp.browserEverOpened && (
           <>
             <div
-              className={`workspace-divider${showSplitBrowser ? '' : ' workspace-divider--hidden'}`}
-              onMouseDown={handleDividerMouseDown}
+              className={`workspace-divider${bp.showSplitBrowser ? '' : ' workspace-divider--hidden'}`}
+              onMouseDown={bp.handleDividerMouseDown}
             />
             <div
-              className={`workspace-browser${showSplitBrowser ? '' : ' workspace-browser--hidden'}`}
+              className={`workspace-browser${bp.showSplitBrowser ? '' : ' workspace-browser--hidden'}`}
             >
               {browserPane}
-              {isDragging && <div className="workspace-drag-overlay" />}
+              {bp.isDragging && <div className="workspace-drag-overlay" />}
               <InlineTerminalDrawer
                 projectId={project.id}
                 cwd={project.path}
                 palette={palette}
-                isOpen={drawerOpen && showSplitBrowser}
+                isOpen={drawerOpen && bp.showSplitBrowser}
                 onToggle={toggleDrawer}
-                pendingCommand={showSplitBrowser ? drawerPendingCommand : undefined}
+                pendingCommand={bp.showSplitBrowser ? drawerPendingCommand : undefined}
                 onCommandSent={clearDrawerCommand}
               />
             </div>
@@ -706,12 +382,12 @@ function ProjectWorkspace({
         )}
       </div>
 
-      {viewMode === 'fullscreen' && <div className="browser-fullscreen-overlay">{browserPane}</div>}
+      {bp.viewMode === 'fullscreen' && <div className="browser-fullscreen-overlay">{browserPane}</div>}
 
-      {viewMode === 'pip' && pipPos && (
+      {bp.viewMode === 'pip' && bp.pipPos && (
         <div
           className="browser-pip-container"
-          style={{ left: pipPos.x, top: pipPos.y, width: pipSize.w, height: pipSize.h }}
+          style={{ left: bp.pipPos.x, top: bp.pipPos.y, width: bp.pipSize.w, height: bp.pipSize.h }}
           onMouseDown={handlePipDragStart}
         >
           {browserPane}
@@ -752,75 +428,17 @@ function ProjectWorkspace({
         </div>
       )}
 
-      {/* Change input prompt — shown when an element was just picked */}
-      {pendingPick && (
-        <div className="workspace-change-prompt">
-          <pre className="workspace-change-element">{pendingPick.split('\n')[0]}</pre>
-          <input
-            ref={changeInputRef}
-            className="workspace-change-input"
-            value={changeInput}
-            onChange={(e) => setChangeInput(e.target.value)}
-            onKeyDown={(e) => {
-              e.stopPropagation()
-              if (e.key === 'Enter' && changeInput.trim()) handleSubmitChange()
-              if (e.key === 'Escape') setPendingPick(null)
-            }}
-            placeholder="What change do you want to make?"
-          />
-          <div className="workspace-change-actions">
-            <button
-              type="button"
-              className="workspace-change-btn workspace-change-btn--primary"
-              onClick={handleSubmitChange}
-              disabled={!changeInput.trim()}
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              className="workspace-change-btn"
-              onClick={() => setPendingPick(null)}
-            >
-              Skip
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Queued changes list */}
-      {pickedChanges.length > 0 && !pendingPick && (
-        <div className="workspace-change-list">
-          <div className="workspace-change-list-header">
-            {pickedChanges.length} change{pickedChanges.length > 1 ? 's' : ''} queued
-          </div>
-          {pickedChanges.map((change, i) => (
-            <div key={i} className="workspace-change-item">
-              <span className="workspace-change-number">{i + 1}</span>
-              <span className="workspace-change-instruction">{change.instruction}</span>
-              <button
-                type="button"
-                className="workspace-change-remove"
-                onClick={() => handleRemoveChange(i)}
-              >
-                &times;
-              </button>
-            </div>
-          ))}
-          <div className="workspace-change-list-actions">
-            <button
-              type="button"
-              className="workspace-change-btn workspace-change-btn--send"
-              onClick={handleSendToClaude}
-            >
-              Send to Claude
-            </button>
-            <button type="button" className="workspace-change-btn" onClick={handleClearChanges}>
-              Clear
-            </button>
-          </div>
-        </div>
-      )}
+      <ChangePrompt
+        pendingPick={pendingPick}
+        changeInput={changeInput}
+        pickedChanges={pickedChanges}
+        onChangeInput={setChangeInput}
+        onSubmitChange={handleSubmitChange}
+        onRemoveChange={handleRemoveChange}
+        onSkipPick={() => setPendingPick(null)}
+        onSendToClaude={handleSendToClaude}
+        onClearChanges={handleClearChanges}
+      />
     </div>
   )
 }

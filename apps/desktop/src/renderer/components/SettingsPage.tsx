@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { PALETTE_IDS, PALETTES, PALETTE_LABELS, FONT_IDS, FONT_LABELS } from '@shared/themes'
 import type { PaletteId, FontId } from '@shared/themes'
+import { APIKeyInput } from './settings/APIKeyInput'
 import '../styles/SettingsPage.css'
 
 interface SettingsPageProps {
@@ -17,9 +18,7 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
   const [showFonts, setShowFonts] = useState(false)
   const [showIntegrations, setShowIntegrations] = useState(false)
   const [apiKey, setApiKey] = useState('')
-  const [apiKeySaved, setApiKeySaved] = useState(false)
   const [claudeKey, setClaudeKey] = useState('')
-  const [claudeKeySaved, setClaudeKeySaved] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
@@ -31,17 +30,15 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
     })
   }, [])
 
-  const handleSaveApiKey = useCallback(() => {
-    window.electronAPI.settings.setOpenAIKey(apiKey)
-    setApiKeySaved(true)
-    setTimeout(() => setApiKeySaved(false), 2000)
-  }, [apiKey])
+  const handleSaveApiKey = useCallback((key: string) => {
+    window.electronAPI.settings.setOpenAIKey(key)
+    setApiKey(key)
+  }, [])
 
-  const handleSaveClaudeKey = useCallback(() => {
-    window.electronAPI.settings.setClaudeKey(claudeKey)
-    setClaudeKeySaved(true)
-    setTimeout(() => setClaudeKeySaved(false), 2000)
-  }, [claudeKey])
+  const handleSaveClaudeKey = useCallback((key: string) => {
+    window.electronAPI.settings.setClaudeKey(key)
+    setClaudeKey(key)
+  }, [])
 
   return (
     <div className="settings-page">
@@ -71,7 +68,7 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
         {showPalettes && (
           <>
             <p className="settings-section-hint">
-              Choose a palette or press {isMac ? '⌘' : 'Ctrl'}+T to cycle through them.
+              Choose a palette or press {isMac ? '\u2318' : 'Ctrl'}+T to cycle through them.
             </p>
 
             <div className="settings-palette-grid">
@@ -170,48 +167,23 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
           <>
             <p className="settings-section-hint">Configure external service connections.</p>
 
-            <label className="settings-section-hint" style={{ marginBottom: 'var(--space-xs)' }}>
-              OpenAI API Key
-            </label>
-            <div className="settings-input-row">
-              <input
-                type="password"
-                className="settings-api-input"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
-              />
-              <button type="button" className="settings-save-btn" onClick={handleSaveApiKey}>
-                Save
-              </button>
-              {apiKeySaved && <span className="settings-saved-indicator">Saved!</span>}
-            </div>
-            <p className="settings-section-hint" style={{ marginTop: 'var(--space-xs)' }}>
-              Used for PRD generation. Your key is stored locally.
-            </p>
+            <APIKeyInput
+              label="OpenAI API Key"
+              hint="Used for PRD generation. Your key is stored locally."
+              placeholder="sk-..."
+              initialValue={apiKey}
+              onSave={handleSaveApiKey}
+              style={{ marginBottom: 'var(--space-xs)' }}
+            />
 
-            <label
-              className="settings-section-hint"
+            <APIKeyInput
+              label="Claude API Key"
+              hint="Used for Claude Code integrations. Your key is stored locally."
+              placeholder="sk-ant-..."
+              initialValue={claudeKey}
+              onSave={handleSaveClaudeKey}
               style={{ marginBottom: 'var(--space-xs)', marginTop: 'var(--space-lg)' }}
-            >
-              Claude API Key
-            </label>
-            <div className="settings-input-row">
-              <input
-                type="password"
-                className="settings-api-input"
-                value={claudeKey}
-                onChange={(e) => setClaudeKey(e.target.value)}
-                placeholder="sk-ant-..."
-              />
-              <button type="button" className="settings-save-btn" onClick={handleSaveClaudeKey}>
-                Save
-              </button>
-              {claudeKeySaved && <span className="settings-saved-indicator">Saved!</span>}
-            </div>
-            <p className="settings-section-hint" style={{ marginTop: 'var(--space-xs)' }}>
-              Used for Claude Code integrations. Your key is stored locally.
-            </p>
+            />
           </>
         )}
       </section>
@@ -243,7 +215,7 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
 
             <div className="settings-shortcuts-list">
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">N</kbd>
                 <span className="settings-shortcut-label">New project (open folder)</span>
@@ -255,31 +227,31 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
                 <span className="settings-shortcut-label">Cycle through projects</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">B</kbd>
                 <span className="settings-shortcut-label">Toggle sidebar</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">P</kbd>
                 <span className="settings-shortcut-label">Run command preset</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">T</kbd>
                 <span className="settings-shortcut-label">Cycle color palette</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">F</kbd>
                 <span className="settings-shortcut-label">Cycle font</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">D</kbd>
                 <span className="settings-shortcut-label">Split terminal right</span>
@@ -287,31 +259,31 @@ export function SettingsPage({ palette, font, onSelectPalette, onSelectFont }: S
               <div className="settings-shortcut-row">
                 <kbd className="settings-kbd">Shift</kbd>
                 <span className="settings-kbd-plus">+</span>
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">D</kbd>
                 <span className="settings-shortcut-label">Split terminal down</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">W</kbd>
                 <span className="settings-shortcut-label">Close terminal pane</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">[</kbd>
                 <span className="settings-shortcut-label">Previous terminal pane</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">]</kbd>
                 <span className="settings-shortcut-label">Next terminal pane</span>
               </div>
               <div className="settings-shortcut-row">
-                <kbd className="settings-kbd">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="settings-kbd">{isMac ? '\u2318' : 'Ctrl'}</kbd>
                 <span className="settings-kbd-plus">+</span>
                 <kbd className="settings-kbd">G</kbd>
                 <span className="settings-shortcut-label">Toggle browser</span>
