@@ -1,13 +1,13 @@
+import { existsSync, realpathSync } from 'node:fs'
 import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  renameSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs'
+  access,
+  mkdir,
+  readdir,
+  readFile as fsReadFile,
+  rename,
+  stat,
+  writeFile as fsWriteFile,
+} from 'node:fs/promises'
 import { dirname, isAbsolute, join, normalize, relative } from 'node:path'
 import { FILE_OPS_MAX_SIZE } from '@shared/types'
 import type {
@@ -27,7 +27,42 @@ import type {
 
 const writeLocks = new Map<string, Promise<unknown>>()
 
+/** Maximum number of entries in writeLocks before cleanup triggers */
+const MAX_WRITE_LOCKS = 100
+
+/** Sentinel resolved promise for detecting settled entries */
+const SETTLED = Promise.resolve('__settled__')
+
+/**
+ * Remove settled (already-resolved) entries from the writeLocks map.
+ * Uses Promise.race to detect if a stored promise has already settled:
+ * if it wins the race against the sentinel, it was settled.
+ */
+async function cleanupSettledLocks(): Promise<void> {
+  const entries = [...writeLocks.entries()]
+  await Promise.all(
+    entries.map(async ([key, promise]) => {
+      const winner = await Promise.race([
+        promise.then(() => 'done'),
+        SETTLED,
+      ])
+      // If the stored promise won (returned 'done'), it's settled — safe to remove
+      if (winner === 'done') {
+        // Only delete if the map still holds the same promise (no new write queued)
+        if (writeLocks.get(key) === promise) {
+          writeLocks.delete(key)
+        }
+      }
+    }),
+  )
+}
+
 async function withLock<T>(key: string, fn: () => T | Promise<T>): Promise<T> {
+  // Periodically clean up settled entries when the map grows too large
+  if (writeLocks.size > MAX_WRITE_LOCKS) {
+    await cleanupSettledLocks()
+  }
+
   const prev = writeLocks.get(key) ?? Promise.resolve()
   const next = prev.then(fn, fn)
   // Store a void-settling copy so rejections don't propagate to the next caller
@@ -55,11 +90,27 @@ function ok(): FileOpsResult {
   return { ok: true }
 }
 
+// ── Async existence check ──────────────────────────────────────
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ── Path safety ────────────────────────────────────────────────
 
 /**
  * Resolve a relative path inside a project root safely.
  * Throws on path traversal, absolute paths, or symlink escape.
+ *
+ * Note: The symlink escape check uses synchronous fs calls because
+ * this function is also used in benchmarks and tests that expect
+ * synchronous throws. The symlink check only hits 1-2 ancestor
+ * directories so the blocking cost is negligible.
  */
 export function safeResolveProjectPath(projectRoot: string, relPath: string): string {
   // Reject absolute paths — only relative paths inside the project are allowed
@@ -114,11 +165,11 @@ export function safeResolveProjectPath(projectRoot: string, relPath: string): st
 // the target. Since rename is atomic on the same filesystem, this
 // prevents partial/corrupt files on crash.
 
-function atomicWrite(filePath: string, contents: string): void {
+async function atomicWrite(filePath: string, contents: string): Promise<void> {
   const dir = dirname(filePath)
   const tmp = join(dir, `.fileops-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`)
-  writeFileSync(tmp, contents, 'utf-8')
-  renameSync(tmp, filePath)
+  await fsWriteFile(tmp, contents, 'utf-8')
+  await rename(tmp, filePath)
 }
 
 // ── Shared path-resolution wrapper ─────────────────────────────
@@ -164,20 +215,20 @@ export async function createFile(
     return fail('TOO_LARGE', `Content size ${bytes} exceeds limit of ${FILE_OPS_MAX_SIZE} bytes`)
   }
 
-  return withLock(resolved, () => {
-    if (existsSync(resolved)) {
+  return withLock(resolved, async () => {
+    if (await exists(resolved)) {
       return fail('FILE_EXISTS', `File already exists: ${relPath}`)
     }
 
     const dir = dirname(resolved)
-    if (!existsSync(dir)) {
+    if (!(await exists(dir))) {
       if (!mkdirp) {
         return fail('FILE_NOT_FOUND', `Directory does not exist: ${dirname(relPath)}`)
       }
-      mkdirSync(dir, { recursive: true })
+      await mkdir(dir, { recursive: true })
     }
 
-    atomicWrite(resolved, contents)
+    await atomicWrite(resolved, contents)
     return ok()
   })
 }
@@ -195,17 +246,17 @@ export async function readFile(
   const resolved = resolveSafe(projectRoot, relPath)
   if (isFailure(resolved)) return resolved
 
-  if (!existsSync(resolved)) {
+  if (!(await exists(resolved))) {
     return fail('FILE_NOT_FOUND', `File not found: ${relPath}`)
   }
 
-  const stat = statSync(resolved)
-  if (stat.size > FILE_OPS_MAX_SIZE) {
-    return fail('TOO_LARGE', `File size ${stat.size} exceeds limit of ${FILE_OPS_MAX_SIZE} bytes`)
+  const s = await stat(resolved)
+  if (s.size > FILE_OPS_MAX_SIZE) {
+    return fail('TOO_LARGE', `File size ${s.size} exceeds limit of ${FILE_OPS_MAX_SIZE} bytes`)
   }
 
-  const contents = readFileSync(resolved, 'utf-8')
-  return { contents, size: stat.size }
+  const contents = await fsReadFile(resolved, 'utf-8')
+  return { contents, size: s.size }
 }
 
 /**
@@ -230,22 +281,24 @@ export async function writeFile(
     return fail('TOO_LARGE', `Content size ${bytes} exceeds limit of ${FILE_OPS_MAX_SIZE} bytes`)
   }
 
-  return withLock(resolved, () => {
-    if (mode === 'createOnly' && existsSync(resolved)) {
+  return withLock(resolved, async () => {
+    if (mode === 'createOnly' && (await exists(resolved))) {
       return fail('FILE_EXISTS', `File already exists: ${relPath}`)
     }
 
     const dir = dirname(resolved)
-    if (!existsSync(resolved) && !existsSync(dir)) {
+    if (!(await exists(resolved)) && !(await exists(dir))) {
       return fail('FILE_NOT_FOUND', `Directory does not exist: ${dirname(relPath)}`)
     }
 
-    atomicWrite(resolved, contents)
+    await atomicWrite(resolved, contents)
     return ok()
   })
 }
 
 // ── Directory listing ──────────────────────────────────────────
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__'])
 
 /**
  * List directory contents inside a project.
@@ -253,26 +306,35 @@ export async function writeFile(
  * @param projectRoot  Absolute path to the project directory
  * @param dirPath      Relative path within the project ('' for root)
  */
-export function listDir(projectRoot: string, dirPath: string): FileListResponse {
+export async function listDir(
+  projectRoot: string,
+  dirPath: string,
+): Promise<FileListResponse> {
   const resolved = dirPath === '' ? projectRoot : safeResolveProjectPath(projectRoot, dirPath)
-  const entries = readdirSync(resolved, { withFileTypes: true })
+  const entries = await readdir(resolved, { withFileTypes: true })
 
-  const SKIP = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__'])
+  const filtered = entries.filter((entry) => {
+    if (entry.name.startsWith('.')) return false
+    if (entry.isDirectory() && SKIP_DIRS.has(entry.name)) return false
+    return true
+  })
 
-  const result: FileEntry[] = []
-  for (const entry of entries) {
-    if (entry.name.startsWith('.')) continue
-    if (entry.isDirectory() && SKIP.has(entry.name)) continue
-    const fullPath = join(resolved, entry.name)
-    let size = 0
-    try {
-      size = entry.isDirectory() ? 0 : statSync(fullPath).size
-    } catch {
-      // skip entries we can't stat
-      continue
-    }
-    result.push({ name: entry.name, isDir: entry.isDirectory(), size })
-  }
+  // Stat all files in parallel — directories get size 0
+  const results = await Promise.all(
+    filtered.map(async (entry): Promise<FileEntry | null> => {
+      if (entry.isDirectory()) {
+        return { name: entry.name, isDir: true, size: 0 }
+      }
+      try {
+        const s = await stat(join(resolved, entry.name))
+        return { name: entry.name, isDir: false, size: s.size }
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  const result = results.filter((r): r is FileEntry => r !== null)
 
   // Sort: directories first, then files, alphabetically within each group
   result.sort((a, b) => {
