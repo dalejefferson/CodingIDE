@@ -52,6 +52,8 @@ export default defineConfig({
     build: {
       outDir: resolve('dist-renderer'),
       target: 'es2022',
+      sourcemap: false,
+      cssMinify: true,
       chunkSizeWarningLimit: 500,
       rollupOptions: {
         input: {

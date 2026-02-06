@@ -26,13 +26,26 @@ let projectStore: ProjectStore | null = null
 let themeStore: ThemeStore | null = null
 let terminalService: TerminalService | null = null
 let terminalLayoutStore: TerminalLayoutStore | null = null
-let presetStore: PresetStore | null = null
 let ticketStore: TicketStore | null = null
 let settingsStore: SettingsStore | null = null
 let mobileAppStore: MobileAppStore | null = null
 let templateCacheService: TemplateCacheService | null = null
+let presetStore: PresetStore | null = null
 let ideaStore: IdeaStore | null = null
 let expoServiceRef: { expoService: import('@services/expoService').ExpoService } | null = null
+
+/** Lazy getter — PresetStore is only needed when command presets are accessed. */
+function getPresetStore(): PresetStore {
+  if (!presetStore)
+    presetStore = new PresetStore(join(app.getPath('userData'), 'command-presets.json'))
+  return presetStore
+}
+
+/** Lazy getter — IdeaStore is only needed when Idea Log is opened. */
+function getIdeaStore(): IdeaStore {
+  if (!ideaStore) ideaStore = new IdeaStore(join(app.getPath('userData'), 'ideas.json'))
+  return ideaStore
+}
 let claudeActivityInterval: ReturnType<typeof setInterval> | null = null
 let lastClaudeActivity: Record<string, number> = {}
 let lastClaudeStatus: Record<string, string> = {}
@@ -78,13 +91,11 @@ export function setupIPC(): void {
   terminalLayoutStore = new TerminalLayoutStore(
     join(app.getPath('userData'), 'terminal-layouts.json'),
   )
-  presetStore = new PresetStore(join(app.getPath('userData'), 'command-presets.json'))
   const ticketStorePath = join(app.getPath('userData'), 'tickets.json')
   const settingsStorePath = join(app.getPath('userData'), 'settings.json')
   ticketStore = new TicketStore(ticketStorePath)
   settingsStore = new SettingsStore(settingsStorePath)
   mobileAppStore = new MobileAppStore(join(app.getPath('userData'), 'mobile-apps.json'))
-  ideaStore = new IdeaStore(join(app.getPath('userData'), 'ideas.json'))
 
   // ── Template Cache ──────────────────────────────────────────
   const resourcesDir = join(__dirname, '../../resources/expo-templates')
@@ -281,11 +292,11 @@ export function setupIPC(): void {
 
   // ── Command Presets IPC ─────────────────────────────────────
   router.handle(IPC_CHANNELS.GET_PRESETS, () => {
-    return presetStore!.getAll()
+    return getPresetStore().getAll()
   })
 
   router.handle(IPC_CHANNELS.SET_PRESETS, (_event, payload) => {
-    presetStore!.setAll(payload.presets)
+    getPresetStore().setAll(payload.presets)
   })
 
   // ── Project Status IPC ─────────────────────────────────────
@@ -403,19 +414,19 @@ export function setupIPC(): void {
 
   // ── Idea Log IPC ──────────────────────────────────────────
   router.handle(IPC_CHANNELS.IDEA_GET_ALL, () => {
-    return ideaStore!.getAll()
+    return getIdeaStore().getAll()
   })
 
   router.handle(IPC_CHANNELS.IDEA_CREATE, (_event, payload) => {
-    return ideaStore!.create(payload)
+    return getIdeaStore().create(payload)
   })
 
   router.handle(IPC_CHANNELS.IDEA_UPDATE, (_event, payload) => {
-    ideaStore!.update(payload.id, payload)
+    getIdeaStore().update(payload.id, payload)
   })
 
   router.handle(IPC_CHANNELS.IDEA_DELETE, (_event, payload) => {
-    ideaStore!.delete(payload)
+    getIdeaStore().delete(payload)
   })
 
   // ── Auto-status: terminal busy → running, command done → idle ──
@@ -480,7 +491,7 @@ export function setupIPC(): void {
       if (activityChanged) sendToRenderer('claude:activity', activity)
       if (statusChanged) sendToRenderer('claude:status', statusMap)
     }
-  }, 3000)
+  }, 5000)
 }
 
 export async function disposeIPC(): Promise<void> {

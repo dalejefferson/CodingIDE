@@ -12,6 +12,7 @@ import { join, basename } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipcContracts'
 import { ExpoService } from '@services/expoService'
 import { generateMobilePRD } from '@services/mobilePrdService'
+import { MOBILE_PALETTES } from '../shared/mobilePalettes'
 import type { IPCRouter } from './ipcRouter'
 import type { MobileAppStore } from '@services/mobileAppStore'
 import type { ProjectStore } from '@services/projectStore'
@@ -177,12 +178,17 @@ export function setupExpoIPC(
     if (!claudeKey && !openaiKey) {
       throw new Error('No API key configured. Add an OpenAI or Claude key in Settings.')
     }
+    // Look up full palette data for richer PRD context
+    const palette = payload.paletteId
+      ? MOBILE_PALETTES.find((p) => p.id === payload.paletteId) ?? null
+      : null
     const content = await generateMobilePRD(
       claudeKey,
       openaiKey,
       payload.appDescription,
       payload.template,
-      payload.paletteId,
+      palette,
+      payload.imagePaths,
     )
     return { content }
   })

@@ -12,7 +12,12 @@ interface AppBuilderPageProps {
   initialPrdContent?: string | null
   onConsumeInitialPrd?: () => void
   mobilePrdGen?: MobilePrdGen | null
-  onStartMobilePrdGen?: (description: string, template: ExpoTemplate, paletteId?: string) => void
+  onStartMobilePrdGen?: (
+    description: string,
+    template: ExpoTemplate,
+    paletteId?: string,
+    imagePaths?: string[],
+  ) => void
   onClearMobilePrdGen?: () => void
 }
 

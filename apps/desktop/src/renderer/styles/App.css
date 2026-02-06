@@ -13,6 +13,7 @@
   height: 100%;
   overflow: hidden;
   flex-shrink: 0;
+  contain: layout style;
   transition:
     width var(--transition-base),
     min-width var(--transition-base);

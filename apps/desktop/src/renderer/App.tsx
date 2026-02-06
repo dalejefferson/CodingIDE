@@ -250,17 +250,14 @@ export function App() {
   )
 
   // ── Idea Log action handlers ─────────────────────────────────
-  const handleIdeaBuildAsApp = useCallback(
-    (idea: Idea) => {
-      setWordVomitPrdForApp(idea.description || `# ${idea.title}\n\nBuild an app for: ${idea.title}`)
-      setAppBuilderOpen(true)
-      setSettingsOpen(false)
-      setKanbanOpen(false)
-      setActiveProjectId(null)
-      setIdeaLogOpen(false)
-    },
-    [],
-  )
+  const handleIdeaBuildAsApp = useCallback((idea: Idea) => {
+    setWordVomitPrdForApp(idea.description || `# ${idea.title}\n\nBuild an app for: ${idea.title}`)
+    setAppBuilderOpen(true)
+    setSettingsOpen(false)
+    setKanbanOpen(false)
+    setActiveProjectId(null)
+    setIdeaLogOpen(false)
+  }, [])
 
   const handleIdeaSendToBacklog = useCallback(
     async (idea: Idea) => {
@@ -281,7 +278,10 @@ export function App() {
     async (idea: Idea) => {
       try {
         const safeName =
-          idea.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'new-idea'
+          idea.title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'new-idea'
         const folderPath = await window.electronAPI.projects.createFolder({ name: safeName })
         if (!folderPath) return
         const project = await window.electronAPI.projects.add({ path: folderPath })
@@ -323,8 +323,13 @@ export function App() {
   }, [])
 
   // After sidebar collapse/expand transition completes, fire resize so all
-  // terminal panes re-fit to their new dimensions.
+  // terminal panes re-fit to their new dimensions. Skip on initial mount.
+  const sidebarMountedRef = useRef(false)
   useEffect(() => {
+    if (!sidebarMountedRef.current) {
+      sidebarMountedRef.current = true
+      return
+    }
     const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 250)
     return () => clearTimeout(t)
   }, [sidebarCollapsed])

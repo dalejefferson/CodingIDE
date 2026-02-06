@@ -5,7 +5,7 @@
  * Dual-provider pattern: tries Claude first, falls back to OpenAI.
  */
 
-import type { ExpoTemplate } from '@shared/types'
+import type { ExpoTemplate, MobileAppPalette } from '@shared/types'
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const OPENAI_MODEL = 'gpt-4o-mini'
@@ -70,7 +70,8 @@ Focus on mobile-specific concerns: touch targets, gestures, safe areas, keyboard
 function buildUserMessage(
   appDescription: string,
   template: ExpoTemplate,
-  paletteId?: string,
+  palette?: MobileAppPalette | null,
+  imagePaths?: string[],
 ): string {
   const parts = [
     `# App Description`,
@@ -80,11 +81,30 @@ function buildUserMessage(
     `The app uses the Expo "${template}" template as a starting point.`,
   ]
 
-  if (paletteId) {
+  if (palette) {
     parts.push(
       '',
-      `## Color Palette: ${paletteId}`,
-      `Use the "${paletteId}" color palette for styling guidance.`,
+      `## Color Palette: ${palette.name}`,
+      `Use the following color palette for all styling:`,
+      `- **Primary:** ${palette.colors.primary}`,
+      `- **Secondary:** ${palette.colors.secondary}`,
+      `- **Accent:** ${palette.colors.accent}`,
+      `- **Background:** ${palette.colors.background}`,
+      `- **Surface:** ${palette.colors.surface}`,
+      `- **Text:** ${palette.colors.text}`,
+      '',
+      `Apply these exact hex values in the Styling & Theme section of the PRD.`,
+    )
+  }
+
+  if (imagePaths && imagePaths.length > 0) {
+    parts.push(
+      '',
+      `## UI Inspiration Images`,
+      `The user has provided ${imagePaths.length} reference image(s) for UI inspiration.`,
+      `These images are saved in the project's .prd/images/ directory.`,
+      `Incorporate the visual style, layout patterns, and design language from these`,
+      `reference images into the screen-by-screen requirements and styling sections.`,
     )
   }
 
@@ -96,13 +116,14 @@ async function generateWithOpenAI(
   apiKey: string,
   appDescription: string,
   template: ExpoTemplate,
-  paletteId?: string,
+  palette?: MobileAppPalette | null,
+  imagePaths?: string[],
 ): Promise<string> {
   const body = {
     model: OPENAI_MODEL,
     messages: [
       { role: 'system', content: buildSystemPrompt() },
-      { role: 'user', content: buildUserMessage(appDescription, template, paletteId) },
+      { role: 'user', content: buildUserMessage(appDescription, template, palette, imagePaths) },
     ],
     temperature: 0.7,
     max_tokens: 3000,
@@ -136,13 +157,16 @@ async function generateWithAnthropic(
   apiKey: string,
   appDescription: string,
   template: ExpoTemplate,
-  paletteId?: string,
+  palette?: MobileAppPalette | null,
+  imagePaths?: string[],
 ): Promise<string> {
   const body = {
     model: ANTHROPIC_MODEL,
     max_tokens: 3000,
     system: buildSystemPrompt(),
-    messages: [{ role: 'user', content: buildUserMessage(appDescription, template, paletteId) }],
+    messages: [
+      { role: 'user', content: buildUserMessage(appDescription, template, palette, imagePaths) },
+    ],
   }
 
   const response = await fetch(ANTHROPIC_URL, {
@@ -180,12 +204,13 @@ export async function generateMobilePRD(
   openaiKey: string | null,
   appDescription: string,
   template: ExpoTemplate,
-  paletteId?: string,
+  palette?: MobileAppPalette | null,
+  imagePaths?: string[],
 ): Promise<string> {
   // Try Claude first (preferred)
   if (claudeKey) {
     try {
-      return await generateWithAnthropic(claudeKey, appDescription, template, paletteId)
+      return await generateWithAnthropic(claudeKey, appDescription, template, palette, imagePaths)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       // If no fallback available, throw
@@ -199,7 +224,7 @@ export async function generateMobilePRD(
 
   // Fall back to OpenAI
   if (openaiKey) {
-    return await generateWithOpenAI(openaiKey, appDescription, template, paletteId)
+    return await generateWithOpenAI(openaiKey, appDescription, template, palette, imagePaths)
   }
 
   throw new Error('No API keys available. Provide a Claude or OpenAI API key.')

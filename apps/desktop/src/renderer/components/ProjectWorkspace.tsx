@@ -346,11 +346,16 @@ function ProjectWorkspace({
     setIsDragging(true)
     document.body.classList.add('is-resizing-h')
     const parentRect = parent.getBoundingClientRect()
+    let rafId = 0
     const onMouseMove = (ev: MouseEvent) => {
-      const ratio = (ev.clientX - parentRect.left) / parentRect.width
-      setSplitRatio(Math.max(0.05, Math.min(0.95, ratio)))
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        const ratio = (ev.clientX - parentRect.left) / parentRect.width
+        setSplitRatio(Math.max(0.05, Math.min(0.95, ratio)))
+      })
     }
     const onMouseUp = () => {
+      cancelAnimationFrame(rafId)
       setIsDragging(false)
       document.body.classList.remove('is-resizing-h')
       window.removeEventListener('mousemove', onMouseMove)
@@ -366,12 +371,17 @@ function ProjectWorkspace({
       e.preventDefault()
       const startX = e.clientX - pipPos.x
       const startY = e.clientY - pipPos.y
+      let rafId = 0
       const onMouseMove = (ev: MouseEvent) => {
-        const x = Math.max(-350, Math.min(window.innerWidth - 50, ev.clientX - startX))
-        const y = Math.max(0, Math.min(window.innerHeight - 50, ev.clientY - startY))
-        setPipPos({ x, y })
+        cancelAnimationFrame(rafId)
+        rafId = requestAnimationFrame(() => {
+          const x = Math.max(-350, Math.min(window.innerWidth - 50, ev.clientX - startX))
+          const y = Math.max(0, Math.min(window.innerHeight - 50, ev.clientY - startY))
+          setPipPos({ x, y })
+        })
       }
       const onMouseUp = () => {
+        cancelAnimationFrame(rafId)
         window.removeEventListener('mousemove', onMouseMove)
         window.removeEventListener('mouseup', onMouseUp)
       }
@@ -398,32 +408,37 @@ function ProjectWorkspace({
       const startPosX = pipPos.x
       const startPosY = pipPos.y
 
+      let rafId = 0
       const onMouseMove = (ev: MouseEvent) => {
-        const dx = ev.clientX - startX
-        const dy = ev.clientY - startY
-        let newW = startW
-        let newH = startH
-        let newX = startPosX
-        let newY = startPosY
+        cancelAnimationFrame(rafId)
+        rafId = requestAnimationFrame(() => {
+          const dx = ev.clientX - startX
+          const dy = ev.clientY - startY
+          let newW = startW
+          let newH = startH
+          let newX = startPosX
+          let newY = startPosY
 
-        if (edge.includes('e')) newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, startW + dx))
-        if (edge.includes('s')) newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, startH + dy))
-        if (edge.includes('w')) {
-          const proposedW = startW - dx
-          newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, proposedW))
-          newX = startPosX + (startW - newW)
-        }
-        if (edge.includes('n')) {
-          const proposedH = startH - dy
-          newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, proposedH))
-          newY = startPosY + (startH - newH)
-        }
+          if (edge.includes('e')) newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, startW + dx))
+          if (edge.includes('s')) newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, startH + dy))
+          if (edge.includes('w')) {
+            const proposedW = startW - dx
+            newW = Math.max(PIP_MIN_W, Math.min(PIP_MAX_W, proposedW))
+            newX = startPosX + (startW - newW)
+          }
+          if (edge.includes('n')) {
+            const proposedH = startH - dy
+            newH = Math.max(PIP_MIN_H, Math.min(PIP_MAX_H, proposedH))
+            newY = startPosY + (startH - newH)
+          }
 
-        setPipSize({ w: newW, h: newH })
-        setPipPos({ x: newX, y: newY })
+          setPipSize({ w: newW, h: newH })
+          setPipPos({ x: newX, y: newY })
+        })
       }
 
       const onMouseUp = () => {
+        cancelAnimationFrame(rafId)
         window.removeEventListener('mousemove', onMouseMove)
         window.removeEventListener('mouseup', onMouseUp)
       }

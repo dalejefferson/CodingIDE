@@ -88,7 +88,7 @@ export const CodeViewer = React.memo(function CodeViewer({
   const [fileSize, setFileSize] = useState(0)
   const [saving, setSaving] = useState(false)
 
-  const gutterRef = useRef<HTMLDivElement>(null)
+  const gutterRef = useRef<HTMLPreElement>(null)
   const contentRef = useRef<HTMLPreElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -184,12 +184,10 @@ export const CodeViewer = React.memo(function CodeViewer({
 
   /* ── Line numbers ─────────────────────────────────────────────────────────── */
 
-  const lineNumbers = useMemo(() => {
-    const lines: number[] = []
-    for (let i = 1; i <= lineCount; i++) {
-      lines.push(i)
-    }
-    return lines
+  const gutterText = useMemo(() => {
+    const lines: string[] = []
+    for (let i = 1; i <= lineCount; i++) lines.push(String(i))
+    return lines.join('\n')
   }, [lineCount])
 
   /* ── Empty state ──────────────────────────────────────────────────────────── */
@@ -313,13 +311,9 @@ export const CodeViewer = React.memo(function CodeViewer({
       {/* Body */}
       <div className="code-viewer-body">
         {/* Gutter (line numbers) */}
-        <div className="code-viewer-gutter" ref={gutterRef}>
-          {lineNumbers.map((n) => (
-            <div key={n} className="code-viewer-gutter-line">
-              {n}
-            </div>
-          ))}
-        </div>
+        <pre className="code-viewer-gutter" ref={gutterRef}>
+          {gutterText}
+        </pre>
 
         {/* Content area */}
         {editing ? (

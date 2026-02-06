@@ -24,6 +24,7 @@ export function createMainWindow(): BrowserWindow {
       experimentalFeatures: false,
       navigateOnDragDrop: false,
       webviewTag: true,
+      backgroundThrottling: false,
     },
   })
 

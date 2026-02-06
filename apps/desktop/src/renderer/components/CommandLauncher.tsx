@@ -44,21 +44,17 @@ export function CommandLauncher({ projectId, onRunCommand }: CommandLauncherProp
   const handlePlayClick = useCallback(() => {
     if (!projectId) return
 
-    if (open) {
-      // Panel is open — close it
+    // Always run the selected preset if one exists, regardless of panel state
+    const selected = presets.find((p) => p.id === selectedId)
+    if (selected) {
+      onRunCommand(selected.command)
       setOpen(false)
       return
     }
 
-    // Panel is closed — run selected preset if one exists
-    const selected = presets.find((p) => p.id === selectedId)
-    if (selected) {
-      onRunCommand(selected.command)
-    } else {
-      // No preset selected — open the panel
-      setOpen(true)
-    }
-  }, [open, presets, selectedId, projectId, onRunCommand])
+    // No preset selected — toggle the panel
+    setOpen((prev) => !prev)
+  }, [presets, selectedId, projectId, onRunCommand])
 
   // Cmd+P global shortcut triggers play
   useEffect(() => {

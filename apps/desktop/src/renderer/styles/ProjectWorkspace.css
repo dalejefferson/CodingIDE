@@ -6,6 +6,7 @@
   min-width: 0;
   overflow: hidden;
   position: relative;
+  contain: layout style;
 }
 
 .workspace--hidden {
@@ -15,6 +16,7 @@
   overflow: hidden !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  contain: strict;
 }
 
 /* ── Toggle Bar ──────────────────────────────────────────────── */
@@ -208,6 +210,7 @@
     0 8px 32px rgba(0, 0, 0, 0.25),
     0 0 0 1px var(--color-border-primary);
   animation: browser-pip-in 200ms ease;
+  will-change: transform, width, height;
 }
 
 @keyframes browser-pip-in {

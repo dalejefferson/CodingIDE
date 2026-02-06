@@ -384,6 +384,15 @@
   border-radius: var(--radius-sm);
 }
 
+/* Active/selected project filter state */
+.idea-log__folder--active {
+  border-color: var(--color-accent);
+}
+
+.idea-log__folder--active .idea-log__folder-header {
+  background: var(--color-accent-subtle);
+}
+
 /* Drag-over state for folders */
 .idea-log__folder--drag-over {
   border-color: var(--color-accent);

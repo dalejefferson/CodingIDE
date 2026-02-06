@@ -109,7 +109,7 @@ const LOCALHOST_URL_RE = /^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\
 async function isReachable(url: string): Promise<boolean> {
   try {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 2000)
+    const timer = setTimeout(() => controller.abort(), 3000)
     await fetch(url, { method: 'HEAD', mode: 'no-cors', signal: controller.signal })
     clearTimeout(timer)
     return true
@@ -117,6 +117,9 @@ async function isReachable(url: string): Promise<boolean> {
     return false
   }
 }
+
+/** Retry delays (ms) for localhost probe — progressively longer waits. */
+const PROBE_DELAYS = [0, 1000, 2000, 3000, 5000]
 
 /** Virtual viewport width used to render pages at desktop layout */
 const VIRTUAL_WIDTH = 1280
@@ -237,30 +240,47 @@ function BrowserPaneInner({
     }
   }, [pickerActive])
 
-  // For localhost URLs, probe the port before navigating to avoid Electron
-  // ERR_CONNECTION_REFUSED errors.  Non-localhost URLs load normally via the
-  // webview `src` attribute.
+  // For localhost URLs, probe the port with retries before navigating to avoid
+  // Electron ERR_CONNECTION_REFUSED errors.  Non-localhost URLs load normally
+  // via the webview `src` attribute.
   const lastNavigatedRef = useRef(isLocalhost ? '' : startUrl)
+  const probeUrlRef = useRef(startUrl)
+  probeUrlRef.current = startUrl
+
   useEffect(() => {
     if (!isLocalhost) return
     let cancelled = false
 
-    const probe = async () => {
+    const probeWithRetries = async () => {
       const wv = webviewRef.current
       if (!wv) return
 
-      const reachable = await isReachable(startUrl)
-      if (cancelled) return
+      for (let i = 0; i < PROBE_DELAYS.length; i++) {
+        if (cancelled) return
+        if (i > 0) {
+          await new Promise((r) => setTimeout(r, PROBE_DELAYS[i]))
+          if (cancelled) return
+        }
 
-      if (reachable) {
-        readyRef.current = true
-        lastNavigatedRef.current = startUrl
-        setLoadError(null)
-        wv.loadURL(startUrl)
-      } else {
+        const url = probeUrlRef.current
+        const reachable = await isReachable(url)
+        if (cancelled) return
+
+        if (reachable) {
+          readyRef.current = true
+          lastNavigatedRef.current = url
+          setLoadError(null)
+          setAddressBarValue(url)
+          wv.loadURL(url)
+          return
+        }
+      }
+
+      // All retries exhausted
+      if (!cancelled) {
         setLoading(false)
         readyRef.current = true
-        setLoadError(`Unable to connect to ${startUrl}`)
+        setLoadError(`Unable to connect to ${probeUrlRef.current}`)
       }
     }
 
@@ -269,21 +289,63 @@ function BrowserPaneInner({
     if (wv) {
       const onReady = () => {
         wv.removeEventListener('dom-ready', onReady)
-        probe()
+        probeWithRetries()
       }
       wv.addEventListener('dom-ready', onReady)
     }
 
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Navigate to new URL when initialUrl changes after mount, but skip if the
   // webview is already showing this URL (avoids reloading on project switch).
+  // For localhost URLs, probe with retries since the server may still be starting.
   useEffect(() => {
-    if (initialUrl && initialUrl !== lastNavigatedRef.current) {
+    if (!initialUrl || initialUrl === lastNavigatedRef.current) return
+    const isLocal = LOCALHOST_URL_RE.test(initialUrl)
+    if (!isLocal) {
       lastNavigatedRef.current = initialUrl
       navigateTo(initialUrl)
+      return
+    }
+
+    let cancelled = false
+    const probeAndNavigate = async () => {
+      const wv = webviewRef.current
+      if (!wv) return
+
+      for (let i = 0; i < PROBE_DELAYS.length; i++) {
+        if (cancelled) return
+        if (i > 0) {
+          await new Promise((r) => setTimeout(r, PROBE_DELAYS[i]))
+          if (cancelled) return
+        }
+
+        const reachable = await isReachable(initialUrl)
+        if (cancelled) return
+
+        if (reachable) {
+          readyRef.current = true
+          lastNavigatedRef.current = initialUrl
+          setLoadError(null)
+          setAddressBarValue(initialUrl)
+          wv.loadURL(initialUrl)
+          return
+        }
+      }
+
+      if (!cancelled) {
+        setLoading(false)
+        setLoadError(`Unable to connect to ${initialUrl}`)
+      }
+    }
+
+    probeAndNavigate()
+    return () => {
+      cancelled = true
     }
   }, [initialUrl, navigateTo])
 
@@ -311,6 +373,11 @@ function BrowserPaneInner({
       if (e.errorCode === -3) return
 
       const failedUrl = e.validatedURL || wv.getURL()
+
+      // Ignore about:blank errors — this is the placeholder page used while
+      // probing localhost URLs before the dev server is ready.
+      if (failedUrl === 'about:blank' || failedUrl === 'about:blank/') return
+
       setLoading(false)
       readyRef.current = true
 
@@ -330,6 +397,8 @@ function BrowserPaneInner({
 
     const handleNavUpdate = () => {
       const currentUrl = wv.getURL()
+      // Don't track about:blank — it's a transient placeholder for localhost probing
+      if (currentUrl === 'about:blank' || currentUrl === 'about:blank/') return
       setAddressBarValue(currentUrl)
       setCanGoBack(wv.canGoBack())
       setCanGoForward(wv.canGoForward())
@@ -580,7 +649,16 @@ function BrowserPaneInner({
         {loadError && (
           <div className="browser-load-error">
             <div className="browser-load-error-icon">
-              <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="8" cy="8" r="7" />
                 <path d="M8 5v3M8 10.5v.5" />
               </svg>
@@ -589,11 +667,7 @@ function BrowserPaneInner({
             <p className="browser-load-error-hint">
               Start the dev server in the terminal, then press refresh.
             </p>
-            <button
-              type="button"
-              className="browser-load-error-retry"
-              onClick={handleRefresh}
-            >
+            <button type="button" className="browser-load-error-retry" onClick={handleRefresh}>
               Retry
             </button>
           </div>

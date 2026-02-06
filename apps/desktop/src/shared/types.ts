@@ -545,6 +545,7 @@ export interface GenerateMobilePRDRequest {
   appDescription: string
   template: ExpoTemplate
   paletteId?: string
+  imagePaths?: string[]
 }
 
 export interface GenerateMobilePRDResponse {

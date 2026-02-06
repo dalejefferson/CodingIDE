@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useIdeas } from '../../hooks/useIdeas'
 import { useDragIdea } from '../../hooks/useDragIdea'
 import type { Idea, IdeaPriority, Project } from '@shared/types'
@@ -45,6 +45,16 @@ export function IdeaLogPage({
 
   // ── Folder collapse state ────────────────────────────────────
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
+  const didInitCollapse = useRef(false)
+
+  // Auto-collapse empty project folders on first load
+  useEffect(() => {
+    if (didInitCollapse.current || loading) return
+    didInitCollapse.current = true
+    const projectsWithIdeas = new Set(ideas.map((i) => i.projectId).filter(Boolean))
+    const emptyIds = projects.filter((p) => !projectsWithIdeas.has(p.id)).map((p) => p.id)
+    if (emptyIds.length > 0) setCollapsedFolders(new Set(emptyIds))
+  }, [loading, ideas, projects])
 
   // ── Derived data ─────────────────────────────────────────────
 
@@ -106,6 +116,24 @@ export function IdeaLogPage({
     })
   }, [])
 
+  const handleFolderClick = useCallback(
+    (projectId: string) => {
+      // If already filtering to this project, clear the filter
+      if (filterProjectId === projectId) {
+        setFilterProjectId(null)
+      } else {
+        setFilterProjectId(projectId)
+      }
+      // Expand the folder when clicked
+      setCollapsedFolders((prev) => {
+        const next = new Set(prev)
+        next.delete(projectId)
+        return next
+      })
+    },
+    [filterProjectId],
+  )
+
   // ── Handlers ─────────────────────────────────────────────────
 
   const handleQuickCreate = useCallback(async () => {
@@ -114,7 +142,7 @@ export function IdeaLogPage({
       title: quickTitle.trim(),
       description: quickDescription.trim(),
       projectId: quickProjectId,
-      priority: (quickPriority as IdeaPriority | null),
+      priority: quickPriority as IdeaPriority | null,
     })
     resetQuickAdd()
   }, [quickTitle, quickDescription, quickProjectId, quickPriority, createIdea, resetQuickAdd])
@@ -177,7 +205,7 @@ export function IdeaLogPage({
       title: editTitle.trim(),
       description: editDescription.trim(),
       projectId: editProjectId,
-      priority: (editPriority as IdeaPriority | null),
+      priority: editPriority as IdeaPriority | null,
     })
     setEditingId(null)
   }, [editingId, editTitle, editDescription, editProjectId, editPriority, updateIdea])
@@ -320,9 +348,7 @@ export function IdeaLogPage({
               </span>
             )}
             {idea.priority && (
-              <span
-                className={`idea-log__card-priority idea-log__card-priority--${idea.priority}`}
-              >
+              <span className={`idea-log__card-priority idea-log__card-priority--${idea.priority}`}>
                 {idea.priority}
               </span>
             )}
@@ -505,16 +531,33 @@ export function IdeaLogPage({
           {...getDropZoneProps('inbox')}
         >
           <div className="idea-log__inbox-header">
-            <h2 className="idea-log__inbox-title">Inbox</h2>
-            <span className="idea-log__inbox-count">{inboxIdeas.length}</span>
+            <h2 className="idea-log__inbox-title">
+              {filterProjectId ? getProjectName(filterProjectId) ?? 'Inbox' : 'Inbox'}
+            </h2>
+            <span className="idea-log__inbox-count">
+              {filterProjectId ? filteredIdeas.length : inboxIdeas.length}
+            </span>
           </div>
           <div className="idea-log__inbox-list">
-            {inboxIdeas.length === 0 && (
-              <div className="idea-log__empty">
-                <p>No unassigned ideas.</p>
-              </div>
+            {filterProjectId ? (
+              <>
+                {filteredIdeas.length === 0 && (
+                  <div className="idea-log__empty">
+                    <p>No ideas for this project.</p>
+                  </div>
+                )}
+                {filteredIdeas.map((idea) => renderCard(idea, false))}
+              </>
+            ) : (
+              <>
+                {inboxIdeas.length === 0 && (
+                  <div className="idea-log__empty">
+                    <p>No unassigned ideas.</p>
+                  </div>
+                )}
+                {inboxIdeas.map((idea) => renderCard(idea, true))}
+              </>
             )}
-            {inboxIdeas.map((idea) => renderCard(idea, true))}
             <div
               className="idea-log__ghost-card"
               onClick={handleGhostCardClick}
@@ -545,11 +588,7 @@ export function IdeaLogPage({
           <div className="idea-log__folders-header">
             <h2 className="idea-log__folders-title">Projects</h2>
             {onOpenFolder && (
-              <button
-                className="idea-log__icon-btn"
-                onClick={onOpenFolder}
-                title="Add project"
-              >
+              <button className="idea-log__icon-btn" onClick={onOpenFolder} title="Add project">
                 <svg
                   width="14"
                   height="14"
@@ -573,13 +612,10 @@ export function IdeaLogPage({
               return (
                 <div
                   key={project.id}
-                  className={`idea-log__folder${isCollapsed ? ' idea-log__folder--collapsed' : ''}${isDragOver ? ' idea-log__folder--drag-over' : ''}`}
+                  className={`idea-log__folder${isCollapsed ? ' idea-log__folder--collapsed' : ''}${isDragOver ? ' idea-log__folder--drag-over' : ''}${filterProjectId === project.id ? ' idea-log__folder--active' : ''}`}
                   {...getDropZoneProps(project.id)}
                 >
-                  <div
-                    className="idea-log__folder-header"
-                    onClick={() => toggleFolder(project.id)}
-                  >
+                  <div className="idea-log__folder-header" onClick={() => handleFolderClick(project.id)}>
                     <h3 className="idea-log__folder-name">
                       <span className="idea-log__folder-chevron">
                         <svg

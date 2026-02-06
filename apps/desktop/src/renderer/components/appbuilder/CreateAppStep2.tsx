@@ -14,11 +14,17 @@ interface CreateAppStep2Props {
     description: string,
     template: ExpoTemplate,
     paletteId?: string,
+    imagePaths?: string[],
   ) => Promise<{ content: string }>
   creating: boolean
   initialPrdContent?: string
   mobilePrdGen?: MobilePrdGen | null
-  onStartMobilePrdGen?: (description: string, template: ExpoTemplate, paletteId?: string) => void
+  onStartMobilePrdGen?: (
+    description: string,
+    template: ExpoTemplate,
+    paletteId?: string,
+    imagePaths?: string[],
+  ) => void
   onClearMobilePrdGen?: () => void
 }
 
@@ -65,15 +71,24 @@ export function CreateAppStep2({
 
   const handleGenerate = useCallback(() => {
     if (!appDescription.trim() || !hasApiKey) return
+    const imgPaths = images.length > 0 ? images : undefined
     if (onStartMobilePrdGen) {
-      onStartMobilePrdGen(appDescription.trim(), template, selectedPaletteId ?? undefined)
+      onStartMobilePrdGen(appDescription.trim(), template, selectedPaletteId ?? undefined, imgPaths)
     } else {
       // Fallback to direct call if parent handler not provided
-      onGeneratePRD(appDescription.trim(), template, selectedPaletteId ?? undefined)
+      onGeneratePRD(appDescription.trim(), template, selectedPaletteId ?? undefined, imgPaths)
         .then((result) => setPrdContent(result.content))
         .catch((err) => console.error('Failed to generate PRD:', err))
     }
-  }, [appDescription, hasApiKey, template, selectedPaletteId, onStartMobilePrdGen, onGeneratePRD])
+  }, [
+    appDescription,
+    hasApiKey,
+    template,
+    selectedPaletteId,
+    images,
+    onStartMobilePrdGen,
+    onGeneratePRD,
+  ])
 
   const handleCreate = useCallback(() => {
     onCreate(prdContent, selectedPaletteId, images)

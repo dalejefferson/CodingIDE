@@ -31,36 +31,45 @@ interface TerminalPaneProps {
 /** Standard ANSI colors — fixed across all palettes so terminal text stays readable. */
 const ANSI_COLORS = {
   black: '#1d1f21',
-  red: '#cc6666',
-  green: '#b5bd68',
-  yellow: '#f0c674',
-  blue: '#81a2be',
-  magenta: '#b294bb',
-  cyan: '#8abeb7',
-  white: '#c5c8c6',
-  brightBlack: '#666666',
-  brightRed: '#d54e53',
-  brightGreen: '#b9ca4a',
-  brightYellow: '#e7c547',
-  brightBlue: '#7aa6da',
-  brightMagenta: '#c397d8',
-  brightCyan: '#70c0b1',
-  brightWhite: '#eaeaea',
+  red: '#ff5f56',
+  green: '#5af78e',
+  yellow: '#f3f99d',
+  blue: '#57c7ff',
+  magenta: '#ff6ac1',
+  cyan: '#9aedfe',
+  white: '#f1f1f0',
+  brightBlack: '#686868',
+  brightRed: '#ff6e67',
+  brightGreen: '#5af78e',
+  brightYellow: '#f4f99d',
+  brightBlue: '#57c7ff',
+  brightMagenta: '#ff6ac1',
+  brightCyan: '#9aedfe',
+  brightWhite: '#ffffff',
 } as const
 
 /** Palette-aware terminal theme — reads CSS custom properties from the active palette. */
+let _cachedXtermTheme: Record<string, string> | null = null
+let _cachedPaletteAttr: string | null = null
+
 function getXtermTheme(): Record<string, string> {
+  const paletteAttr = document.documentElement.getAttribute('data-palette') ?? ''
+  if (_cachedXtermTheme && _cachedPaletteAttr === paletteAttr) return _cachedXtermTheme
   const style = getComputedStyle(document.documentElement)
   const v = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback
-  return {
+  _cachedXtermTheme = {
     background: v('--terminal-bg', '#1c2128'),
-    foreground: v('--terminal-fg', '#d4dae0'),
+    // Use a fixed neutral foreground so default text color stays consistent
+    // across all palettes — palette-specific --terminal-fg tinted text colors.
+    foreground: '#d4dae0',
     cursor: v('--color-accent', '#ff9b51'),
-    cursorAccent: v('--terminal-cursor-accent', '#1c2128'),
+    cursorAccent: v('--terminal-bg', '#1c2128'),
     selectionBackground: v('--terminal-selection-bg', 'rgba(255, 155, 81, 0.22)'),
-    selectionForeground: v('--terminal-selection-fg', '#f0f0f4'),
+    selectionForeground: '#f0f0f4',
     ...ANSI_COLORS,
   }
+  _cachedPaletteAttr = paletteAttr
+  return _cachedXtermTheme
 }
 
 /** Strip all ANSI escape sequences (CSI, OSC, single-char escapes) */
@@ -638,7 +647,7 @@ function TerminalPaneInner({
     }
 
     fetchBranch()
-    const interval = setInterval(fetchBranch, 10_000)
+    const interval = setInterval(fetchBranch, 30_000)
 
     return () => {
       cancelled = true

@@ -102,13 +102,13 @@ export function usePrdGeneration() {
   // ── Mobile PRD ────────────────────────────────────────────────
 
   const startMobilePrdGen = useCallback(
-    (appDescription: string, template: ExpoTemplate, paletteId?: string) => {
+    (appDescription: string, template: ExpoTemplate, paletteId?: string, imagePaths?: string[]) => {
       if (mobileInFlight.current) return
       mobileInFlight.current = true
       setMobilePrd({ status: 'generating', result: null, error: null })
 
       window.electronAPI.expo
-        .generatePRD({ appDescription, template, paletteId })
+        .generatePRD({ appDescription, template, paletteId, imagePaths })
         .then((res) => {
           setMobilePrd({ status: 'done', result: res.content, error: null })
           showPrdToast('PRD generated successfully')

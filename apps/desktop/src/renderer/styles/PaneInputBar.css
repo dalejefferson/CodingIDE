@@ -3,8 +3,8 @@
 .pane-input-bar {
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-secondary);
-  border-top: 1px solid var(--color-border-primary);
+  background: var(--terminal-bg, #1c2128);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
   border-radius: 0;
 }

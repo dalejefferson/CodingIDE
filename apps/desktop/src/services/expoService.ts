@@ -90,13 +90,13 @@ export class ExpoService {
 
     this.onStatusChange(app.id, 'starting', null, null, null)
 
-    const child = spawn('npx', ['expo', 'start', '--lan', '--web', '--port', String(port)], {
+    const child = spawn('npx', ['expo', 'start', '--port', String(port)], {
       cwd: app.path,
       stdio: ['pipe', 'pipe', 'pipe'],
       detached: true,
       env: {
         ...process.env,
-        CI: '1',
+        EXPO_NO_TELEMETRY: '1',
         NODE_OPTIONS: '--max-old-space-size=4096',
       },
     })
@@ -120,10 +120,15 @@ export class ExpoService {
         entry.log = truncateLog(entry.log + text)
 
         // Detect native server ready with URL
+        // Expo SDK 50+: "Metro waiting on exp://192.168.x.x:8081"
+        // Expo SDK 51+: "› Metro waiting on exp://..." or "Logs for your project"
         if (!entry.expoUrl) {
-          const urlMatch = text.match(/Metro waiting on (exp:\/\/[\d.]+:\d+)/)
-          if (urlMatch && urlMatch[1]) {
-            entry.expoUrl = urlMatch[1]
+          const urlMatch =
+            text.match(/Metro waiting on (exp:\/\/[\d.]+:\d+)/) ||
+            text.match(/(exp:\/\/[\d.]+:\d+)/) ||
+            text.match(/Logs for your project/)
+          if (urlMatch) {
+            entry.expoUrl = urlMatch[1] ?? `exp://localhost:${port}`
             logger.info('Expo: metro ready', { appId: app.id, url: entry.expoUrl })
             // Fire status update — web URL may arrive later
             this.onStatusChange(app.id, 'running', entry.expoUrl, entry.webUrl, null)

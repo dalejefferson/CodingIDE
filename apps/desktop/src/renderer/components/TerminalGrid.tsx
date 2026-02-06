@@ -610,13 +610,18 @@ const SplitDivider = React.memo(function SplitDivider({
       const totalSize = isH ? parentRect.width : parentRect.height
       const parentStart = isH ? parentRect.left : parentRect.top
 
+      let rafId = 0
       const onMouseMove = (ev: MouseEvent) => {
-        const pos = isH ? ev.clientX : ev.clientY
-        const newRatio = (pos - parentStart) / totalSize
-        onRatioChange(branchId, newRatio)
+        cancelAnimationFrame(rafId)
+        rafId = requestAnimationFrame(() => {
+          const pos = isH ? ev.clientX : ev.clientY
+          const newRatio = (pos - parentStart) / totalSize
+          onRatioChange(branchId, newRatio)
+        })
       }
 
       const onMouseUp = () => {
+        cancelAnimationFrame(rafId)
         document.body.classList.remove('is-resizing-h', 'is-resizing-v')
         window.removeEventListener('mousemove', onMouseMove)
         window.removeEventListener('mouseup', onMouseUp)

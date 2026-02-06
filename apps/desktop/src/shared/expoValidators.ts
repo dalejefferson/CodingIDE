@@ -76,6 +76,10 @@ export function isGenerateMobilePRDRequest(payload: unknown): boolean {
     return false
   }
   if (obj['paletteId'] !== undefined && typeof obj['paletteId'] !== 'string') return false
+  if (obj['imagePaths'] !== undefined) {
+    if (!Array.isArray(obj['imagePaths'])) return false
+    if (!obj['imagePaths'].every((p: unknown) => typeof p === 'string')) return false
+  }
   return true
 }
 
