@@ -6,13 +6,17 @@
  *
  * Each ticket gets its own isolated worktree directory with a
  * `.claude/prd.md` file that feeds the Claude CLI.
+ *
+ * Worktree creation and PRD building are in their own modules:
+ *   - ralphWorktree.ts — git worktree creation + slugify helper
+ *   - ralphPRDBuilder.ts — PRD content generation from ticket
  */
 
-import { spawn, execSync, type ChildProcess } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { spawn, type ChildProcess } from 'node:child_process'
 import type { Ticket, RalphStatusResponse } from '@shared/types'
 import { logger } from '@services/logger'
+import { createWorktree } from './ralphWorktree'
+import { buildPRD } from './ralphPRDBuilder'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -34,25 +38,7 @@ const MAX_LOG_LENGTH = 10_000
 /** Grace period (ms) before escalating SIGTERM to SIGKILL. */
 const KILL_GRACE_MS = 500
 
-/** Max length for slugified directory names. */
-const MAX_SLUG_LENGTH = 50
-
 // ── Helpers ────────────────────────────────────────────────────
-
-/**
- * Convert a string to a filesystem-safe slug.
- *
- * Rules: lowercase, non-alphanumeric chars become hyphens, collapse
- * consecutive hyphens, trim leading/trailing hyphens, cap at 50 chars.
- */
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, MAX_SLUG_LENGTH)
-}
 
 /**
  * Truncate a string to keep only the last `max` characters.
@@ -87,56 +73,12 @@ class RalphService {
 
   /**
    * Create an isolated worktree directory for a ticket.
-   *
-   * The directory is placed at `{ticket.worktreeBasePath}/{slug}/` where
-   * slug is derived from the ticket title. A bare `git init` is run and
-   * a README.md is written with the ticket metadata.
+   * Delegates to ralphWorktree.ts.
    *
    * @returns The full path to the created worktree directory.
    */
   createWorktree(ticket: Ticket): string {
-    if (!ticket.worktreeBasePath) {
-      throw new Error(`Ticket "${ticket.id}" has no worktreeBasePath set`)
-    }
-
-    const slug = slugify(ticket.title)
-    if (!slug) {
-      throw new Error(`Ticket title "${ticket.title}" produces an empty slug`)
-    }
-
-    const worktreePath = join(ticket.worktreeBasePath, slug)
-
-    // Create directory (recursive in case basePath doesn't exist yet)
-    mkdirSync(worktreePath, { recursive: true })
-
-    // Initialize a git repo in the worktree
-    try {
-      execSync('git init', { cwd: worktreePath, stdio: 'pipe' })
-      logger.info('Ralph: git init in worktree', { worktreePath })
-    } catch (err) {
-      logger.error('Ralph: git init failed', {
-        worktreePath,
-        error: String(err),
-      })
-      throw new Error(`git init failed in ${worktreePath}: ${String(err)}`)
-    }
-
-    // Write a README with ticket context
-    const readme = [
-      `# ${ticket.title}`,
-      '',
-      ticket.description,
-      '',
-      '---',
-      `Ticket ID: ${ticket.id}`,
-      `Type: ${ticket.type}`,
-      `Priority: ${ticket.priority}`,
-    ].join('\n')
-
-    writeFileSync(join(worktreePath, 'README.md'), readme, 'utf-8')
-    logger.info('Ralph: worktree created', { worktreePath, ticketId: ticket.id })
-
-    return worktreePath
+    return createWorktree(ticket)
   }
 
   // ── Execution ──────────────────────────────────────────────
@@ -152,13 +94,6 @@ class RalphService {
    * then piped as stdin to `claude --print --dangerously-skip-permissions`.
    */
   execute(ticket: Ticket): void {
-    if (!ticket.worktreePath) {
-      throw new Error(`Ticket "${ticket.id}" has no worktreePath — create worktree first`)
-    }
-    if (!ticket.prd || !ticket.prd.approved) {
-      throw new Error(`Ticket "${ticket.id}" has no approved PRD`)
-    }
-
     // Prevent duplicate execution
     const existing = this.processes.get(ticket.id)
     if (existing?.running) {
@@ -166,14 +101,9 @@ class RalphService {
       return
     }
 
-    const worktreePath = ticket.worktreePath
-    const prdContent = ticket.prd.content
-
-    // Write PRD into .claude/ directory
-    const claudeDir = join(worktreePath, '.claude')
-    mkdirSync(claudeDir, { recursive: true })
-    writeFileSync(join(claudeDir, 'prd.md'), prdContent, 'utf-8')
-    logger.info('Ralph: wrote PRD to .claude/prd.md', { ticketId: ticket.id })
+    // Build and write PRD (validates worktreePath and prd)
+    const prdContent = buildPRD(ticket)
+    const worktreePath = ticket.worktreePath!
 
     // Spawn Claude CLI
     const child = spawn('claude', ['--print', '--dangerously-skip-permissions'], {
